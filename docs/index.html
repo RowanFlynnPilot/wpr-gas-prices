@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wisconsin Gas Prices — Wausau Pilot &amp; Review</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap');
+
+  :root {
+    --ink: #1a1a1a;
+    --ink-mid: #444;
+    --ink-light: #6b6b6b;
+    --ink-faint: #999;
+    --paper: #fafaf7;
+    --paper-warm: #f5f3ee;
+    --rule: #d4d0c8;
+    --rule-light: #e8e5de;
+    --accent: #b8232a;
+    --accent-dark: #8c1a1f;
+    --up: #c0392b;
+    --down: #27864a;
+    --neutral: #888;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --radius: 6px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .wpr-gas-widget {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    max-width: 680px;
+    margin: 0 auto;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    overflow: hidden;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  .wpr-gas-header {
+    background: var(--ink);
+    color: #fff;
+    padding: 20px 24px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .wpr-gas-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+  .wpr-gas-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .wpr-gas-kicker {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 2px;
+  }
+  .wpr-gas-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.3px;
+  }
+  .wpr-gas-date {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    margin-top: 6px;
+    font-style: italic;
+  }
+  .wpr-gas-hero-price {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .wpr-gas-hero-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 2px;
+    text-align: right;
+  }
+  .wpr-gas-hero-value {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 38px;
+    line-height: 1;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+  .wpr-gas-hero-change {
+    font-size: 11px;
+    text-align: right;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .wpr-gas-hero-change .up { color: #ff8a80; }
+  .wpr-gas-hero-change .down { color: #81c995; }
+  .wpr-gas-hero-change .flat { color: rgba(255,255,255,0.4); }
+
+  /* ── Tabs ── */
+  .wpr-gas-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-warm);
+    padding: 0 16px;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .wpr-gas-tab {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: var(--ink-light);
+    background: none;
+    border: none;
+    padding: 10px 14px 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .wpr-gas-tab:hover { color: var(--ink); }
+  .wpr-gas-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── State-wide fuel type pills ── */
+  .wpr-gas-fuel-row {
+    display: flex;
+    gap: 6px;
+    padding: 14px 20px 10px;
+    flex-wrap: wrap;
+  }
+  .wpr-gas-fuel-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--rule);
+    background: #fff;
+    color: var(--ink-mid);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .wpr-gas-fuel-btn:hover { border-color: var(--ink-light); }
+  .wpr-gas-fuel-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  /* ── Statewide comparison bars ── */
+  .wpr-gas-compare {
+    padding: 8px 20px 16px;
+  }
+  .wpr-gas-compare-row {
+    display: flex;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--rule-light);
+    gap: 8px;
+  }
+  .wpr-gas-compare-row:last-child { border-bottom: none; }
+  .wpr-gas-compare-label {
+    font-size: 12px;
+    color: var(--ink-light);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .wpr-gas-compare-bar-wrap {
+    flex: 1;
+    height: 18px;
+    background: var(--rule-light);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  .wpr-gas-compare-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .wpr-gas-compare-price {
+    font-size: 13px;
+    font-weight: 600;
+    width: 58px;
+    text-align: right;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .wpr-gas-compare-change {
+    font-size: 11px;
+    width: 52px;
+    text-align: right;
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  /* ── Metro view ── */
+  .wpr-gas-metro-section { padding: 0; }
+  .wpr-gas-metro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .wpr-gas-metro-card {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--rule-light);
+    border-right: 1px solid var(--rule-light);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .wpr-gas-metro-card:hover { background: var(--paper-warm); }
+  .wpr-gas-metro-card:nth-child(2n) { border-right: none; }
+  .wpr-gas-metro-card.highlight {
+    background: rgba(184,35,42,0.03);
+  }
+  .wpr-gas-metro-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wpr-gas-metro-name .star {
+    font-size: 9px;
+    color: var(--accent);
+  }
+  .wpr-gas-metro-price {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 22px;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .wpr-gas-metro-delta {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 1px;
+  }
+
+  /* ── Detail panel (when metro is clicked) ── */
+  .wpr-gas-detail-panel {
+    background: var(--paper-warm);
+    border-top: 1px solid var(--rule);
+    padding: 16px 20px;
+    display: none;
+    animation: slideDown 0.2s ease;
+  }
+  .wpr-gas-detail-panel.open { display: block; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .wpr-gas-detail-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 17px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .wpr-gas-detail-close {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    color: var(--ink-faint);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px 8px;
+  }
+  .wpr-gas-detail-close:hover { color: var(--ink); }
+  .wpr-gas-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .wpr-gas-detail-table th {
+    text-align: left;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-bottom: 2px solid var(--rule);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--ink-light);
+  }
+  .wpr-gas-detail-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--rule-light);
+    font-variant-numeric: tabular-nums;
+  }
+  .wpr-gas-detail-table tr:last-child td { border-bottom: none; }
+  .wpr-gas-detail-table td:first-child { color: var(--ink-light); }
+
+  /* ── Footer ── */
+  .wpr-gas-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--ink-faint);
+    background: var(--paper-warm);
+  }
+  .wpr-gas-footer a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .wpr-gas-footer a:hover { text-decoration: underline; }
+
+  /* ── Utility ── */
+  .up-color { color: var(--up); }
+  .down-color { color: var(--down); }
+  .flat-color { color: var(--neutral); }
+  .bar-current { background: var(--ink); }
+  .bar-yesterday { background: #555; }
+  .bar-week { background: #888; }
+  .bar-month { background: #b8b4ac; }
+  .bar-year { background: #d4d0c8; }
+
+  .wpr-gas-loading {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--ink-faint);
+    font-size: 13px;
+  }
+  .wpr-gas-error {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 520px) {
+    .wpr-gas-hero-value { font-size: 30px; }
+    .wpr-gas-title { font-size: 18px; }
+    .wpr-gas-metro-grid { grid-template-columns: 1fr; }
+    .wpr-gas-metro-card { border-right: none; }
+    .wpr-gas-compare-label { width: 65px; font-size: 11px; }
+    .wpr-gas-header { padding: 16px 16px 14px; }
+    .wpr-gas-fuel-row { padding: 12px 16px 8px; }
+    .wpr-gas-compare { padding: 8px 16px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wpr-gas-widget" id="gasWidget">
+  <div class="wpr-gas-loading">Loading Wisconsin gas prices…</div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ── CONFIGURATION ──
+  // Update this URL after enabling GitHub Pages.
+  // It will be: https://YOUR-GITHUB-USERNAME.github.io/wpr-gas-prices/gas_prices.json
+  const DATA_URL = './gas_prices.json';
+
+  // ── FALLBACK DATA ──
+  // Embedded sample data used when the live JSON file isn't available.
+  // The scraper will overwrite this with fresh data once deployed.
+  const FALLBACK_DATA = {"source":"AAA Gas Prices","source_url":"https://gasprices.aaa.com/?state=WI","state":"Wisconsin","price_date":"03/10/26","scraped_at":"2026-03-10T12:00:00+00:00","statewide":{"current_avg":{"regular":2.445,"mid_grade":2.978,"premium":3.547,"diesel":3.370},"yesterday_avg":{"regular":2.434,"mid_grade":2.967,"premium":3.525,"diesel":3.373},"week_ago_avg":{"regular":2.465,"mid_grade":3.014,"premium":3.554,"diesel":3.405},"month_ago_avg":{"regular":2.671,"mid_grade":3.201,"premium":3.696,"diesel":3.620},"year_ago_avg":{"regular":2.759,"mid_grade":3.266,"premium":3.749,"diesel":3.284}},"metros":{"Wausau":{"current_avg":{"regular":2.422,"mid_grade":3.051,"premium":3.630,"diesel":3.373},"yesterday_avg":{"regular":2.363,"mid_grade":2.954,"premium":3.484,"diesel":3.369},"week_ago_avg":{"regular":2.418,"mid_grade":3.164,"premium":3.600,"diesel":3.380},"month_ago_avg":{"regular":2.650,"mid_grade":3.180,"premium":3.690,"diesel":3.600},"year_ago_avg":{"regular":2.750,"mid_grade":3.250,"premium":3.740,"diesel":3.280}},"Eau Claire":{"current_avg":{"regular":2.422,"mid_grade":2.767,"premium":3.518,"diesel":3.503},"yesterday_avg":{"regular":2.363,"mid_grade":2.784,"premium":3.483,"diesel":3.509},"week_ago_avg":{"regular":2.401,"mid_grade":2.757,"premium":3.448,"diesel":3.514},"month_ago_avg":{"regular":2.563,"mid_grade":3.014,"premium":3.528,"diesel":3.690},"year_ago_avg":{"regular":2.688,"mid_grade":3.102,"premium":3.606,"diesel":3.267}},"Green Bay":{"current_avg":{"regular":2.454,"mid_grade":3.030,"premium":3.562,"diesel":3.440},"yesterday_avg":{"regular":2.454,"mid_grade":3.012,"premium":3.557,"diesel":3.427},"week_ago_avg":{"regular":2.496,"mid_grade":3.037,"premium":3.575,"diesel":3.527},"month_ago_avg":{"regular":2.725,"mid_grade":3.240,"premium":3.727,"diesel":3.680},"year_ago_avg":{"regular":2.703,"mid_grade":3.193,"premium":3.697,"diesel":3.254}},"Appleton":{"current_avg":{"regular":2.481,"mid_grade":3.068,"premium":3.578,"diesel":3.365},"yesterday_avg":{"regular":2.485,"mid_grade":3.081,"premium":3.588,"diesel":3.372},"week_ago_avg":{"regular":2.511,"mid_grade":3.043,"premium":3.587,"diesel":3.425},"month_ago_avg":{"regular":2.664,"mid_grade":3.188,"premium":3.682,"diesel":3.560},"year_ago_avg":{"regular":2.759,"mid_grade":3.265,"premium":3.738,"diesel":3.251}},"Madison":{"current_avg":{"regular":2.425,"mid_grade":2.991,"premium":3.567,"diesel":3.284},"yesterday_avg":{"regular":2.428,"mid_grade":3.003,"premium":3.584,"diesel":3.288},"week_ago_avg":{"regular":2.455,"mid_grade":3.030,"premium":3.602,"diesel":3.300},"month_ago_avg":{"regular":2.695,"mid_grade":3.272,"premium":3.741,"diesel":3.546},"year_ago_avg":{"regular":2.786,"mid_grade":3.350,"premium":3.790,"diesel":3.339}},"Milwaukee-Waukesha":{"current_avg":{"regular":2.418,"mid_grade":2.947,"premium":3.463,"diesel":3.376},"yesterday_avg":{"regular":2.420,"mid_grade":2.951,"premium":3.453,"diesel":3.376},"week_ago_avg":{"regular":2.452,"mid_grade":2.998,"premium":3.506,"diesel":3.396},"month_ago_avg":{"regular":2.643,"mid_grade":3.180,"premium":3.636,"diesel":3.574},"year_ago_avg":{"regular":2.738,"mid_grade":3.259,"premium":3.721,"diesel":3.296}},"La Crosse":{"current_avg":{"regular":2.453,"mid_grade":2.429,"premium":3.657,"diesel":3.276},"yesterday_avg":{"regular":2.449,"mid_grade":2.429,"premium":3.657,"diesel":3.275},"week_ago_avg":{"regular":2.452,"mid_grade":2.704,"premium":3.640,"diesel":3.284},"month_ago_avg":{"regular":2.526,"mid_grade":2.692,"premium":3.730,"diesel":3.670},"year_ago_avg":{"regular":2.769,"mid_grade":3.099,"premium":3.770,"diesel":3.215}},"Fond du Lac":{"current_avg":{"regular":2.365,"mid_grade":2.996,"premium":3.526,"diesel":3.276},"yesterday_avg":{"regular":2.362,"mid_grade":2.973,"premium":3.492,"diesel":3.266},"week_ago_avg":{"regular":2.420,"mid_grade":3.120,"premium":3.646,"diesel":3.302},"month_ago_avg":{"regular":2.658,"mid_grade":3.229,"premium":3.756,"diesel":3.563},"year_ago_avg":{"regular":2.734,"mid_grade":3.260,"premium":3.793,"diesel":3.269}},"Janesville-Beloit":{"current_avg":{"regular":2.367,"mid_grade":2.845,"premium":3.434,"diesel":3.238},"yesterday_avg":{"regular":2.367,"mid_grade":2.863,"premium":3.482,"diesel":3.253},"week_ago_avg":{"regular":2.402,"mid_grade":2.909,"premium":3.460,"diesel":3.259},"month_ago_avg":{"regular":2.601,"mid_grade":3.096,"premium":3.615,"diesel":3.562},"year_ago_avg":{"regular":2.772,"mid_grade":3.233,"premium":3.730,"diesel":3.239}},"Kenosha County":{"current_avg":{"regular":2.459,"mid_grade":3.007,"premium":3.559,"diesel":3.513},"yesterday_avg":{"regular":2.463,"mid_grade":2.986,"premium":3.567,"diesel":3.507},"week_ago_avg":{"regular":2.472,"mid_grade":3.063,"premium":3.586,"diesel":3.546},"month_ago_avg":{"regular":2.624,"mid_grade":3.237,"premium":3.670,"diesel":3.779},"year_ago_avg":{"regular":2.765,"mid_grade":3.376,"premium":3.824,"diesel":3.579}},"Oshkosh":{"current_avg":{"regular":2.483,"mid_grade":3.036,"premium":3.570,"diesel":3.211},"yesterday_avg":{"regular":2.491,"mid_grade":2.968,"premium":3.508,"diesel":3.259},"week_ago_avg":{"regular":2.535,"mid_grade":3.089,"premium":3.561,"diesel":3.304},"month_ago_avg":{"regular":2.654,"mid_grade":3.161,"premium":3.657,"diesel":3.437},"year_ago_avg":{"regular":2.736,"mid_grade":3.242,"premium":3.732,"diesel":3.264}},"Racine":{"current_avg":{"regular":2.430,"mid_grade":2.931,"premium":3.440,"diesel":3.332},"yesterday_avg":{"regular":2.441,"mid_grade":2.931,"premium":3.462,"diesel":3.391},"week_ago_avg":{"regular":2.446,"mid_grade":3.005,"premium":3.467,"diesel":3.351},"month_ago_avg":{"regular":2.631,"mid_grade":3.143,"premium":3.565,"diesel":3.576},"year_ago_avg":{"regular":2.754,"mid_grade":3.264,"premium":3.687,"diesel":3.387}},"Sheboygan":{"current_avg":{"regular":2.407,"mid_grade":3.105,"premium":3.563,"diesel":3.404},"yesterday_avg":{"regular":2.402,"mid_grade":3.064,"premium":3.550,"diesel":3.458},"week_ago_avg":{"regular":2.442,"mid_grade":3.135,"premium":3.641,"diesel":3.396},"month_ago_avg":{"regular":2.699,"mid_grade":3.366,"premium":3.777,"diesel":3.570},"year_ago_avg":{"regular":2.762,"mid_grade":3.322,"premium":3.805,"diesel":3.264}},"Superior":{"current_avg":{"regular":2.475,"mid_grade":2.729,"premium":3.637,"diesel":3.729},"yesterday_avg":{"regular":2.380,"mid_grade":2.709,"premium":3.451,"diesel":3.846},"week_ago_avg":{"regular":2.441,"mid_grade":2.794,"premium":3.525,"diesel":3.935},"month_ago_avg":{"regular":2.552,"mid_grade":2.899,"premium":3.582,"diesel":3.974},"year_ago_avg":{"regular":2.775,"mid_grade":3.216,"premium":3.741,"diesel":3.314}},"Pierce-St. Croix County":{"current_avg":{"regular":2.527,"mid_grade":2.994,"premium":3.576,"diesel":3.586},"yesterday_avg":{"regular":2.489,"mid_grade":2.950,"premium":3.531,"diesel":3.586},"week_ago_avg":{"regular":2.498,"mid_grade":2.989,"premium":3.529,"diesel":3.596},"month_ago_avg":{"regular":2.698,"mid_grade":3.176,"premium":3.680,"diesel":3.794},"year_ago_avg":{"regular":2.856,"mid_grade":3.270,"premium":3.778,"diesel":3.433}}},"priority_metros":["Wausau","Eau Claire","Green Bay","Appleton","Madison","Milwaukee-Waukesha"]};
+
+  // ── STATE ──
+  let data = null;
+  let activeTab = 'statewide';  // 'statewide' | 'metros'
+  let activeFuel = 'regular';
+  let selectedMetro = null;
+  let usingFallback = false;
+
+  const widget = document.getElementById('gasWidget');
+
+  // ── HELPERS ──
+  function fmt(price) {
+    if (price == null) return '—';
+    return '$' + price.toFixed(3);
+  }
+
+  function delta(current, previous) {
+    if (current == null || previous == null) return { text: '—', cls: 'flat-color' };
+    const diff = current - previous;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff > 0.001 ? 'up-color' : diff < -0.001 ? 'down-color' : 'flat-color';
+    const arrow = diff > 0.001 ? '▲' : diff < -0.001 ? '▼' : '—';
+    return { text: `${arrow} ${sign}${diff.toFixed(3)}`, cls };
+  }
+
+  function fuelLabel(key) {
+    return { regular: 'Regular', mid_grade: 'Mid-Grade', premium: 'Premium', diesel: 'Diesel' }[key] || key;
+  }
+
+  function periodLabel(key) {
+    return {
+      current_avg: 'Today',
+      yesterday_avg: 'Yesterday',
+      week_ago_avg: 'Week Ago',
+      month_ago_avg: 'Month Ago',
+      year_ago_avg: 'Year Ago'
+    }[key] || key;
+  }
+
+  // ── RENDER ──
+  function render() {
+    if (!data) return;
+
+    const sw = data.statewide;
+    const currentRegular = sw.current_avg?.regular;
+    const yesterdayRegular = sw.yesterday_avg?.regular;
+    const d = delta(currentRegular, yesterdayRegular);
+
+    let html = `
+      <div class="wpr-gas-header">
+        <div class="wpr-gas-header-top">
+          <div>
+            <div class="wpr-gas-kicker">Fuel Watch</div>
+            <div class="wpr-gas-title">Wisconsin Gas Prices</div>
+            <div class="wpr-gas-date">Updated ${data.price_date} · Source: AAA</div>
+          </div>
+          <div class="wpr-gas-hero-price">
+            <div class="wpr-gas-hero-label">State Avg · Regular</div>
+            <div class="wpr-gas-hero-value">${fmt(currentRegular)}</div>
+            <div class="wpr-gas-hero-change"><span class="${d.cls === 'up-color' ? 'up' : d.cls === 'down-color' ? 'down' : 'flat'}">${d.text} vs yesterday</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wpr-gas-tabs">
+        <button class="wpr-gas-tab ${activeTab === 'statewide' ? 'active' : ''}" data-tab="statewide">Statewide</button>
+        <button class="wpr-gas-tab ${activeTab === 'metros' ? 'active' : ''}" data-tab="metros">By Metro Area</button>
+      </div>
+    `;
+
+    if (activeTab === 'statewide') {
+      html += renderStatewide();
+    } else {
+      html += renderMetros();
+    }
+
+    html += `
+      <div class="wpr-gas-footer">
+        <span>Data via <a href="${data.source_url}" target="_blank" rel="noopener">AAA Gas Prices</a>${usingFallback ? ' · <em style="color:var(--accent)">sample data</em>' : ''}</span>
+        <span>Wausau Pilot &amp; Review</span>
+      </div>
+    `;
+
+    widget.innerHTML = html;
+    bindEvents();
+  }
+
+  function renderStatewide() {
+    const sw = data.statewide;
+    const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
+    const periods = ['current_avg', 'yesterday_avg', 'week_ago_avg', 'month_ago_avg', 'year_ago_avg'];
+    const barCls = ['bar-current', 'bar-yesterday', 'bar-week', 'bar-month', 'bar-year'];
+
+    // Find max price for bar scaling
+    let maxPrice = 0;
+    periods.forEach(p => {
+      const val = sw[p]?.[activeFuel];
+      if (val && val > maxPrice) maxPrice = val;
+    });
+    maxPrice *= 1.08; // breathing room
+
+    let rows = '';
+    periods.forEach((p, i) => {
+      const price = sw[p]?.[activeFuel];
+      const pct = price ? ((price / maxPrice) * 100).toFixed(1) : 0;
+      const label = periodLabel(p);
+      const changeInfo = i > 0 ? delta(sw.current_avg?.[activeFuel], price) : { text: '', cls: '' };
+      
+      rows += `
+        <div class="wpr-gas-compare-row">
+          <span class="wpr-gas-compare-label">${label}</span>
+          <div class="wpr-gas-compare-bar-wrap">
+            <div class="wpr-gas-compare-bar ${barCls[i]}" style="width:${pct}%"></div>
+          </div>
+          <span class="wpr-gas-compare-price">${fmt(price)}</span>
+          <span class="wpr-gas-compare-change ${changeInfo.cls}">${i > 0 ? changeInfo.text : ''}</span>
+        </div>
+      `;
+    });
+
+    let fuelBtns = fuels.map(f =>
+      `<button class="wpr-gas-fuel-btn ${activeFuel === f ? 'active' : ''}" data-fuel="${f}">${fuelLabel(f)}</button>`
+    ).join('');
+
+    return `
+      <div class="wpr-gas-fuel-row">${fuelBtns}</div>
+      <div class="wpr-gas-compare">${rows}</div>
+    `;
+  }
+
+  function renderMetros() {
+    const metros = data.metros || {};
+    const priority = data.priority_metros || [];
+
+    // Sort: priority first, then alphabetical
+    const sortedNames = Object.keys(metros).sort((a, b) => {
+      const aP = priority.indexOf(a);
+      const bP = priority.indexOf(b);
+      if (aP !== -1 && bP !== -1) return aP - bP;
+      if (aP !== -1) return -1;
+      if (bP !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    let cards = '';
+    for (const name of sortedNames) {
+      const m = metros[name];
+      const price = m.current_avg?.[activeFuel];
+      const yest = m.yesterday_avg?.[activeFuel];
+      const d = delta(price, yest);
+      const isPriority = priority.includes(name);
+      const isWausau = name === 'Wausau';
+
+      cards += `
+        <div class="wpr-gas-metro-card ${isPriority ? 'highlight' : ''}" data-metro="${name}">
+          <div class="wpr-gas-metro-name">
+            ${isWausau ? '<span class="star">●</span>' : ''}${name}
+          </div>
+          <div class="wpr-gas-metro-price">${fmt(price)}</div>
+          <div class="wpr-gas-metro-delta ${d.cls}">${d.text}</div>
+        </div>
+      `;
+    }
+
+    // Fuel filter
+    const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
+    let fuelBtns = fuels.map(f =>
+      `<button class="wpr-gas-fuel-btn ${activeFuel === f ? 'active' : ''}" data-fuel="${f}">${fuelLabel(f)}</button>`
+    ).join('');
+
+    let detailPanel = '';
+    if (selectedMetro && metros[selectedMetro]) {
+      detailPanel = renderDetail(selectedMetro, metros[selectedMetro]);
+    }
+
+    return `
+      <div class="wpr-gas-fuel-row">${fuelBtns}</div>
+      <div class="wpr-gas-metro-section">
+        <div class="wpr-gas-metro-grid">${cards}</div>
+        ${detailPanel}
+      </div>
+    `;
+  }
+
+  function renderDetail(name, metro) {
+    const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
+    const periods = ['current_avg', 'yesterday_avg', 'week_ago_avg', 'month_ago_avg', 'year_ago_avg'];
+
+    let headerCells = fuels.map(f => `<th>${fuelLabel(f)}</th>`).join('');
+    let rows = periods.map(p => {
+      let cells = fuels.map(f => {
+        const val = metro[p]?.[f];
+        return `<td>${fmt(val)}</td>`;
+      }).join('');
+      return `<tr><td>${periodLabel(p)}</td>${cells}</tr>`;
+    }).join('');
+
+    return `
+      <div class="wpr-gas-detail-panel open">
+        <div class="wpr-gas-detail-title">
+          <span>${name}</span>
+          <button class="wpr-gas-detail-close" data-action="close-detail">Close ✕</button>
+        </div>
+        <table class="wpr-gas-detail-table">
+          <thead><tr><th></th>${headerCells}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // ── EVENTS ──
+  function bindEvents() {
+    widget.querySelectorAll('.wpr-gas-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeTab = btn.dataset.tab;
+        selectedMetro = null;
+        render();
+      });
+    });
+
+    widget.querySelectorAll('.wpr-gas-fuel-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeFuel = btn.dataset.fuel;
+        render();
+      });
+    });
+
+    widget.querySelectorAll('.wpr-gas-metro-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const name = card.dataset.metro;
+        selectedMetro = selectedMetro === name ? null : name;
+        render();
+      });
+    });
+
+    const closeBtn = widget.querySelector('[data-action="close-detail"]');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedMetro = null;
+        render();
+      });
+    }
+  }
+
+  // ── INIT ──
+  async function init() {
+    // Try fetching live data first; fall back to embedded sample data
+    try {
+      const resp = await fetch(DATA_URL);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      data = await resp.json();
+      usingFallback = false;
+    } catch (err) {
+      console.warn('Gas widget: live data unavailable, using fallback.', err.message);
+      data = FALLBACK_DATA;
+      usingFallback = true;
+    }
+    render();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body>
+</html>
