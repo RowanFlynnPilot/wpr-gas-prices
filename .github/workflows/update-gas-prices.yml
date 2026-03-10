@@ -1,0 +1,42 @@
+name: Update Gas Prices
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        run: python scrape_gas_prices.py --output docs/gas_prices.json
+
+      - name: Commit and push updated data
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add docs/gas_prices.json
+          if git diff --staged --quiet; then
+            echo "No price changes detected, skipping commit."
+          else
+            git commit -m "Update gas prices — $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
