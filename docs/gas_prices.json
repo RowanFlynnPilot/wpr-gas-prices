@@ -2,121 +2,528 @@
   "source": "AAA Gas Prices",
   "source_url": "https://gasprices.aaa.com/?state=WI",
   "state": "Wisconsin",
-  "price_date": "03/10/26",
-  "scraped_at": "2026-03-10T12:00:00+00:00",
+  "price_date": "3/10/26",
+  "scraped_at": "2026-03-10T23:11:21.907632+00:00",
   "statewide": {
-    "current_avg": { "regular": 2.445, "mid_grade": 2.978, "premium": 3.547, "diesel": 3.370 },
-    "yesterday_avg": { "regular": 2.434, "mid_grade": 2.967, "premium": 3.525, "diesel": 3.373 },
-    "week_ago_avg": { "regular": 2.465, "mid_grade": 3.014, "premium": 3.554, "diesel": 3.405 },
-    "month_ago_avg": { "regular": 2.671, "mid_grade": 3.201, "premium": 3.696, "diesel": 3.620 },
-    "year_ago_avg": { "regular": 2.759, "mid_grade": 3.266, "premium": 3.749, "diesel": 3.284 }
-  },
-  "metros": {
-    "Wausau": {
-      "current_avg": { "regular": 2.422, "mid_grade": 3.051, "premium": 3.630, "diesel": 3.373 },
-      "yesterday_avg": { "regular": 2.363, "mid_grade": 2.954, "premium": 3.484, "diesel": 3.369 },
-      "week_ago_avg": { "regular": 2.418, "mid_grade": 3.164, "premium": 3.600, "diesel": 3.380 },
-      "month_ago_avg": { "regular": 2.650, "mid_grade": 3.180, "premium": 3.690, "diesel": 3.600 },
-      "year_ago_avg": { "regular": 2.750, "mid_grade": 3.250, "premium": 3.740, "diesel": 3.280 }
+    "current_avg": {
+      "regular": 3.175,
+      "mid_grade": 3.629,
+      "premium": 4.249,
+      "diesel": 4.498
     },
-    "Eau Claire": {
-      "current_avg": { "regular": 2.422, "mid_grade": 2.767, "premium": 3.518, "diesel": 3.503 },
-      "yesterday_avg": { "regular": 2.363, "mid_grade": 2.784, "premium": 3.483, "diesel": 3.509 },
-      "week_ago_avg": { "regular": 2.401, "mid_grade": 2.757, "premium": 3.448, "diesel": 3.514 },
-      "month_ago_avg": { "regular": 2.563, "mid_grade": 3.014, "premium": 3.528, "diesel": 3.690 },
-      "year_ago_avg": { "regular": 2.688, "mid_grade": 3.102, "premium": 3.606, "diesel": 3.267 }
+    "yesterday_avg": {
+      "regular": 3.151,
+      "mid_grade": 3.614,
+      "premium": 4.231,
+      "diesel": 4.297
     },
-    "Green Bay": {
-      "current_avg": { "regular": 2.454, "mid_grade": 3.030, "premium": 3.562, "diesel": 3.440 },
-      "yesterday_avg": { "regular": 2.454, "mid_grade": 3.012, "premium": 3.557, "diesel": 3.427 },
-      "week_ago_avg": { "regular": 2.496, "mid_grade": 3.037, "premium": 3.575, "diesel": 3.527 },
-      "month_ago_avg": { "regular": 2.725, "mid_grade": 3.240, "premium": 3.727, "diesel": 3.680 },
-      "year_ago_avg": { "regular": 2.703, "mid_grade": 3.193, "premium": 3.697, "diesel": 3.254 }
+    "week_ago_avg": {
+      "regular": 2.863,
+      "mid_grade": 3.302,
+      "premium": 3.977,
+      "diesel": 3.695
     },
-    "Appleton": {
-      "current_avg": { "regular": 2.481, "mid_grade": 3.068, "premium": 3.578, "diesel": 3.365 },
-      "yesterday_avg": { "regular": 2.485, "mid_grade": 3.081, "premium": 3.588, "diesel": 3.372 },
-      "week_ago_avg": { "regular": 2.511, "mid_grade": 3.043, "premium": 3.587, "diesel": 3.425 },
-      "month_ago_avg": { "regular": 2.664, "mid_grade": 3.188, "premium": 3.682, "diesel": 3.560 },
-      "year_ago_avg": { "regular": 2.759, "mid_grade": 3.265, "premium": 3.738, "diesel": 3.251 }
+    "month_ago_avg": {
+      "regular": 2.558,
+      "mid_grade": 3.079,
+      "premium": 3.648,
+      "diesel": 3.462
     },
-    "Madison": {
-      "current_avg": { "regular": 2.425, "mid_grade": 2.991, "premium": 3.567, "diesel": 3.284 },
-      "yesterday_avg": { "regular": 2.428, "mid_grade": 3.003, "premium": 3.584, "diesel": 3.288 },
-      "week_ago_avg": { "regular": 2.455, "mid_grade": 3.030, "premium": 3.602, "diesel": 3.300 },
-      "month_ago_avg": { "regular": 2.695, "mid_grade": 3.272, "premium": 3.741, "diesel": 3.546 },
-      "year_ago_avg": { "regular": 2.786, "mid_grade": 3.350, "premium": 3.790, "diesel": 3.339 }
-    },
-    "Milwaukee-Waukesha": {
-      "current_avg": { "regular": 2.418, "mid_grade": 2.947, "premium": 3.463, "diesel": 3.376 },
-      "yesterday_avg": { "regular": 2.420, "mid_grade": 2.951, "premium": 3.453, "diesel": 3.376 },
-      "week_ago_avg": { "regular": 2.452, "mid_grade": 2.998, "premium": 3.506, "diesel": 3.396 },
-      "month_ago_avg": { "regular": 2.643, "mid_grade": 3.180, "premium": 3.636, "diesel": 3.574 },
-      "year_ago_avg": { "regular": 2.738, "mid_grade": 3.259, "premium": 3.721, "diesel": 3.296 }
-    },
-    "La Crosse": {
-      "current_avg": { "regular": 2.453, "mid_grade": 2.429, "premium": 3.657, "diesel": 3.276 },
-      "yesterday_avg": { "regular": 2.449, "mid_grade": 2.429, "premium": 3.657, "diesel": 3.275 },
-      "week_ago_avg": { "regular": 2.452, "mid_grade": 2.704, "premium": 3.640, "diesel": 3.284 },
-      "month_ago_avg": { "regular": 2.526, "mid_grade": 2.692, "premium": 3.730, "diesel": 3.670 },
-      "year_ago_avg": { "regular": 2.769, "mid_grade": 3.099, "premium": 3.770, "diesel": 3.215 }
-    },
-    "Fond du Lac": {
-      "current_avg": { "regular": 2.365, "mid_grade": 2.996, "premium": 3.526, "diesel": 3.276 },
-      "yesterday_avg": { "regular": 2.362, "mid_grade": 2.973, "premium": 3.492, "diesel": 3.266 },
-      "week_ago_avg": { "regular": 2.420, "mid_grade": 3.120, "premium": 3.646, "diesel": 3.302 },
-      "month_ago_avg": { "regular": 2.658, "mid_grade": 3.229, "premium": 3.756, "diesel": 3.563 },
-      "year_ago_avg": { "regular": 2.734, "mid_grade": 3.260, "premium": 3.793, "diesel": 3.269 }
-    },
-    "Janesville-Beloit": {
-      "current_avg": { "regular": 2.367, "mid_grade": 2.845, "premium": 3.434, "diesel": 3.238 },
-      "yesterday_avg": { "regular": 2.367, "mid_grade": 2.863, "premium": 3.482, "diesel": 3.253 },
-      "week_ago_avg": { "regular": 2.402, "mid_grade": 2.909, "premium": 3.460, "diesel": 3.259 },
-      "month_ago_avg": { "regular": 2.601, "mid_grade": 3.096, "premium": 3.615, "diesel": 3.562 },
-      "year_ago_avg": { "regular": 2.772, "mid_grade": 3.233, "premium": 3.730, "diesel": 3.239 }
-    },
-    "Kenosha County": {
-      "current_avg": { "regular": 2.459, "mid_grade": 3.007, "premium": 3.559, "diesel": 3.513 },
-      "yesterday_avg": { "regular": 2.463, "mid_grade": 2.986, "premium": 3.567, "diesel": 3.507 },
-      "week_ago_avg": { "regular": 2.472, "mid_grade": 3.063, "premium": 3.586, "diesel": 3.546 },
-      "month_ago_avg": { "regular": 2.624, "mid_grade": 3.237, "premium": 3.670, "diesel": 3.779 },
-      "year_ago_avg": { "regular": 2.765, "mid_grade": 3.376, "premium": 3.824, "diesel": 3.579 }
-    },
-    "Oshkosh": {
-      "current_avg": { "regular": 2.483, "mid_grade": 3.036, "premium": 3.570, "diesel": 3.211 },
-      "yesterday_avg": { "regular": 2.491, "mid_grade": 2.968, "premium": 3.508, "diesel": 3.259 },
-      "week_ago_avg": { "regular": 2.535, "mid_grade": 3.089, "premium": 3.561, "diesel": 3.304 },
-      "month_ago_avg": { "regular": 2.654, "mid_grade": 3.161, "premium": 3.657, "diesel": 3.437 },
-      "year_ago_avg": { "regular": 2.736, "mid_grade": 3.242, "premium": 3.732, "diesel": 3.264 }
-    },
-    "Racine": {
-      "current_avg": { "regular": 2.430, "mid_grade": 2.931, "premium": 3.440, "diesel": 3.332 },
-      "yesterday_avg": { "regular": 2.441, "mid_grade": 2.931, "premium": 3.462, "diesel": 3.391 },
-      "week_ago_avg": { "regular": 2.446, "mid_grade": 3.005, "premium": 3.467, "diesel": 3.351 },
-      "month_ago_avg": { "regular": 2.631, "mid_grade": 3.143, "premium": 3.565, "diesel": 3.576 },
-      "year_ago_avg": { "regular": 2.754, "mid_grade": 3.264, "premium": 3.687, "diesel": 3.387 }
-    },
-    "Sheboygan": {
-      "current_avg": { "regular": 2.407, "mid_grade": 3.105, "premium": 3.563, "diesel": 3.404 },
-      "yesterday_avg": { "regular": 2.402, "mid_grade": 3.064, "premium": 3.550, "diesel": 3.458 },
-      "week_ago_avg": { "regular": 2.442, "mid_grade": 3.135, "premium": 3.641, "diesel": 3.396 },
-      "month_ago_avg": { "regular": 2.699, "mid_grade": 3.366, "premium": 3.777, "diesel": 3.570 },
-      "year_ago_avg": { "regular": 2.762, "mid_grade": 3.322, "premium": 3.805, "diesel": 3.264 }
-    },
-    "Superior": {
-      "current_avg": { "regular": 2.475, "mid_grade": 2.729, "premium": 3.637, "diesel": 3.729 },
-      "yesterday_avg": { "regular": 2.380, "mid_grade": 2.709, "premium": 3.451, "diesel": 3.846 },
-      "week_ago_avg": { "regular": 2.441, "mid_grade": 2.794, "premium": 3.525, "diesel": 3.935 },
-      "month_ago_avg": { "regular": 2.552, "mid_grade": 2.899, "premium": 3.582, "diesel": 3.974 },
-      "year_ago_avg": { "regular": 2.775, "mid_grade": 3.216, "premium": 3.741, "diesel": 3.314 }
-    },
-    "Pierce-St. Croix County": {
-      "current_avg": { "regular": 2.527, "mid_grade": 2.994, "premium": 3.576, "diesel": 3.586 },
-      "yesterday_avg": { "regular": 2.489, "mid_grade": 2.950, "premium": 3.531, "diesel": 3.586 },
-      "week_ago_avg": { "regular": 2.498, "mid_grade": 2.989, "premium": 3.529, "diesel": 3.596 },
-      "month_ago_avg": { "regular": 2.698, "mid_grade": 3.176, "premium": 3.680, "diesel": 3.794 },
-      "year_ago_avg": { "regular": 2.856, "mid_grade": 3.270, "premium": 3.778, "diesel": 3.433 }
+    "year_ago_avg": {
+      "regular": 2.913,
+      "mid_grade": 3.393,
+      "premium": 3.896,
+      "diesel": 3.36
     }
   },
-  "priority_metros": ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee-Waukesha"]
+  "metros": {
+    "Eau Claire": {
+      "current_avg": {
+        "regular": 3.149,
+        "mid_grade": 3.528,
+        "premium": 4.19,
+        "diesel": 4.502
+      },
+      "yesterday_avg": {
+        "regular": 3.131,
+        "mid_grade": 3.525,
+        "premium": 4.209,
+        "diesel": 4.264
+      },
+      "week_ago_avg": {
+        "regular": 2.886,
+        "mid_grade": 3.129,
+        "premium": 3.98,
+        "diesel": 3.703
+      },
+      "month_ago_avg": {
+        "regular": 2.446,
+        "mid_grade": 2.811,
+        "premium": 3.484,
+        "diesel": 3.483
+      },
+      "year_ago_avg": {
+        "regular": 2.925,
+        "mid_grade": 3.313,
+        "premium": 3.876,
+        "diesel": 3.441
+      }
+    },
+    "Green Bay": {
+      "current_avg": {
+        "regular": 3.182,
+        "mid_grade": 3.652,
+        "premium": 4.272,
+        "diesel": 4.487
+      },
+      "yesterday_avg": {
+        "regular": 3.139,
+        "mid_grade": 3.649,
+        "premium": 4.263,
+        "diesel": 4.272
+      },
+      "week_ago_avg": {
+        "regular": 2.893,
+        "mid_grade": 3.366,
+        "premium": 4.04,
+        "diesel": 3.719
+      },
+      "month_ago_avg": {
+        "regular": 2.583,
+        "mid_grade": 3.152,
+        "premium": 3.709,
+        "diesel": 3.505
+      },
+      "year_ago_avg": {
+        "regular": 2.963,
+        "mid_grade": 3.469,
+        "premium": 3.956,
+        "diesel": 3.334
+      }
+    },
+    "Janesville-Beloit": {
+      "current_avg": {
+        "regular": 3.176,
+        "mid_grade": 3.57,
+        "premium": 4.239,
+        "diesel": 4.554
+      },
+      "yesterday_avg": {
+        "regular": 3.16,
+        "mid_grade": 3.623,
+        "premium": 4.216,
+        "diesel": 4.305
+      },
+      "week_ago_avg": {
+        "regular": 2.859,
+        "mid_grade": 3.244,
+        "premium": 3.893,
+        "diesel": 3.668
+      },
+      "month_ago_avg": {
+        "regular": 2.46,
+        "mid_grade": 2.994,
+        "premium": 3.568,
+        "diesel": 3.39
+      },
+      "year_ago_avg": {
+        "regular": 2.839,
+        "mid_grade": 3.338,
+        "premium": 3.82,
+        "diesel": 3.368
+      }
+    },
+    "Madison": {
+      "current_avg": {
+        "regular": 3.174,
+        "mid_grade": 3.677,
+        "premium": 4.322,
+        "diesel": 4.545
+      },
+      "yesterday_avg": {
+        "regular": 3.16,
+        "mid_grade": 3.655,
+        "premium": 4.313,
+        "diesel": 4.32
+      },
+      "week_ago_avg": {
+        "regular": 2.859,
+        "mid_grade": 3.39,
+        "premium": 4.042,
+        "diesel": 3.689
+      },
+      "month_ago_avg": {
+        "regular": 2.543,
+        "mid_grade": 3.114,
+        "premium": 3.705,
+        "diesel": 3.439
+      },
+      "year_ago_avg": {
+        "regular": 2.906,
+        "mid_grade": 3.461,
+        "premium": 3.905,
+        "diesel": 3.38
+      }
+    },
+    "Milwaukee-Waukesha": {
+      "current_avg": {
+        "regular": 3.171,
+        "mid_grade": 3.655,
+        "premium": 4.189,
+        "diesel": 4.481
+      },
+      "yesterday_avg": {
+        "regular": 3.14,
+        "mid_grade": 3.615,
+        "premium": 4.156,
+        "diesel": 4.242
+      },
+      "week_ago_avg": {
+        "regular": 2.825,
+        "mid_grade": 3.3,
+        "premium": 3.854,
+        "diesel": 3.666
+      },
+      "month_ago_avg": {
+        "regular": 2.528,
+        "mid_grade": 3.052,
+        "premium": 3.567,
+        "diesel": 3.421
+      },
+      "year_ago_avg": {
+        "regular": 2.816,
+        "mid_grade": 3.338,
+        "premium": 3.809,
+        "diesel": 3.317
+      }
+    },
+    "La Crosse (WI only)": {
+      "current_avg": {
+        "regular": 3.035,
+        "mid_grade": 3.349,
+        "premium": 4.23,
+        "diesel": 4.543
+      },
+      "yesterday_avg": {
+        "regular": 3.028,
+        "mid_grade": 2.949,
+        "premium": 4.23,
+        "diesel": 4.481
+      },
+      "week_ago_avg": {
+        "regular": 2.954,
+        "mid_grade": 3.042,
+        "premium": 4.17,
+        "diesel": 3.713
+      },
+      "month_ago_avg": {
+        "regular": 2.569,
+        "mid_grade": 0.0,
+        "premium": 3.773,
+        "diesel": 3.488
+      },
+      "year_ago_avg": {
+        "regular": 3.004,
+        "mid_grade": 3.389,
+        "premium": 4.0,
+        "diesel": 3.36
+      }
+    },
+    "Appleton": {
+      "current_avg": {
+        "regular": 3.129,
+        "mid_grade": 3.53,
+        "premium": 4.195,
+        "diesel": 4.402
+      },
+      "yesterday_avg": {
+        "regular": 3.102,
+        "mid_grade": 3.537,
+        "premium": 4.162,
+        "diesel": 4.187
+      },
+      "week_ago_avg": {
+        "regular": 2.824,
+        "mid_grade": 3.218,
+        "premium": 3.907,
+        "diesel": 3.581
+      },
+      "month_ago_avg": {
+        "regular": 2.546,
+        "mid_grade": 3.063,
+        "premium": 3.63,
+        "diesel": 3.414
+      },
+      "year_ago_avg": {
+        "regular": 2.957,
+        "mid_grade": 3.462,
+        "premium": 3.941,
+        "diesel": 3.281
+      }
+    },
+    "Fond du Lac": {
+      "current_avg": {
+        "regular": 3.141,
+        "mid_grade": 3.655,
+        "premium": 4.239,
+        "diesel": 4.433
+      },
+      "yesterday_avg": {
+        "regular": 3.136,
+        "mid_grade": 3.565,
+        "premium": 4.242,
+        "diesel": 4.32
+      },
+      "week_ago_avg": {
+        "regular": 2.842,
+        "mid_grade": 3.278,
+        "premium": 4.032,
+        "diesel": 3.703
+      },
+      "month_ago_avg": {
+        "regular": 2.567,
+        "mid_grade": 3.078,
+        "premium": 3.724,
+        "diesel": 3.42
+      },
+      "year_ago_avg": {
+        "regular": 2.871,
+        "mid_grade": 3.516,
+        "premium": 3.911,
+        "diesel": 3.28
+      }
+    },
+    "Kenosha County": {
+      "current_avg": {
+        "regular": 3.182,
+        "mid_grade": 3.669,
+        "premium": 4.263,
+        "diesel": 4.493
+      },
+      "yesterday_avg": {
+        "regular": 3.171,
+        "mid_grade": 3.643,
+        "premium": 4.256,
+        "diesel": 4.238
+      },
+      "week_ago_avg": {
+        "regular": 2.85,
+        "mid_grade": 3.363,
+        "premium": 3.951,
+        "diesel": 3.663
+      },
+      "month_ago_avg": {
+        "regular": 2.544,
+        "mid_grade": 3.053,
+        "premium": 3.653,
+        "diesel": 3.468
+      },
+      "year_ago_avg": {
+        "regular": 2.872,
+        "mid_grade": 3.426,
+        "premium": 3.897,
+        "diesel": 3.549
+      }
+    },
+    "Oshkosh": {
+      "current_avg": {
+        "regular": 3.129,
+        "mid_grade": 3.574,
+        "premium": 4.246,
+        "diesel": 4.477
+      },
+      "yesterday_avg": {
+        "regular": 3.115,
+        "mid_grade": 3.576,
+        "premium": 4.214,
+        "diesel": 4.211
+      },
+      "week_ago_avg": {
+        "regular": 2.842,
+        "mid_grade": 3.263,
+        "premium": 3.918,
+        "diesel": 3.596
+      },
+      "month_ago_avg": {
+        "regular": 2.534,
+        "mid_grade": 3.085,
+        "premium": 3.631,
+        "diesel": 3.369
+      },
+      "year_ago_avg": {
+        "regular": 2.895,
+        "mid_grade": 3.356,
+        "premium": 3.877,
+        "diesel": 3.384
+      }
+    },
+    "Pierce -St. Croix County": {
+      "current_avg": {
+        "regular": 3.193,
+        "mid_grade": 3.592,
+        "premium": 4.195,
+        "diesel": 4.735
+      },
+      "yesterday_avg": {
+        "regular": 3.193,
+        "mid_grade": 3.602,
+        "premium": 4.18,
+        "diesel": 4.62
+      },
+      "week_ago_avg": {
+        "regular": 2.922,
+        "mid_grade": 3.354,
+        "premium": 3.976,
+        "diesel": 3.841
+      },
+      "month_ago_avg": {
+        "regular": 2.546,
+        "mid_grade": 2.957,
+        "premium": 3.547,
+        "diesel": 3.592
+      },
+      "year_ago_avg": {
+        "regular": 3.019,
+        "mid_grade": 3.469,
+        "premium": 3.918,
+        "diesel": 3.557
+      }
+    },
+    "Racine": {
+      "current_avg": {
+        "regular": 3.159,
+        "mid_grade": 3.707,
+        "premium": 4.173,
+        "diesel": 4.532
+      },
+      "yesterday_avg": {
+        "regular": 3.13,
+        "mid_grade": 3.605,
+        "premium": 4.117,
+        "diesel": 4.299
+      },
+      "week_ago_avg": {
+        "regular": 2.817,
+        "mid_grade": 3.255,
+        "premium": 3.83,
+        "diesel": 3.691
+      },
+      "month_ago_avg": {
+        "regular": 2.534,
+        "mid_grade": 3.04,
+        "premium": 3.551,
+        "diesel": 3.419
+      },
+      "year_ago_avg": {
+        "regular": 2.882,
+        "mid_grade": 3.419,
+        "premium": 3.88,
+        "diesel": 3.454
+      }
+    },
+    "Sheboygan": {
+      "current_avg": {
+        "regular": 3.111,
+        "mid_grade": 3.628,
+        "premium": 4.236,
+        "diesel": 4.477
+      },
+      "yesterday_avg": {
+        "regular": 3.106,
+        "mid_grade": 3.624,
+        "premium": 4.241,
+        "diesel": 4.319
+      },
+      "week_ago_avg": {
+        "regular": 2.849,
+        "mid_grade": 3.381,
+        "premium": 4.011,
+        "diesel": 3.701
+      },
+      "month_ago_avg": {
+        "regular": 2.593,
+        "mid_grade": 3.189,
+        "premium": 3.717,
+        "diesel": 3.375
+      },
+      "year_ago_avg": {
+        "regular": 2.941,
+        "mid_grade": 3.501,
+        "premium": 3.975,
+        "diesel": 3.327
+      }
+    },
+    "Superior": {
+      "current_avg": {
+        "regular": 3.312,
+        "mid_grade": 3.689,
+        "premium": 4.403,
+        "diesel": 4.519
+      },
+      "yesterday_avg": {
+        "regular": 3.277,
+        "mid_grade": 3.792,
+        "premium": 4.403,
+        "diesel": 4.277
+      },
+      "week_ago_avg": {
+        "regular": 3.003,
+        "mid_grade": 3.346,
+        "premium": 4.177,
+        "diesel": 3.913
+      },
+      "month_ago_avg": {
+        "regular": 2.495,
+        "mid_grade": 2.899,
+        "premium": 3.578,
+        "diesel": 3.65
+      },
+      "year_ago_avg": {
+        "regular": 3.063,
+        "mid_grade": 3.459,
+        "premium": 4.007,
+        "diesel": 3.535
+      }
+    },
+    "Wausau": {
+      "current_avg": {
+        "regular": 3.245,
+        "mid_grade": 3.654,
+        "premium": 4.36,
+        "diesel": 4.536
+      },
+      "yesterday_avg": {
+        "regular": 3.193,
+        "mid_grade": 3.699,
+        "premium": 4.373,
+        "diesel": 4.262
+      },
+      "week_ago_avg": {
+        "regular": 2.911,
+        "mid_grade": 3.364,
+        "premium": 4.133,
+        "diesel": 3.696
+      },
+      "month_ago_avg": {
+        "regular": 2.582,
+        "mid_grade": 3.314,
+        "premium": 3.81,
+        "diesel": 3.5
+      },
+      "year_ago_avg": {
+        "regular": 3.002,
+        "mid_grade": 3.482,
+        "premium": 3.958,
+        "diesel": 3.242
+      }
+    }
+  },
+  "priority_metros": [
+    "Wausau",
+    "Eau Claire",
+    "Green Bay",
+    "Appleton",
+    "Madison",
+    "Milwaukee-Waukesha"
+  ]
 }
