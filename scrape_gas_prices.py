@@ -235,55 +235,11 @@ def main():
     eia_api_key = os.environ.get("EIA_API_KEY", "")
 
     if eia_api_key:
-        log.info("Fetching EIA weekly data for Wisconsin...")
+        log.info("Fetching EIA weekly data (Midwest/PADD 2)...")
 
-        # Discover all available duoarea values to find Wisconsin or Midwest
-        facet_url = f"https://api.eia.gov/v2/petroleum/pri/gnd/facet/duoarea/?api_key={eia_api_key}"
-        try:
-            facet_resp = requests.get(facet_url, timeout=30)
-            facet_json = facet_resp.json()
-            facet_data = facet_json.get("response", {}).get("facets", [])
-            # Log all to find WI or Midwest
-            for f in facet_data:
-                fid = f.get("id", "")
-                fname = f.get("name", "")
-                if "WI" in fid or "ISCONSIN" in fname.upper() or "MIDWEST" in fname.upper() or fid in ("R20", "NUS"):
-                    log.info("  EIA duoarea match: id=%s name=%s", fid, fname)
-        except Exception:
-            log.exception("  EIA facet discovery failed")
-
-        # Also check process facet
-        proc_url = f"https://api.eia.gov/v2/petroleum/pri/gnd/facet/process/?api_key={eia_api_key}"
-        try:
-            proc_resp = requests.get(proc_url, timeout=30)
-            proc_json = proc_resp.json()
-            proc_data = proc_json.get("response", {}).get("facets", [])
-            for p in proc_data:
-                log.info("  EIA process: id=%s name=%s", p.get("id",""), p.get("name",""))
-        except Exception:
-            log.exception("  EIA process facet failed")
-
-        # Try Midwest (R20) and US (NUS) as fallbacks
-        test_url = (
-            f"https://api.eia.gov/v2/petroleum/pri/gnd/data/"
-            f"?api_key={eia_api_key}"
-            f"&frequency=weekly"
-            f"&data[0]=value"
-            f"&facets[duoarea][]=R20"
-            f"&facets[product][]=EPMR"
-            f"&sort[0][column]=period"
-            f"&sort[0][direction]=desc"
-            f"&length=3"
-        )
-        try:
-            test_resp = requests.get(test_url, timeout=30)
-            test_json = test_resp.json()
-            test_data = test_json.get("response", {}).get("data", [])
-            log.info("  EIA test R20/EPMR: %d rows", len(test_data))
-            if test_data:
-                log.info("  EIA test sample: %s", json.dumps(test_data[0]))
-        except Exception:
-            log.exception("  EIA test query failed")
+        # Wisconsin doesn't have its own EIA weekly retail series.
+        # We use Midwest (PADD 2, code R20) which includes Wisconsin.
+        eia_duoarea = "R20"
 
         eia_products = {
             "regular": "EPMR",
@@ -296,20 +252,18 @@ def main():
 
         for fuel, product_code in eia_products.items():
             try:
-                # Build URL manually to avoid bracket encoding issues
                 url = (
                     f"{eia_base}"
                     f"?api_key={eia_api_key}"
                     f"&frequency=weekly"
                     f"&data[0]=value"
-                    f"&facets[duoarea][]=SWI"
+                    f"&facets[duoarea][]={eia_duoarea}"
                     f"&facets[product][]={product_code}"
                     f"&sort[0][column]=period"
                     f"&sort[0][direction]=asc"
                     f"&length=5000"
                 )
                 resp = requests.get(url, timeout=30)
-                log.info("  EIA %s: HTTP %d", fuel, resp.status_code)
                 resp.raise_for_status()
                 eia_json = resp.json()
 
@@ -317,15 +271,8 @@ def main():
                     log.error("  EIA %s API error: %s", fuel, eia_json["error"])
                     continue
 
-                raw_data = eia_json.get("response", {}).get("data", [])
-                log.info("  EIA %s: raw rows=%d", fuel, len(raw_data))
-
-                # Log first row to debug field names
-                if raw_data:
-                    log.info("  EIA %s: sample row: %s", fuel, json.dumps(raw_data[0]))
-
                 entries = []
-                for row in raw_data:
+                for row in eia_json.get("response", {}).get("data", []):
                     val = row.get("value")
                     if val is not None:
                         try:
