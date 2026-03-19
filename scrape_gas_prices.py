@@ -172,7 +172,7 @@ def main():
     parser.add_argument(
         "--output", "-o",
         default=DEFAULT_OUTPUT,
-        help="Path to write JSON output (default: ../data/gas_prices.json)",
+        help="Path to write JSON output (default: docs/gas_prices.json)",
     )
     args = parser.parse_args()
 
@@ -190,6 +190,45 @@ def main():
         json.dump(data, f, indent=2, ensure_ascii=False)
 
     log.info("Wrote gas prices to %s", args.output)
+
+    # ── Append to rolling history ──
+    history_path = os.path.join(out_dir, "gas_prices_history.json")
+    today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
+
+    # Load existing history or start fresh
+    history = {}
+    if os.path.exists(history_path):
+        try:
+            with open(history_path, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            log.warning("Could not read history file, starting fresh.")
+            history = {}
+
+    # Build today's entry: statewide + each metro, current_avg only
+    entry = {}
+    sw = data.get("statewide", {}).get("current_avg", {})
+    if sw:
+        entry["statewide"] = sw
+
+    for metro_name, metro_data in data.get("metros", {}).items():
+        current = metro_data.get("current_avg", {})
+        if current:
+            entry[metro_name] = current
+
+    if entry:
+        history[today_key] = entry
+
+    # Trim to last 400 days to keep file size manageable
+    if len(history) > 400:
+        sorted_keys = sorted(history.keys(), key=lambda k: k)
+        for old_key in sorted_keys[: len(history) - 400]:
+            del history[old_key]
+
+    with open(history_path, "w", encoding="utf-8") as f:
+        json.dump(history, f, separators=(",", ":"), ensure_ascii=False)
+
+    log.info("Updated history (%d days) at %s", len(history), history_path)
 
 
 if __name__ == "__main__":
