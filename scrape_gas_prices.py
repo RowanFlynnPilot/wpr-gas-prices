@@ -241,16 +241,6 @@ def main():
         # We use Midwest (PADD 2, code R20) which includes Wisconsin.
         eia_duoarea = "R20"
 
-        # Discover available product codes
-        prod_url = f"https://api.eia.gov/v2/petroleum/pri/gnd/facet/product/?api_key={eia_api_key}"
-        try:
-            prod_resp = requests.get(prod_url, timeout=30)
-            prod_json = prod_resp.json()
-            for p in prod_json.get("response", {}).get("facets", []):
-                log.info("  EIA product: id=%s name=%s", p.get("id",""), p.get("name",""))
-        except Exception:
-            log.exception("  EIA product facet discovery failed")
-
         eia_products = {
             "regular": "EPMR",
             "mid_grade": "EPMM",
