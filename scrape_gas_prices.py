@@ -236,6 +236,39 @@ def main():
 
     if eia_api_key:
         log.info("Fetching EIA weekly data for Wisconsin...")
+
+        # First, discover available facets to find correct values
+        meta_url = f"https://api.eia.gov/v2/petroleum/pri/gnd/?api_key={eia_api_key}"
+        try:
+            meta_resp = requests.get(meta_url, timeout=30)
+            log.info("  EIA metadata: HTTP %d", meta_resp.status_code)
+            meta_json = meta_resp.json()
+            log.info("  EIA metadata response keys: %s", list(meta_json.get("response", {}).keys()))
+
+            # Log available facets
+            for facet in meta_json.get("response", {}).get("facets", []):
+                log.info("  EIA facet: %s", facet.get("id", "?"))
+            
+            # Log available frequencies
+            for freq in meta_json.get("response", {}).get("frequency", []):
+                log.info("  EIA frequency: %s", freq)
+        except Exception:
+            log.exception("  EIA metadata fetch failed")
+
+        # Now try fetching with duoarea facet to see what values exist for WI
+        facet_url = f"https://api.eia.gov/v2/petroleum/pri/gnd/facet/duoarea/?api_key={eia_api_key}"
+        try:
+            facet_resp = requests.get(facet_url, timeout=30)
+            facet_json = facet_resp.json()
+            facet_data = facet_json.get("response", {}).get("facets", [])
+            # Find Wisconsin entries
+            wi_entries = [f for f in facet_data if 'WI' in str(f.get("id", "")) or 'isconsin' in str(f.get("name", ""))]
+            log.info("  EIA WI duoarea matches: %s", wi_entries[:5])
+            # Also log first 10 entries to see format
+            log.info("  EIA duoarea sample: %s", facet_data[:10])
+        except Exception:
+            log.exception("  EIA facet discovery failed")
+
         eia_products = {
             "regular": "EPMR",
             "mid_grade": "EPMM",
