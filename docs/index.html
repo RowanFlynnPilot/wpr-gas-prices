@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wisconsin Gas Prices — Wausau Pilot &amp; Review</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap');
 
   :root {
     --ink: #1a1a1a;
@@ -118,10 +118,14 @@
   .wpr-gas-dollar {
     font-size: 1em;
     vertical-align: baseline;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Source Sans 3', sans-serif;
     font-weight: 700;
     letter-spacing: 0;
     margin-right: 1px;
+  }
+  .wpr-dollar {
+    font-family: 'Source Sans 3', sans-serif;
+    font-weight: inherit;
   }
   .wpr-gas-hero-change {
     font-size: 11px;
@@ -145,13 +149,13 @@
   }
   .wpr-gas-tab {
     font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     letter-spacing: 0.3px;
     color: var(--ink-light);
     background: none;
     border: none;
-    padding: 10px 14px 9px;
+    padding: 12px 28px 11px;
     cursor: pointer;
     white-space: nowrap;
     border-bottom: 2px solid transparent;
@@ -174,15 +178,18 @@
   }
   .wpr-gas-fuel-btn {
     font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
-    padding: 5px 12px;
+    padding: 7px 0;
     border-radius: 100px;
     border: 1px solid var(--rule);
     background: #fff;
     color: var(--ink-mid);
     cursor: pointer;
     transition: all 0.15s;
+    flex: 1;
+    text-align: center;
+    min-width: 0;
   }
   .wpr-gas-fuel-btn:hover { border-color: var(--accent); color: var(--accent); }
   .wpr-gas-fuel-btn.active {
@@ -198,9 +205,18 @@
   .wpr-gas-compare-row {
     display: flex;
     align-items: center;
-    padding: 7px 0;
+    padding: 9px 12px;
     border-bottom: 1px solid var(--rule-light);
     gap: 8px;
+    border-radius: 8px;
+    margin: 2px -12px;
+    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    cursor: default;
+  }
+  .wpr-gas-compare-row:hover {
+    background: var(--paper-warm);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(62,132,122,0.08);
   }
   .wpr-gas-compare-row:last-child { border-bottom: none; }
   .wpr-gas-compare-label {
@@ -211,15 +227,15 @@
   }
   .wpr-gas-compare-bar-wrap {
     flex: 1;
-    height: 18px;
+    height: 24px;
     background: var(--rule-light);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
     position: relative;
   }
   .wpr-gas-compare-bar {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 4px;
     transition: width 0.5s ease;
   }
   .wpr-gas-compare-price {
@@ -243,47 +259,58 @@
   .wpr-gas-metro-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0;
+    gap: 10px;
+    padding: 10px 16px;
   }
   .wpr-gas-metro-card {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--rule-light);
-    border-right: 1px solid var(--rule-light);
+    padding: 16px 18px;
+    border: 1px solid var(--rule-light);
+    border-radius: 10px;
     cursor: pointer;
-    transition: background 0.12s;
+    transition: all 0.18s ease;
+    background: #fff;
+    text-align: center;
   }
-  .wpr-gas-metro-card:hover { background: var(--paper-warm); }
-  .wpr-gas-metro-card:nth-child(2n) { border-right: none; }
+  .wpr-gas-metro-card:hover {
+    background: var(--paper-warm);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(62,132,122,0.1);
+  }
   .wpr-gas-metro-card.highlight {
     background: var(--accent-pale);
+    border-color: var(--accent-light);
   }
   .wpr-gas-metro-card.highlight:hover {
     background: #d0ece8;
   }
   .wpr-gas-metro-name {
-    font-size: 13px;
-    font-weight: 600;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 15px;
+    font-weight: 700;
     color: var(--ink);
-    margin-bottom: 2px;
+    margin-bottom: 6px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
   }
   .wpr-gas-metro-name .star {
-    font-size: 9px;
+    font-size: 10px;
     color: var(--accent);
   }
   .wpr-gas-metro-price {
     font-family: 'Playfair Display', Georgia, serif;
-    font-size: 22px;
+    font-size: 30px;
     color: var(--ink);
-    line-height: 1.2;
+    line-height: 1.15;
     font-weight: 700;
+    letter-spacing: -0.5px;
   }
   .wpr-gas-metro-delta {
-    font-size: 11px;
-    font-weight: 500;
-    margin-top: 1px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
   }
 
   /* ── Detail panel ── */
@@ -368,6 +395,94 @@
   .bar-month { background: #b8ddd8; }
   .bar-year { background: var(--rule); }
 
+  /* ── Trends view ── */
+  .wpr-trends-chart-wrap {
+    padding: 0 20px 16px;
+  }
+  .wpr-trends-btn-row {
+    gap: 4px;
+  }
+  .wpr-trends-btn-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--rule);
+    align-self: center;
+    margin: 0 8px;
+    flex-shrink: 0;
+  }
+  .wpr-trends-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .wpr-chart-axis-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    fill: var(--ink-faint);
+  }
+  .wpr-chart-hit { cursor: crosshair; }
+  .wpr-chart-hover-group:hover .wpr-chart-crosshair,
+  .wpr-chart-hover-group:hover .wpr-chart-dot,
+  .wpr-chart-hover-group:hover .wpr-chart-tooltip {
+    opacity: 1 !important;
+  }
+  .wpr-trends-stats {
+    display: flex;
+    gap: 0;
+    padding: 0 0 12px;
+    flex-wrap: wrap;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .wpr-trends-stat {
+    flex: 1;
+    min-width: 90px;
+    text-align: center;
+    padding: 14px 6px;
+    border-right: 1px solid var(--rule);
+    background: #fff;
+  }
+  .wpr-trends-stat:last-child { border-right: none; }
+  .wpr-trends-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--rule);
+    align-self: center;
+    margin: 0 6px;
+    flex: none;
+  }
+  .wpr-trends-stat-label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--ink-faint);
+    margin-bottom: 4px;
+  }
+  .wpr-trends-stat-value {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .wpr-trends-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-faint);
+    font-size: 13px;
+    font-style: italic;
+  }
+  .wpr-trends-loading-msg {
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
   .wpr-gas-loading {
     text-align: center;
     padding: 48px 20px;
@@ -386,8 +501,8 @@
     .wpr-gas-hero-value { font-size: 30px; }
     .wpr-gas-title { font-size: 18px; }
     .wpr-gas-logo { width: 52px; height: 52px; }
-    .wpr-gas-metro-grid { grid-template-columns: 1fr; }
-    .wpr-gas-metro-card { border-right: none; }
+    .wpr-gas-metro-grid { grid-template-columns: 1fr; padding: 8px 12px; }
+    .wpr-gas-metro-card { padding: 14px 16px; }
     .wpr-gas-compare-label { width: 65px; font-size: 11px; }
     .wpr-gas-header { padding: 14px 16px 14px; }
     .wpr-gas-fuel-row { padding: 12px 16px 8px; }
@@ -426,7 +541,7 @@
   // ── HELPERS ──
   function fmt(price) {
     if (price == null) return '—';
-    return '$' + price.toFixed(3);
+    return '<span class="wpr-dollar">$</span>' + price.toFixed(3);
   }
 
   function fmtHero(price) {
@@ -488,18 +603,26 @@
       <div class="wpr-gas-tabs">
         <button class="wpr-gas-tab ${activeTab === 'statewide' ? 'active' : ''}" data-tab="statewide">Statewide</button>
         <button class="wpr-gas-tab ${activeTab === 'metros' ? 'active' : ''}" data-tab="metros">By Metro Area</button>
+        <button class="wpr-gas-tab ${activeTab === 'trends' ? 'active' : ''}" data-tab="trends">Statewide Trend</button>
       </div>
     `;
 
     if (activeTab === 'statewide') {
       html += renderStatewide();
-    } else {
+    } else if (activeTab === 'metros') {
       html += renderMetros();
+    } else if (activeTab === 'trends') {
+      html += renderTrends();
     }
+
+    const trendsSampleNote = (activeTab === 'trends' && usingSampleData) ? ' · <em style="color:var(--accent)">sample data</em>' : '';
+    const footerSource = activeTab === 'trends'
+      ? `Data via <a href="https://www.eia.gov/petroleum/gasdiesel/" target="_blank" rel="noopener">U.S. Energy Information Administration</a>${trendsSampleNote}`
+      : `Data via <a href="${data.source_url}" target="_blank" rel="noopener">AAA Gas Prices</a>${usingFallback ? ' · <em style="color:var(--accent)">sample data</em>' : ''}`;
 
     html += `
       <div class="wpr-gas-footer">
-        <span>Data via <a href="${data.source_url}" target="_blank" rel="noopener">AAA Gas Prices</a>${usingFallback ? ' · <em style="color:var(--accent)">sample data</em>' : ''}</span>
+        <span>${footerSource}</span>
         <span>Wausau Pilot &amp; Review</span>
       </div>
     `;
@@ -575,7 +698,7 @@
       cards += `
         <div class="wpr-gas-metro-card ${isPriority ? 'highlight' : ''}" data-metro="${name}">
           <div class="wpr-gas-metro-name">
-            ${isWausau ? '<span class="star">●</span>' : ''}${name}
+            ${name}
           </div>
           <div class="wpr-gas-metro-price">${fmt(price)}</div>
           <div class="wpr-gas-metro-delta ${d.cls}">${d.text}</div>
@@ -599,6 +722,268 @@
         <div class="wpr-gas-metro-grid">${cards}</div>
         ${detailPanel}
       </div>
+    `;
+  }
+
+
+
+  // ── TRENDS TAB (EIA API) ──
+  // EIA API key — replace 'YOUR_EIA_API_KEY' with your actual key
+  const EIA_API_KEY = 'Afh70JnU1jwu7MecgjqfgSAbwjBjseIvf4cj0g6T';
+  const EIA_BASE = 'https://api.eia.gov/v2/petroleum/pri/gnd/data/';
+
+  // EIA product codes for each fuel type
+  const EIA_PRODUCTS = {
+    regular: 'EPMR',   // Regular
+    mid_grade: 'EPMM',  // Midgrade
+    premium: 'EPMP',    // Premium
+    diesel: 'EPD2D',    // No. 2 Diesel
+  };
+
+  let eiaCache = {}; // Cache by fuel type
+  let usingSampleData = false;
+  let trendRange = 26; // weeks: 26=6mo, 52=12mo, 78=18mo
+
+  // Sample data for preview (used when EIA API is unreachable)
+  const EIA_SAMPLE = {"regular":[{"date":"2025-03-24","price":2.716},{"date":"2025-03-31","price":2.744},{"date":"2025-04-07","price":2.751},{"date":"2025-04-14","price":2.77},{"date":"2025-04-21","price":2.768},{"date":"2025-04-28","price":2.765},{"date":"2025-05-05","price":2.775},{"date":"2025-05-12","price":2.851},{"date":"2025-05-19","price":2.792},{"date":"2025-05-26","price":2.861},{"date":"2025-06-02","price":2.876},{"date":"2025-06-09","price":2.932},{"date":"2025-06-16","price":2.946},{"date":"2025-06-23","price":2.978},{"date":"2025-06-30","price":3.038},{"date":"2025-07-07","price":3.034},{"date":"2025-07-14","price":3.047},{"date":"2025-07-21","price":3.128},{"date":"2025-07-28","price":3.15},{"date":"2025-08-04","price":3.183},{"date":"2025-08-11","price":3.188},{"date":"2025-08-18","price":3.176},{"date":"2025-08-25","price":3.24},{"date":"2025-09-01","price":3.215},{"date":"2025-09-08","price":3.24},{"date":"2025-09-15","price":3.216},{"date":"2025-09-22","price":3.232},{"date":"2025-09-29","price":3.261},{"date":"2025-10-06","price":3.264},{"date":"2025-10-13","price":3.244},{"date":"2025-10-20","price":3.266},{"date":"2025-10-27","price":3.222},{"date":"2025-11-03","price":3.159},{"date":"2025-11-10","price":3.208},{"date":"2025-11-17","price":3.123},{"date":"2025-11-24","price":3.115},{"date":"2025-12-01","price":3.125},{"date":"2025-12-08","price":3.127},{"date":"2025-12-15","price":3.104},{"date":"2025-12-22","price":3.06},{"date":"2025-12-29","price":3.052},{"date":"2026-01-05","price":2.988},{"date":"2026-01-12","price":3.058},{"date":"2026-01-19","price":2.97},{"date":"2026-01-26","price":2.953},{"date":"2026-02-02","price":2.933},{"date":"2026-02-09","price":2.951},{"date":"2026-02-16","price":2.914},{"date":"2026-02-23","price":2.904},{"date":"2026-03-02","price":2.882},{"date":"2026-03-09","price":2.877},{"date":"2026-03-16","price":2.889}],"mid_grade":[{"date":"2025-03-24","price":3.229},{"date":"2025-03-31","price":3.237},{"date":"2025-04-07","price":3.228},{"date":"2025-04-14","price":3.28},{"date":"2025-04-21","price":3.281},{"date":"2025-04-28","price":3.326},{"date":"2025-05-05","price":3.32},{"date":"2025-05-12","price":3.331},{"date":"2025-05-19","price":3.348},{"date":"2025-05-26","price":3.4},{"date":"2025-06-02","price":3.404},{"date":"2025-06-09","price":3.407},{"date":"2025-06-16","price":3.44},{"date":"2025-06-23","price":3.436},{"date":"2025-06-30","price":3.552},{"date":"2025-07-07","price":3.584},{"date":"2025-07-14","price":3.542},{"date":"2025-07-21","price":3.579},{"date":"2025-07-28","price":3.609},{"date":"2025-08-04","price":3.637},{"date":"2025-08-11","price":3.686},{"date":"2025-08-18","price":3.702},{"date":"2025-08-25","price":3.718},{"date":"2025-09-01","price":3.739},{"date":"2025-09-08","price":3.746},{"date":"2025-09-15","price":3.757},{"date":"2025-09-22","price":3.708},{"date":"2025-09-29","price":3.733},{"date":"2025-10-06","price":3.762},{"date":"2025-10-13","price":3.697},{"date":"2025-10-20","price":3.769},{"date":"2025-10-27","price":3.755},{"date":"2025-11-03","price":3.714},{"date":"2025-11-10","price":3.704},{"date":"2025-11-17","price":3.669},{"date":"2025-11-24","price":3.689},{"date":"2025-12-01","price":3.653},{"date":"2025-12-08","price":3.619},{"date":"2025-12-15","price":3.553},{"date":"2025-12-22","price":3.595},{"date":"2025-12-29","price":3.523},{"date":"2026-01-05","price":3.536},{"date":"2026-01-12","price":3.49},{"date":"2026-01-19","price":3.485},{"date":"2026-01-26","price":3.498},{"date":"2026-02-02","price":3.4},{"date":"2026-02-09","price":3.419},{"date":"2026-02-16","price":3.385},{"date":"2026-02-23","price":3.379},{"date":"2026-03-02","price":3.399},{"date":"2026-03-09","price":3.366},{"date":"2026-03-16","price":3.355}],"premium":[{"date":"2025-03-24","price":3.711},{"date":"2025-03-31","price":3.782},{"date":"2025-04-07","price":3.739},{"date":"2025-04-14","price":3.736},{"date":"2025-04-21","price":3.781},{"date":"2025-04-28","price":3.749},{"date":"2025-05-05","price":3.803},{"date":"2025-05-12","price":3.846},{"date":"2025-05-19","price":3.849},{"date":"2025-05-26","price":3.865},{"date":"2025-06-02","price":3.842},{"date":"2025-06-09","price":3.955},{"date":"2025-06-16","price":3.958},{"date":"2025-06-23","price":4.019},{"date":"2025-06-30","price":4.061},{"date":"2025-07-07","price":4.02},{"date":"2025-07-14","price":4.083},{"date":"2025-07-21","price":4.073},{"date":"2025-07-28","price":4.146},{"date":"2025-08-04","price":4.145},{"date":"2025-08-11","price":4.194},{"date":"2025-08-18","price":4.177},{"date":"2025-08-25","price":4.192},{"date":"2025-09-01","price":4.196},{"date":"2025-09-08","price":4.228},{"date":"2025-09-15","price":4.28},{"date":"2025-09-22","price":4.189},{"date":"2025-09-29","price":4.204},{"date":"2025-10-06","price":4.234},{"date":"2025-10-13","price":4.219},{"date":"2025-10-20","price":4.197},{"date":"2025-10-27","price":4.26},{"date":"2025-11-03","price":4.19},{"date":"2025-11-10","price":4.226},{"date":"2025-11-17","price":4.155},{"date":"2025-11-24","price":4.097},{"date":"2025-12-01","price":4.149},{"date":"2025-12-08","price":4.148},{"date":"2025-12-15","price":4.107},{"date":"2025-12-22","price":4.098},{"date":"2025-12-29","price":4.021},{"date":"2026-01-05","price":3.986},{"date":"2026-01-12","price":4.01},{"date":"2026-01-19","price":3.963},{"date":"2026-01-26","price":3.972},{"date":"2026-02-02","price":3.921},{"date":"2026-02-09","price":3.913},{"date":"2026-02-16","price":3.917},{"date":"2026-02-23","price":3.898},{"date":"2026-03-02","price":3.891},{"date":"2026-03-09","price":3.873},{"date":"2026-03-16","price":3.919}],"diesel":[{"date":"2025-03-24","price":3.33},{"date":"2025-03-31","price":3.319},{"date":"2025-04-07","price":3.348},{"date":"2025-04-14","price":3.327},{"date":"2025-04-21","price":3.379},{"date":"2025-04-28","price":3.424},{"date":"2025-05-05","price":3.401},{"date":"2025-05-12","price":3.397},{"date":"2025-05-19","price":3.415},{"date":"2025-05-26","price":3.468},{"date":"2025-06-02","price":3.473},{"date":"2025-06-09","price":3.499},{"date":"2025-06-16","price":3.561},{"date":"2025-06-23","price":3.572},{"date":"2025-06-30","price":3.63},{"date":"2025-07-07","price":3.649},{"date":"2025-07-14","price":3.664},{"date":"2025-07-21","price":3.734},{"date":"2025-07-28","price":3.754},{"date":"2025-08-04","price":3.747},{"date":"2025-08-11","price":3.753},{"date":"2025-08-18","price":3.817},{"date":"2025-08-25","price":3.842},{"date":"2025-09-01","price":3.814},{"date":"2025-09-08","price":3.824},{"date":"2025-09-15","price":3.884},{"date":"2025-09-22","price":3.892},{"date":"2025-09-29","price":3.847},{"date":"2025-10-06","price":3.835},{"date":"2025-10-13","price":3.852},{"date":"2025-10-20","price":3.822},{"date":"2025-10-27","price":3.827},{"date":"2025-11-03","price":3.829},{"date":"2025-11-10","price":3.815},{"date":"2025-11-17","price":3.8},{"date":"2025-11-24","price":3.726},{"date":"2025-12-01","price":3.682},{"date":"2025-12-08","price":3.744},{"date":"2025-12-15","price":3.699},{"date":"2025-12-22","price":3.684},{"date":"2025-12-29","price":3.639},{"date":"2026-01-05","price":3.653},{"date":"2026-01-12","price":3.617},{"date":"2026-01-19","price":3.561},{"date":"2026-01-26","price":3.584},{"date":"2026-02-02","price":3.487},{"date":"2026-02-09","price":3.471},{"date":"2026-02-16","price":3.517},{"date":"2026-02-23","price":3.521},{"date":"2026-03-02","price":3.473},{"date":"2026-03-09","price":3.491},{"date":"2026-03-16","price":3.493}]};
+
+  function parseSampleData(fuel) {
+    const raw = EIA_SAMPLE[fuel];
+    if (!raw) return null;
+    return raw.map(d => ({ date: new Date(d.date), price: d.price }));
+  }
+
+  async function fetchEIA(fuel) {
+    const cacheKey = fuel;
+    if (eiaCache[cacheKey]) return eiaCache[cacheKey];
+
+    const product = EIA_PRODUCTS[fuel];
+    if (!product) return null;
+
+    // Fetch last ~14 months of weekly data (supports up to 12 Month display)
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 14);
+    const startStr = startDate.toISOString().slice(0, 10);
+
+    const url = `${EIA_BASE}?api_key=${EIA_API_KEY}`
+      + `&frequency=weekly`
+      + `&data[0]=value`
+      + `&facets[duoarea][]=SWI`
+      + `&facets[product][]=EPM0`
+      + `&facets[product][]=${product}`
+      + `&start=${startStr}`
+      + `&sort[0][column]=period`
+      + `&sort[0][direction]=asc`
+      + `&length=5000`;
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`EIA API ${resp.status}`);
+      const json = await resp.json();
+
+      if (!json.response?.data) throw new Error('No data in response');
+
+      // Parse into {date, price} pairs, filtering to our specific product
+      const entries = json.response.data
+        .filter(d => d.product === product && d.value != null)
+        .map(d => ({
+          date: new Date(d.period),
+          price: parseFloat(d.value),
+          period: d.period,
+        }))
+        .sort((a, b) => a.date - b.date);
+
+      if (entries.length < 2) throw new Error('Insufficient data');
+
+      usingSampleData = false;
+      eiaCache[cacheKey] = entries;
+      return entries;
+    } catch (err) {
+      console.warn('EIA fetch failed, using sample data:', err.message);
+      usingSampleData = true;
+      const fallback = parseSampleData(fuel);
+      eiaCache[cacheKey] = fallback;
+      return fallback;
+    }
+  }
+
+  function renderTrends() {
+    const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
+    const ranges = [
+      { weeks: 26, label: '6 Month' },
+      { weeks: 52, label: '12 Month' },
+    ];
+
+    let fuelBtns = fuels.map(f =>
+      `<button class="wpr-gas-fuel-btn ${activeFuel === f ? 'active' : ''}" data-fuel="${f}">${fuelLabel(f)}</button>`
+    ).join('');
+
+    let rangeBtns = ranges.map(r =>
+      `<button class="wpr-gas-fuel-btn ${trendRange === r.weeks ? 'active' : ''}" data-range="${r.weeks}">${r.label}</button>`
+    ).join('');
+
+    // Check if we have cached data
+    const cached = eiaCache[activeFuel];
+    let chartContent = '';
+
+    if (!cached) {
+      chartContent = `<div class="wpr-trends-empty wpr-trends-loading-msg">Loading historical data from EIA…</div>`;
+      // Trigger async load
+      fetchEIA(activeFuel).then(() => render());
+    } else if (cached.length < 2) {
+      chartContent = `<div class="wpr-trends-empty">Not enough historical data available.</div>`;
+    } else {
+      chartContent = buildChart(cached);
+    }
+
+    const rangeLabel = ranges.find(r => r.weeks === trendRange)?.label || '6 Month';
+
+    return `
+      <div class="wpr-gas-fuel-row wpr-trends-btn-row">
+        ${fuelBtns}
+        <span class="wpr-trends-btn-divider"></span>
+        ${rangeBtns}
+      </div>
+      <div class="wpr-trends-chart-wrap">
+        ${chartContent}
+      </div>
+    `;
+  }
+
+  function buildChart(entries) {
+    // Limit to selected time range
+    let cutoff = entries.length > trendRange ? entries.slice(-trendRange) : entries;
+
+    // Trim to start at the first full month
+    // (e.g. if range starts mid-October, skip to November 1st)
+    if (cutoff.length > 2) {
+      const firstDate = cutoff[0].date;
+      const firstMonth = firstDate.getMonth();
+      const firstYear = firstDate.getFullYear();
+      // Find the first entry that's in the next month
+      const nextMonthStart = cutoff.findIndex(e => {
+        const m = e.date.getMonth();
+        const y = e.date.getFullYear();
+        return (y > firstYear) || (y === firstYear && m > firstMonth);
+      });
+      if (nextMonthStart > 0 && nextMonthStart < cutoff.length - 2) {
+        cutoff = cutoff.slice(nextMonthStart);
+      }
+    }
+
+    const prices = cutoff.map(e => e.price);
+    const minP = Math.min(...prices);
+    const maxP = Math.max(...prices);
+
+    // Chart dimensions
+    const W = 600, H = 280;
+    const padL = 48, padR = 16, padT = 20, padB = 40;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+
+    // Y-axis: only 4 ticks max for a cleaner look
+    const niceMin = Math.floor(minP * 20) / 20;
+    const niceMax = Math.ceil(maxP * 20) / 20;
+    const niceRange = niceMax - niceMin || 0.05;
+    const yTicks = [];
+    const rawStep = niceRange / 3;
+    const step = rawStep <= 0.05 ? 0.05 : rawStep <= 0.1 ? 0.1 : rawStep <= 0.25 ? 0.25 : 0.5;
+    for (let v = niceMin; v <= niceMax + 0.001; v += step) {
+      yTicks.push(v);
+    }
+
+    // Build points
+    const points = cutoff.map((e, i) => {
+      const x = padL + (i / (cutoff.length - 1)) * chartW;
+      const y = padT + (1 - (e.price - niceMin) / niceRange) * chartH;
+      return { x, y, price: e.price, date: e.date };
+    });
+
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+    const areaPath = linePath + `L${points[points.length-1].x.toFixed(1)},${padT + chartH}L${points[0].x.toFixed(1)},${padT + chartH}Z`;
+
+    // Grid + Y labels (horizontal lines only)
+    let grid = '';
+    for (const tick of yTicks) {
+      const y = padT + (1 - (tick - niceMin) / niceRange) * chartH;
+      grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#e8e5de" stroke-width="0.5"/>`;
+      grid += `<text x="${padL - 6}" y="${y + 3.5}" text-anchor="end" class="wpr-chart-axis-label" style="font-family:'Source Sans 3',sans-serif">$${tick.toFixed(2)}</text>`;
+    }
+
+    // X-axis month labels (no vertical gridlines)
+    let xLabels = '';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let lastMonth = -1;
+    for (const p of points) {
+      const mo = p.date.getMonth();
+      if (mo !== lastMonth) {
+        lastMonth = mo;
+        xLabels += `<text x="${p.x}" y="${H - 8}" text-anchor="middle" class="wpr-chart-axis-label">${months[mo]}</text>`;
+      }
+    }
+
+    // Invisible hover hit areas + tooltip dots for each data point
+    const months_full = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let hitAreas = '';
+    const hitW = chartW / Math.max(cutoff.length - 1, 1);
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const weekOf = `${months_full[p.date.getMonth()]} ${p.date.getDate()}, ${p.date.getFullYear()}`;
+      hitAreas += `
+        <g class="wpr-chart-hover-group" data-idx="${i}">
+          <rect x="${p.x.toFixed(1) - hitW/2}" y="${padT}" width="${hitW}" height="${chartH}" fill="transparent" class="wpr-chart-hit"/>
+          <line x1="${p.x.toFixed(1)}" y1="${padT}" x2="${p.x.toFixed(1)}" y2="${padT + chartH}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3,3" class="wpr-chart-crosshair" opacity="0"/>
+          <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="var(--accent)" stroke="#fff" stroke-width="2" class="wpr-chart-dot" opacity="0"/>
+          <g class="wpr-chart-tooltip" opacity="0" transform="translate(${p.x.toFixed(1)}, ${Math.max(p.y - 14, padT + 4).toFixed(1)})">
+            <rect x="-42" y="-24" width="84" height="26" rx="4" fill="var(--ink)" opacity="0.9"/>
+            <text x="0" y="-10" text-anchor="middle" fill="#fff" font-size="9" font-family="'Source Sans 3',sans-serif" font-weight="600">$${p.price.toFixed(3)}</text>
+            <text x="0" y="-1" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="7" font-family="'DM Sans',sans-serif">${weekOf}</text>
+          </g>
+        </g>`;
+    }
+
+    // Summary stats
+    const lastPt = points[points.length - 1];
+    const firstPt = points[0];
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const totalChange = lastPt.price - firstPt.price;
+    const changePct = ((totalChange / firstPt.price) * 100).toFixed(1);
+    const changeSign = totalChange > 0 ? '+' : '';
+    const changeColor = totalChange > 0 ? 'var(--up)' : totalChange < 0 ? 'var(--down)' : 'var(--neutral)';
+
+    const rangeLabel = trendRange === 26 ? '6 Month' : '12 Month';
+
+    return `
+      <div class="wpr-trends-stats">
+        <div class="wpr-trends-stat">
+          <span class="wpr-trends-stat-label">Latest</span>
+          <span class="wpr-trends-stat-value"><span class="wpr-dollar">$</span>${lastPt.price.toFixed(3)}</span>
+        </div>
+        <div class="wpr-trends-stat">
+          <span class="wpr-trends-stat-label">${rangeLabel} Avg</span>
+          <span class="wpr-trends-stat-value"><span class="wpr-dollar">$</span>${avg.toFixed(3)}</span>
+        </div>
+        <div class="wpr-trends-stat">
+          <span class="wpr-trends-stat-label">${rangeLabel} Low</span>
+          <span class="wpr-trends-stat-value" style="color:var(--down)"><span class="wpr-dollar">$</span>${minP.toFixed(3)}</span>
+        </div>
+        <div class="wpr-trends-stat">
+          <span class="wpr-trends-stat-label">${rangeLabel} High</span>
+          <span class="wpr-trends-stat-value" style="color:var(--up)"><span class="wpr-dollar">$</span>${maxP.toFixed(3)}</span>
+        </div>
+        <div class="wpr-trends-stat">
+          <span class="wpr-trends-stat-label">Overall Change</span>
+          <span class="wpr-trends-stat-value" style="color:${changeColor}">${changeSign}${changePct}%</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" class="wpr-trends-svg">
+        ${grid}
+        <path d="${areaPath}" fill="var(--accent-pale)" opacity="0.4"/>
+        <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${lastPt.x}" cy="${lastPt.y}" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1.5"/>
+        ${xLabels}
+        ${hitAreas}
+      </svg>
     `;
   }
 
@@ -641,8 +1026,13 @@
 
     widget.querySelectorAll('.wpr-gas-fuel-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        activeFuel = btn.dataset.fuel;
-        render();
+        if (btn.dataset.fuel) {
+          activeFuel = btn.dataset.fuel;
+          render();
+        } else if (btn.dataset.range) {
+          trendRange = parseInt(btn.dataset.range);
+          render();
+        }
       });
     });
 
