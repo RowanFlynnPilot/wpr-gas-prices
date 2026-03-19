@@ -727,84 +727,40 @@
 
 
 
-  // ── TRENDS TAB (EIA API) ──
-  // EIA API key — replace 'YOUR_EIA_API_KEY' with your actual key
-  const EIA_API_KEY = 'Afh70JnU1jwu7MecgjqfgSAbwjBjseIvf4cj0g6T';
-  const EIA_BASE = 'https://api.eia.gov/v2/petroleum/pri/gnd/data/';
-
-  // EIA product codes for each fuel type
-  const EIA_PRODUCTS = {
-    regular: 'EPMR',   // Regular
-    mid_grade: 'EPMM',  // Midgrade
-    premium: 'EPMP',    // Premium
-    diesel: 'EPD2D',    // No. 2 Diesel
-  };
+  // ── TRENDS TAB (EIA data from static file) ──
+  const EIA_DATA_URL = './eia_weekly.json';
 
   let eiaCache = {}; // Cache by fuel type
+  let eiaAllData = null; // Raw data from file
   let usingSampleData = false;
-  let trendRange = 26; // weeks: 26=6mo, 52=12mo, 78=18mo
+  let trendRange = 26; // weeks: 26=6mo, 52=12mo
 
-  // Sample data for preview (used when EIA API is unreachable)
+  // Sample data for preview (used when eia_weekly.json isn't available yet)
   const EIA_SAMPLE = {"regular":[{"date":"2025-03-24","price":2.716},{"date":"2025-03-31","price":2.744},{"date":"2025-04-07","price":2.751},{"date":"2025-04-14","price":2.77},{"date":"2025-04-21","price":2.768},{"date":"2025-04-28","price":2.765},{"date":"2025-05-05","price":2.775},{"date":"2025-05-12","price":2.851},{"date":"2025-05-19","price":2.792},{"date":"2025-05-26","price":2.861},{"date":"2025-06-02","price":2.876},{"date":"2025-06-09","price":2.932},{"date":"2025-06-16","price":2.946},{"date":"2025-06-23","price":2.978},{"date":"2025-06-30","price":3.038},{"date":"2025-07-07","price":3.034},{"date":"2025-07-14","price":3.047},{"date":"2025-07-21","price":3.128},{"date":"2025-07-28","price":3.15},{"date":"2025-08-04","price":3.183},{"date":"2025-08-11","price":3.188},{"date":"2025-08-18","price":3.176},{"date":"2025-08-25","price":3.24},{"date":"2025-09-01","price":3.215},{"date":"2025-09-08","price":3.24},{"date":"2025-09-15","price":3.216},{"date":"2025-09-22","price":3.232},{"date":"2025-09-29","price":3.261},{"date":"2025-10-06","price":3.264},{"date":"2025-10-13","price":3.244},{"date":"2025-10-20","price":3.266},{"date":"2025-10-27","price":3.222},{"date":"2025-11-03","price":3.159},{"date":"2025-11-10","price":3.208},{"date":"2025-11-17","price":3.123},{"date":"2025-11-24","price":3.115},{"date":"2025-12-01","price":3.125},{"date":"2025-12-08","price":3.127},{"date":"2025-12-15","price":3.104},{"date":"2025-12-22","price":3.06},{"date":"2025-12-29","price":3.052},{"date":"2026-01-05","price":2.988},{"date":"2026-01-12","price":3.058},{"date":"2026-01-19","price":2.97},{"date":"2026-01-26","price":2.953},{"date":"2026-02-02","price":2.933},{"date":"2026-02-09","price":2.951},{"date":"2026-02-16","price":2.914},{"date":"2026-02-23","price":2.904},{"date":"2026-03-02","price":2.882},{"date":"2026-03-09","price":2.877},{"date":"2026-03-16","price":2.889}],"mid_grade":[{"date":"2025-03-24","price":3.229},{"date":"2025-03-31","price":3.237},{"date":"2025-04-07","price":3.228},{"date":"2025-04-14","price":3.28},{"date":"2025-04-21","price":3.281},{"date":"2025-04-28","price":3.326},{"date":"2025-05-05","price":3.32},{"date":"2025-05-12","price":3.331},{"date":"2025-05-19","price":3.348},{"date":"2025-05-26","price":3.4},{"date":"2025-06-02","price":3.404},{"date":"2025-06-09","price":3.407},{"date":"2025-06-16","price":3.44},{"date":"2025-06-23","price":3.436},{"date":"2025-06-30","price":3.552},{"date":"2025-07-07","price":3.584},{"date":"2025-07-14","price":3.542},{"date":"2025-07-21","price":3.579},{"date":"2025-07-28","price":3.609},{"date":"2025-08-04","price":3.637},{"date":"2025-08-11","price":3.686},{"date":"2025-08-18","price":3.702},{"date":"2025-08-25","price":3.718},{"date":"2025-09-01","price":3.739},{"date":"2025-09-08","price":3.746},{"date":"2025-09-15","price":3.757},{"date":"2025-09-22","price":3.708},{"date":"2025-09-29","price":3.733},{"date":"2025-10-06","price":3.762},{"date":"2025-10-13","price":3.697},{"date":"2025-10-20","price":3.769},{"date":"2025-10-27","price":3.755},{"date":"2025-11-03","price":3.714},{"date":"2025-11-10","price":3.704},{"date":"2025-11-17","price":3.669},{"date":"2025-11-24","price":3.689},{"date":"2025-12-01","price":3.653},{"date":"2025-12-08","price":3.619},{"date":"2025-12-15","price":3.553},{"date":"2025-12-22","price":3.595},{"date":"2025-12-29","price":3.523},{"date":"2026-01-05","price":3.536},{"date":"2026-01-12","price":3.49},{"date":"2026-01-19","price":3.485},{"date":"2026-01-26","price":3.498},{"date":"2026-02-02","price":3.4},{"date":"2026-02-09","price":3.419},{"date":"2026-02-16","price":3.385},{"date":"2026-02-23","price":3.379},{"date":"2026-03-02","price":3.399},{"date":"2026-03-09","price":3.366},{"date":"2026-03-16","price":3.355}],"premium":[{"date":"2025-03-24","price":3.711},{"date":"2025-03-31","price":3.782},{"date":"2025-04-07","price":3.739},{"date":"2025-04-14","price":3.736},{"date":"2025-04-21","price":3.781},{"date":"2025-04-28","price":3.749},{"date":"2025-05-05","price":3.803},{"date":"2025-05-12","price":3.846},{"date":"2025-05-19","price":3.849},{"date":"2025-05-26","price":3.865},{"date":"2025-06-02","price":3.842},{"date":"2025-06-09","price":3.955},{"date":"2025-06-16","price":3.958},{"date":"2025-06-23","price":4.019},{"date":"2025-06-30","price":4.061},{"date":"2025-07-07","price":4.02},{"date":"2025-07-14","price":4.083},{"date":"2025-07-21","price":4.073},{"date":"2025-07-28","price":4.146},{"date":"2025-08-04","price":4.145},{"date":"2025-08-11","price":4.194},{"date":"2025-08-18","price":4.177},{"date":"2025-08-25","price":4.192},{"date":"2025-09-01","price":4.196},{"date":"2025-09-08","price":4.228},{"date":"2025-09-15","price":4.28},{"date":"2025-09-22","price":4.189},{"date":"2025-09-29","price":4.204},{"date":"2025-10-06","price":4.234},{"date":"2025-10-13","price":4.219},{"date":"2025-10-20","price":4.197},{"date":"2025-10-27","price":4.26},{"date":"2025-11-03","price":4.19},{"date":"2025-11-10","price":4.226},{"date":"2025-11-17","price":4.155},{"date":"2025-11-24","price":4.097},{"date":"2025-12-01","price":4.149},{"date":"2025-12-08","price":4.148},{"date":"2025-12-15","price":4.107},{"date":"2025-12-22","price":4.098},{"date":"2025-12-29","price":4.021},{"date":"2026-01-05","price":3.986},{"date":"2026-01-12","price":4.01},{"date":"2026-01-19","price":3.963},{"date":"2026-01-26","price":3.972},{"date":"2026-02-02","price":3.921},{"date":"2026-02-09","price":3.913},{"date":"2026-02-16","price":3.917},{"date":"2026-02-23","price":3.898},{"date":"2026-03-02","price":3.891},{"date":"2026-03-09","price":3.873},{"date":"2026-03-16","price":3.919}],"diesel":[{"date":"2025-03-24","price":3.33},{"date":"2025-03-31","price":3.319},{"date":"2025-04-07","price":3.348},{"date":"2025-04-14","price":3.327},{"date":"2025-04-21","price":3.379},{"date":"2025-04-28","price":3.424},{"date":"2025-05-05","price":3.401},{"date":"2025-05-12","price":3.397},{"date":"2025-05-19","price":3.415},{"date":"2025-05-26","price":3.468},{"date":"2025-06-02","price":3.473},{"date":"2025-06-09","price":3.499},{"date":"2025-06-16","price":3.561},{"date":"2025-06-23","price":3.572},{"date":"2025-06-30","price":3.63},{"date":"2025-07-07","price":3.649},{"date":"2025-07-14","price":3.664},{"date":"2025-07-21","price":3.734},{"date":"2025-07-28","price":3.754},{"date":"2025-08-04","price":3.747},{"date":"2025-08-11","price":3.753},{"date":"2025-08-18","price":3.817},{"date":"2025-08-25","price":3.842},{"date":"2025-09-01","price":3.814},{"date":"2025-09-08","price":3.824},{"date":"2025-09-15","price":3.884},{"date":"2025-09-22","price":3.892},{"date":"2025-09-29","price":3.847},{"date":"2025-10-06","price":3.835},{"date":"2025-10-13","price":3.852},{"date":"2025-10-20","price":3.822},{"date":"2025-10-27","price":3.827},{"date":"2025-11-03","price":3.829},{"date":"2025-11-10","price":3.815},{"date":"2025-11-17","price":3.8},{"date":"2025-11-24","price":3.726},{"date":"2025-12-01","price":3.682},{"date":"2025-12-08","price":3.744},{"date":"2025-12-15","price":3.699},{"date":"2025-12-22","price":3.684},{"date":"2025-12-29","price":3.639},{"date":"2026-01-05","price":3.653},{"date":"2026-01-12","price":3.617},{"date":"2026-01-19","price":3.561},{"date":"2026-01-26","price":3.584},{"date":"2026-02-02","price":3.487},{"date":"2026-02-09","price":3.471},{"date":"2026-02-16","price":3.517},{"date":"2026-02-23","price":3.521},{"date":"2026-03-02","price":3.473},{"date":"2026-03-09","price":3.491},{"date":"2026-03-16","price":3.493}]};
 
-  function parseSampleData(fuel) {
-    const raw = EIA_SAMPLE[fuel];
-    if (!raw) return null;
-    return raw.map(d => ({ date: new Date(d.date), price: d.price }));
+  async function loadEIAData() {
+    if (eiaAllData) return;
+    try {
+      const resp = await fetch(EIA_DATA_URL);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      eiaAllData = await resp.json();
+      usingSampleData = false;
+    } catch (err) {
+      console.warn('EIA file not available, using sample data:', err.message);
+      eiaAllData = EIA_SAMPLE;
+      usingSampleData = true;
+    }
   }
 
-  async function fetchEIA(fuel) {
-    const cacheKey = fuel;
-    if (eiaCache[cacheKey]) return eiaCache[cacheKey];
-
-    const product = EIA_PRODUCTS[fuel];
-    if (!product) return null;
-
-    // Fetch last ~14 months of weekly data (supports up to 12 Month display)
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 14);
-    const startStr = startDate.toISOString().slice(0, 10);
-
-    const url = `${EIA_BASE}?api_key=${EIA_API_KEY}`
-      + `&frequency=weekly`
-      + `&data[0]=value`
-      + `&facets[duoarea][]=SWI`
-      + `&facets[product][]=EPM0`
-      + `&facets[product][]=${product}`
-      + `&start=${startStr}`
-      + `&sort[0][column]=period`
-      + `&sort[0][direction]=asc`
-      + `&length=5000`;
-
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`EIA API ${resp.status}`);
-      const json = await resp.json();
-
-      if (!json.response?.data) throw new Error('No data in response');
-
-      // Parse into {date, price} pairs, filtering to our specific product
-      const entries = json.response.data
-        .filter(d => d.product === product && d.value != null)
-        .map(d => ({
-          date: new Date(d.period),
-          price: parseFloat(d.value),
-          period: d.period,
-        }))
-        .sort((a, b) => a.date - b.date);
-
-      if (entries.length < 2) throw new Error('Insufficient data');
-
-      usingSampleData = false;
-      eiaCache[cacheKey] = entries;
-      return entries;
-    } catch (err) {
-      console.warn('EIA fetch failed, using sample data:', err.message);
-      usingSampleData = true;
-      const fallback = parseSampleData(fuel);
-      eiaCache[cacheKey] = fallback;
-      return fallback;
-    }
+  function getEIAEntries(fuel) {
+    if (eiaCache[fuel]) return eiaCache[fuel];
+    const source = eiaAllData || EIA_SAMPLE;
+    const raw = source[fuel];
+    if (!raw || !raw.length) return null;
+    const entries = raw.map(d => ({ date: new Date(d.date), price: d.price }));
+    entries.sort((a, b) => a.date - b.date);
+    eiaCache[fuel] = entries;
+    return entries;
   }
 
   function renderTrends() {
@@ -822,18 +778,18 @@
       `<button class="wpr-gas-fuel-btn ${trendRange === r.weeks ? 'active' : ''}" data-range="${r.weeks}">${r.label}</button>`
     ).join('');
 
-    // Check if we have cached data
-    const cached = eiaCache[activeFuel];
+    // Check if we have data loaded
+    const entries = getEIAEntries(activeFuel);
     let chartContent = '';
 
-    if (!cached) {
-      chartContent = `<div class="wpr-trends-empty wpr-trends-loading-msg">Loading historical data from EIA…</div>`;
+    if (!eiaAllData && !usingSampleData) {
+      chartContent = `<div class="wpr-trends-empty wpr-trends-loading-msg">Loading historical data…</div>`;
       // Trigger async load
-      fetchEIA(activeFuel).then(() => render());
-    } else if (cached.length < 2) {
+      loadEIAData().then(() => render());
+    } else if (!entries || entries.length < 2) {
       chartContent = `<div class="wpr-trends-empty">Not enough historical data available.</div>`;
     } else {
-      chartContent = buildChart(cached);
+      chartContent = buildChart(entries);
     }
 
     const rangeLabel = ranges.find(r => r.weeks === trendRange)?.label || '6 Month';
