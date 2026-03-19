@@ -586,9 +586,10 @@
     if (!data) return;
 
     const sw = data.statewide;
-    const currentRegular = sw.current_avg?.regular;
-    const yesterdayRegular = sw.yesterday_avg?.regular;
-    const d = delta(currentRegular, yesterdayRegular);
+    const currentPrice = sw.current_avg?.[activeFuel];
+    const yesterdayPrice = sw.yesterday_avg?.[activeFuel];
+    const d = delta(currentPrice, yesterdayPrice);
+    const heroFuelName = fuelLabel(activeFuel);
 
     let html = `
       <div class="wpr-gas-header">
@@ -602,8 +603,8 @@
             </div>
           </div>
           <div class="wpr-gas-hero-price">
-            <div class="wpr-gas-hero-label">State Avg · Regular</div>
-            <div class="wpr-gas-hero-value">${fmtHero(currentRegular)}</div>
+            <div class="wpr-gas-hero-label">State Avg · ${heroFuelName}</div>
+            <div class="wpr-gas-hero-value">${fmtHero(currentPrice)}</div>
             <div class="wpr-gas-hero-change"><span class="${d.cls === 'up-color' ? 'up' : d.cls === 'down-color' ? 'down' : 'flat'}">${d.text} vs yesterday</span></div>
           </div>
         </div>
