@@ -396,6 +396,15 @@
   .bar-year { background: var(--rule); }
 
   /* ── Trends view ── */
+  .wpr-trends-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    padding: 4px 0 12px;
+    letter-spacing: -0.2px;
+  }
   .wpr-trends-chart-wrap {
     padding: 0 20px 16px;
   }
@@ -603,7 +612,7 @@
       <div class="wpr-gas-tabs">
         <button class="wpr-gas-tab ${activeTab === 'statewide' ? 'active' : ''}" data-tab="statewide">Statewide</button>
         <button class="wpr-gas-tab ${activeTab === 'metros' ? 'active' : ''}" data-tab="metros">By Metro Area</button>
-        <button class="wpr-gas-tab ${activeTab === 'trends' ? 'active' : ''}" data-tab="trends">Statewide Trend</button>
+        <button class="wpr-gas-tab ${activeTab === 'trends' ? 'active' : ''}" data-tab="trends">Price Trends</button>
       </div>
     `;
 
@@ -617,7 +626,7 @@
 
     const trendsSampleNote = (activeTab === 'trends' && usingSampleData) ? ' · <em style="color:var(--accent)">sample data</em>' : '';
     const footerSource = activeTab === 'trends'
-      ? `Data via <a href="https://www.eia.gov/petroleum/gasdiesel/" target="_blank" rel="noopener">U.S. Energy Information Administration</a>${trendsSampleNote}`
+      ? `Midwest region data via <a href="https://www.eia.gov/petroleum/gasdiesel/" target="_blank" rel="noopener">U.S. Energy Information Administration</a>${trendsSampleNote}`
       : `Data via <a href="${data.source_url}" target="_blank" rel="noopener">AAA Gas Prices</a>${usingFallback ? ' · <em style="color:var(--accent)">sample data</em>' : ''}`;
 
     html += `
@@ -793,6 +802,7 @@
     }
 
     const rangeLabel = ranges.find(r => r.weeks === trendRange)?.label || '6 Month';
+    const fuelName = fuelLabel(activeFuel);
 
     return `
       <div class="wpr-gas-fuel-row wpr-trends-btn-row">
@@ -801,6 +811,7 @@
         ${rangeBtns}
       </div>
       <div class="wpr-trends-chart-wrap">
+        <div class="wpr-trends-title">Midwest Region · ${fuelName} · ${rangeLabel}</div>
         ${chartContent}
       </div>
     `;
