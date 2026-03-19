@@ -765,6 +765,7 @@
     if (eiaCache[fuel]) return eiaCache[fuel];
     const source = eiaAllData || EIA_SAMPLE;
     const raw = source[fuel];
+    console.log('getEIAEntries:', fuel, 'available keys:', Object.keys(source), 'raw length:', raw?.length || 0);
     if (!raw || !raw.length) return null;
     const entries = raw.map(d => ({ date: new Date(d.date), price: d.price }));
     entries.sort((a, b) => a.date - b.date);
