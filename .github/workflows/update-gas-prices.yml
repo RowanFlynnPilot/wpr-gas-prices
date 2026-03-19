@@ -2,11 +2,9 @@ name: Update Gas Prices
 
 on:
   schedule:
-    # Runs daily at 7:00 AM and 12:00 PM Central Time (CT = UTC-6, CDT = UTC-5)
-    # Using UTC: 12:00 and 17:00 to cover CDT; adjust if needed
     - cron: '0 12 * * *'
     - cron: '0 17 * * *'
-  workflow_dispatch:  # Allows manual trigger from GitHub UI (the "Run workflow" button)
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -29,14 +27,15 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run scraper
+        env:
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: python scrape_gas_prices.py --output docs/gas_prices.json
 
       - name: Commit and push updated data
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git add docs/gas_prices.json docs/gas_prices_history.json
-          # Only commit if there are actual changes
+          git add docs/gas_prices.json docs/gas_prices_history.json docs/eia_weekly.json
           if git diff --staged --quiet; then
             echo "No price changes detected, skipping commit."
           else
