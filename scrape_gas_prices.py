@@ -247,27 +247,38 @@ def main():
 
         for fuel, product_code in eia_products.items():
             try:
-                params = {
-                    "api_key": eia_api_key,
-                    "frequency": "weekly",
-                    "data[0]": "value",
-                    "facets[duoarea][]": "SWI",
-                    "facets[product][]": product_code,
-                    "sort[0][column]": "period",
-                    "sort[0][direction]": "asc",
-                    "length": "5000",
-                }
-                resp = requests.get(eia_base, params=params, headers=HEADERS, timeout=30)
+                # Build URL manually to avoid bracket encoding issues
+                url = (
+                    f"{eia_base}"
+                    f"?api_key={eia_api_key}"
+                    f"&frequency=weekly"
+                    f"&data[0]=value"
+                    f"&facets[duoarea][]=SWI"
+                    f"&facets[product][]={product_code}"
+                    f"&sort[0][column]=period"
+                    f"&sort[0][direction]=asc"
+                    f"&length=5000"
+                )
+                resp = requests.get(url, timeout=30)
+                log.info("  EIA %s: HTTP %d", fuel, resp.status_code)
                 resp.raise_for_status()
                 eia_json = resp.json()
 
+                if "error" in eia_json:
+                    log.error("  EIA %s API error: %s", fuel, eia_json["error"])
+                    continue
+
                 entries = []
                 for row in eia_json.get("response", {}).get("data", []):
-                    if row.get("product") == product_code and row.get("value") is not None:
-                        entries.append({
-                            "date": row["period"],
-                            "price": float(row["value"]),
-                        })
+                    val = row.get("value")
+                    if val is not None:
+                        try:
+                            entries.append({
+                                "date": row["period"],
+                                "price": float(val),
+                            })
+                        except (ValueError, KeyError):
+                            pass
 
                 entries.sort(key=lambda e: e["date"])
                 eia_result[fuel] = entries
