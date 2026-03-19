@@ -230,6 +230,59 @@ def main():
 
     log.info("Updated history (%d days) at %s", len(history), history_path)
 
+    # ── Fetch EIA weekly statewide data ──
+    eia_path = os.path.join(out_dir, "eia_weekly.json")
+    eia_api_key = os.environ.get("EIA_API_KEY", "")
+
+    if eia_api_key:
+        log.info("Fetching EIA weekly data for Wisconsin...")
+        eia_products = {
+            "regular": "EPMR",
+            "mid_grade": "EPMM",
+            "premium": "EPMP",
+            "diesel": "EPD2D",
+        }
+        eia_base = "https://api.eia.gov/v2/petroleum/pri/gnd/data/"
+        eia_result = {}
+
+        for fuel, product_code in eia_products.items():
+            try:
+                params = {
+                    "api_key": eia_api_key,
+                    "frequency": "weekly",
+                    "data[0]": "value",
+                    "facets[duoarea][]": "SWI",
+                    "facets[product][]": product_code,
+                    "sort[0][column]": "period",
+                    "sort[0][direction]": "asc",
+                    "length": "5000",
+                }
+                resp = requests.get(eia_base, params=params, headers=HEADERS, timeout=30)
+                resp.raise_for_status()
+                eia_json = resp.json()
+
+                entries = []
+                for row in eia_json.get("response", {}).get("data", []):
+                    if row.get("product") == product_code and row.get("value") is not None:
+                        entries.append({
+                            "date": row["period"],
+                            "price": float(row["value"]),
+                        })
+
+                entries.sort(key=lambda e: e["date"])
+                eia_result[fuel] = entries
+                log.info("  EIA %s: %d data points", fuel, len(entries))
+
+            except Exception:
+                log.exception("  EIA fetch failed for %s", fuel)
+
+        if eia_result:
+            with open(eia_path, "w", encoding="utf-8") as f:
+                json.dump(eia_result, f, separators=(",", ":"), ensure_ascii=False)
+            log.info("Wrote EIA data to %s", eia_path)
+    else:
+        log.warning("EIA_API_KEY not set, skipping EIA data fetch.")
+
 
 if __name__ == "__main__":
     main()
