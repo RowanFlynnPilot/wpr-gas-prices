@@ -268,8 +268,15 @@ def main():
                     log.error("  EIA %s API error: %s", fuel, eia_json["error"])
                     continue
 
+                raw_data = eia_json.get("response", {}).get("data", [])
+                log.info("  EIA %s: raw rows=%d", fuel, len(raw_data))
+
+                # Log first row to debug field names
+                if raw_data:
+                    log.info("  EIA %s: sample row: %s", fuel, json.dumps(raw_data[0]))
+
                 entries = []
-                for row in eia_json.get("response", {}).get("data", []):
+                for row in raw_data:
                     val = row.get("value")
                     if val is not None:
                         try:
