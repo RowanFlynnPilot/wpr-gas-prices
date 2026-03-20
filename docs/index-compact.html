@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wisconsin Gas Prices — Wausau Pilot &amp; Review</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap');
+
+  :root {
+    --ink: #1a1a1a;
+    --ink-mid: #444;
+    --ink-light: #6b6b6b;
+    --ink-faint: #999;
+    --paper: #f9fafb;
+    --paper-warm: #f0f5f4;
+    --rule: #c8d8d5;
+    --rule-light: #dfe9e7;
+    --accent: #3e847a;
+    --accent-light: #5ab8ad;
+    --accent-pale: #e0f2ef;
+    --accent-dark: #2d6259;
+    --up: #c0392b;
+    --down: #27864a;
+    --neutral: #888;
+    --radius: 6px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .wpr-compact {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    max-width: 360px;
+    margin: 0 auto;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    overflow: hidden;
+    line-height: 1.4;
+  }
+
+  /* Header */
+  .wpr-c-header {
+    background: var(--ink);
+    color: #fff;
+    padding: 14px 16px 12px;
+    position: relative;
+    text-align: center;
+  }
+  .wpr-c-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  }
+  .wpr-c-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    margin: 0 auto 8px;
+    display: block;
+    border: 2px solid rgba(255,255,255,0.15);
+  }
+  .wpr-c-kicker {
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 2px;
+  }
+  .wpr-c-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .wpr-c-date {
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* Hero price */
+  .wpr-c-hero {
+    text-align: center;
+    padding: 14px 12px 10px;
+    border-bottom: 1px solid var(--rule-light);
+  }
+  .wpr-c-hero-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  .wpr-c-hero-price {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .wpr-c-hero-change {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 3px;
+  }
+  .wpr-dollar { font-family: 'Source Sans 3', sans-serif; font-weight: inherit; }
+
+  /* Fuel pills */
+  .wpr-c-fuels {
+    display: flex;
+    gap: 4px;
+    padding: 10px 10px 8px;
+    justify-content: center;
+  }
+  .wpr-c-fuel-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--rule);
+    background: #fff;
+    color: var(--ink-mid);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .wpr-c-fuel-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .wpr-c-fuel-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  /* Metro list */
+  .wpr-c-metro-list { padding: 0 10px 6px; }
+  .wpr-c-metro-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--rule-light);
+    border-radius: 6px;
+    margin: 2px 0;
+    transition: background 0.12s;
+  }
+  .wpr-c-metro-row:hover { background: var(--paper-warm); }
+  .wpr-c-metro-row:last-child { border-bottom: none; }
+  .wpr-c-metro-row.highlight { background: var(--accent-pale); }
+  .wpr-c-metro-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .wpr-c-metro-right {
+    text-align: right;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .wpr-c-metro-price {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .wpr-c-metro-delta {
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 52px;
+    text-align: right;
+  }
+  .up-color { color: var(--up); }
+  .down-color { color: var(--down); }
+  .flat-color { color: var(--neutral); }
+
+  /* CTA link */
+  .wpr-c-cta {
+    display: block;
+    text-align: center;
+    padding: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    border-top: 1px solid var(--rule-light);
+    transition: background 0.12s;
+  }
+  .wpr-c-cta:hover { background: var(--accent-pale); }
+
+  /* Footer */
+  .wpr-c-footer {
+    padding: 8px 12px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+    color: var(--ink-faint);
+    background: var(--paper-warm);
+  }
+  .wpr-c-footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  .wpr-c-footer a:hover { text-decoration: underline; }
+
+  .wpr-c-loading {
+    text-align: center;
+    padding: 40px 12px;
+    color: var(--ink-faint);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wpr-compact" id="gasWidget">
+  <div class="wpr-c-loading">Loading gas prices…</div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const DATA_URL = 'https://rowanflynnpilot.github.io/wpr-gas-prices/gas_prices.json';
+  const FULL_PAGE_URL = 'https://wausaupilotandreview.com/wausau-gas-price-tracker/';
+  const WPR_LOGO = 'data:image/png;base64,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';
+
+  const FALLBACK_DATA = {"source":"AAA Gas Prices","source_url":"https://gasprices.aaa.com/?state=WI","state":"Wisconsin","price_date":"03/10/26","scraped_at":"2026-03-10T12:00:00+00:00","statewide":{"current_avg":{"regular":2.445,"mid_grade":2.978,"premium":3.547,"diesel":3.370},"yesterday_avg":{"regular":2.434,"mid_grade":2.967,"premium":3.525,"diesel":3.373},"week_ago_avg":{"regular":2.465,"mid_grade":3.014,"premium":3.554,"diesel":3.405},"month_ago_avg":{"regular":2.671,"mid_grade":3.201,"premium":3.696,"diesel":3.620},"year_ago_avg":{"regular":2.759,"mid_grade":3.266,"premium":3.749,"diesel":3.284}},"metros":{"Wausau":{"current_avg":{"regular":2.422,"mid_grade":3.051,"premium":3.630,"diesel":3.373},"yesterday_avg":{"regular":2.363,"mid_grade":2.954,"premium":3.484,"diesel":3.369},"week_ago_avg":{"regular":2.418,"mid_grade":3.164,"premium":3.600,"diesel":3.380},"month_ago_avg":{"regular":2.650,"mid_grade":3.180,"premium":3.690,"diesel":3.600},"year_ago_avg":{"regular":2.750,"mid_grade":3.250,"premium":3.740,"diesel":3.280}},"Eau Claire":{"current_avg":{"regular":2.422,"mid_grade":2.767,"premium":3.518,"diesel":3.503},"yesterday_avg":{"regular":2.363,"mid_grade":2.784,"premium":3.483,"diesel":3.509},"week_ago_avg":{"regular":2.401,"mid_grade":2.757,"premium":3.448,"diesel":3.514},"month_ago_avg":{"regular":2.563,"mid_grade":3.014,"premium":3.528,"diesel":3.690},"year_ago_avg":{"regular":2.688,"mid_grade":3.102,"premium":3.606,"diesel":3.267}},"Green Bay":{"current_avg":{"regular":2.454,"mid_grade":3.030,"premium":3.562,"diesel":3.440},"yesterday_avg":{"regular":2.454,"mid_grade":3.012,"premium":3.557,"diesel":3.427},"week_ago_avg":{"regular":2.496,"mid_grade":3.037,"premium":3.575,"diesel":3.527},"month_ago_avg":{"regular":2.725,"mid_grade":3.240,"premium":3.727,"diesel":3.680},"year_ago_avg":{"regular":2.703,"mid_grade":3.193,"premium":3.697,"diesel":3.254}},"Appleton":{"current_avg":{"regular":2.481,"mid_grade":3.068,"premium":3.578,"diesel":3.365},"yesterday_avg":{"regular":2.485,"mid_grade":3.081,"premium":3.588,"diesel":3.372},"week_ago_avg":{"regular":2.511,"mid_grade":3.043,"premium":3.587,"diesel":3.425},"month_ago_avg":{"regular":2.664,"mid_grade":3.188,"premium":3.682,"diesel":3.560},"year_ago_avg":{"regular":2.759,"mid_grade":3.265,"premium":3.738,"diesel":3.251}},"Madison":{"current_avg":{"regular":2.425,"mid_grade":2.991,"premium":3.567,"diesel":3.284},"yesterday_avg":{"regular":2.428,"mid_grade":3.003,"premium":3.584,"diesel":3.288},"week_ago_avg":{"regular":2.455,"mid_grade":3.030,"premium":3.602,"diesel":3.300},"month_ago_avg":{"regular":2.695,"mid_grade":3.272,"premium":3.741,"diesel":3.546},"year_ago_avg":{"regular":2.786,"mid_grade":3.350,"premium":3.790,"diesel":3.339}},"Milwaukee-Waukesha":{"current_avg":{"regular":2.418,"mid_grade":2.947,"premium":3.463,"diesel":3.376},"yesterday_avg":{"regular":2.420,"mid_grade":2.951,"premium":3.453,"diesel":3.376},"week_ago_avg":{"regular":2.452,"mid_grade":2.998,"premium":3.506,"diesel":3.396},"month_ago_avg":{"regular":2.643,"mid_grade":3.180,"premium":3.636,"diesel":3.574},"year_ago_avg":{"regular":2.738,"mid_grade":3.259,"premium":3.721,"diesel":3.296}},"La Crosse":{"current_avg":{"regular":2.453,"mid_grade":2.429,"premium":3.657,"diesel":3.276},"yesterday_avg":{"regular":2.449,"mid_grade":2.429,"premium":3.657,"diesel":3.275},"week_ago_avg":{"regular":2.452,"mid_grade":2.704,"premium":3.640,"diesel":3.284},"month_ago_avg":{"regular":2.526,"mid_grade":2.692,"premium":3.730,"diesel":3.670},"year_ago_avg":{"regular":2.769,"mid_grade":3.099,"premium":3.770,"diesel":3.215}},"Fond du Lac":{"current_avg":{"regular":2.365,"mid_grade":2.996,"premium":3.526,"diesel":3.276},"yesterday_avg":{"regular":2.362,"mid_grade":2.973,"premium":3.492,"diesel":3.266},"week_ago_avg":{"regular":2.420,"mid_grade":3.120,"premium":3.646,"diesel":3.302},"month_ago_avg":{"regular":2.658,"mid_grade":3.229,"premium":3.756,"diesel":3.563},"year_ago_avg":{"regular":2.734,"mid_grade":3.260,"premium":3.793,"diesel":3.269}},"Janesville-Beloit":{"current_avg":{"regular":2.367,"mid_grade":2.845,"premium":3.434,"diesel":3.238},"yesterday_avg":{"regular":2.367,"mid_grade":2.863,"premium":3.482,"diesel":3.253},"week_ago_avg":{"regular":2.402,"mid_grade":2.909,"premium":3.460,"diesel":3.259},"month_ago_avg":{"regular":2.601,"mid_grade":3.096,"premium":3.615,"diesel":3.562},"year_ago_avg":{"regular":2.772,"mid_grade":3.233,"premium":3.730,"diesel":3.239}},"Kenosha County":{"current_avg":{"regular":2.459,"mid_grade":3.007,"premium":3.559,"diesel":3.513},"yesterday_avg":{"regular":2.463,"mid_grade":2.986,"premium":3.567,"diesel":3.507},"week_ago_avg":{"regular":2.472,"mid_grade":3.063,"premium":3.586,"diesel":3.546},"month_ago_avg":{"regular":2.624,"mid_grade":3.237,"premium":3.670,"diesel":3.779},"year_ago_avg":{"regular":2.765,"mid_grade":3.376,"premium":3.824,"diesel":3.579}},"Oshkosh":{"current_avg":{"regular":2.483,"mid_grade":3.036,"premium":3.570,"diesel":3.211},"yesterday_avg":{"regular":2.491,"mid_grade":2.968,"premium":3.508,"diesel":3.259},"week_ago_avg":{"regular":2.535,"mid_grade":3.089,"premium":3.561,"diesel":3.304},"month_ago_avg":{"regular":2.654,"mid_grade":3.161,"premium":3.657,"diesel":3.437},"year_ago_avg":{"regular":2.736,"mid_grade":3.242,"premium":3.732,"diesel":3.264}},"Racine":{"current_avg":{"regular":2.430,"mid_grade":2.931,"premium":3.440,"diesel":3.332},"yesterday_avg":{"regular":2.441,"mid_grade":2.931,"premium":3.462,"diesel":3.391},"week_ago_avg":{"regular":2.446,"mid_grade":3.005,"premium":3.467,"diesel":3.351},"month_ago_avg":{"regular":2.631,"mid_grade":3.143,"premium":3.565,"diesel":3.576},"year_ago_avg":{"regular":2.754,"mid_grade":3.264,"premium":3.687,"diesel":3.387}},"Sheboygan":{"current_avg":{"regular":2.407,"mid_grade":3.105,"premium":3.563,"diesel":3.404},"yesterday_avg":{"regular":2.402,"mid_grade":3.064,"premium":3.550,"diesel":3.458},"week_ago_avg":{"regular":2.442,"mid_grade":3.135,"premium":3.641,"diesel":3.396},"month_ago_avg":{"regular":2.699,"mid_grade":3.366,"premium":3.777,"diesel":3.570},"year_ago_avg":{"regular":2.762,"mid_grade":3.322,"premium":3.805,"diesel":3.264}},"Superior":{"current_avg":{"regular":2.475,"mid_grade":2.729,"premium":3.637,"diesel":3.729},"yesterday_avg":{"regular":2.380,"mid_grade":2.709,"premium":3.451,"diesel":3.846},"week_ago_avg":{"regular":2.441,"mid_grade":2.794,"premium":3.525,"diesel":3.935},"month_ago_avg":{"regular":2.552,"mid_grade":2.899,"premium":3.582,"diesel":3.974},"year_ago_avg":{"regular":2.775,"mid_grade":3.216,"premium":3.741,"diesel":3.314}},"Pierce-St. Croix County":{"current_avg":{"regular":2.527,"mid_grade":2.994,"premium":3.576,"diesel":3.586},"yesterday_avg":{"regular":2.489,"mid_grade":2.950,"premium":3.531,"diesel":3.586},"week_ago_avg":{"regular":2.498,"mid_grade":2.989,"premium":3.529,"diesel":3.596},"month_ago_avg":{"regular":2.698,"mid_grade":3.176,"premium":3.680,"diesel":3.794},"year_ago_avg":{"regular":2.856,"mid_grade":3.270,"premium":3.778,"diesel":3.433}}},"priority_metros":["Wausau","Eau Claire","Green Bay","Appleton","Madison","Milwaukee-Waukesha"]};
+
+  const PRIORITY_METROS = ['Wausau', 'Eau Claire', 'Green Bay', 'Appleton', 'Madison', 'Milwaukee-Waukesha'];
+
+  let data = null;
+  let activeFuel = 'regular';
+  let usingFallback = false;
+  const widget = document.getElementById('gasWidget');
+
+  function fmt(p) {
+    if (p == null) return '—';
+    return '<span class="wpr-dollar">$</span>' + p.toFixed(3);
+  }
+  function delta(c, p) {
+    if (c == null || p == null) return { text: '—', cls: 'flat-color' };
+    const diff = c - p;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff > 0.001 ? 'up-color' : diff < -0.001 ? 'down-color' : 'flat-color';
+    const arrow = diff > 0.001 ? '▲' : diff < -0.001 ? '▼' : '—';
+    return { text: `${arrow} ${sign}${diff.toFixed(3)}`, cls };
+  }
+  function fuelLabel(k) {
+    return { regular: 'Regular', mid_grade: 'Mid-Grade', premium: 'Premium', diesel: 'Diesel' }[k] || k;
+  }
+
+  function render() {
+    if (!data) return;
+    const sw = data.statewide;
+    const price = sw.current_avg?.[activeFuel];
+    const yest = sw.yesterday_avg?.[activeFuel];
+    const d = delta(price, yest);
+    const metros = data.metros || {};
+    const priority = data.priority_metros || PRIORITY_METROS;
+
+    // Show only priority metros
+    const sorted = priority.filter(n => metros[n]);
+
+    let fuelBtns = ['regular','mid_grade','premium','diesel'].map(f =>
+      `<button class="wpr-c-fuel-btn ${activeFuel===f?'active':''}" data-fuel="${f}">${fuelLabel(f)}</button>`
+    ).join('');
+
+    let metroRows = sorted.map(name => {
+      const m = metros[name];
+      const mp = m.current_avg?.[activeFuel];
+      const my = m.yesterday_avg?.[activeFuel];
+      const md = delta(mp, my);
+      const isWausau = name === 'Wausau';
+      return `
+        <div class="wpr-c-metro-row ${isWausau ? 'highlight' : ''}">
+          <span class="wpr-c-metro-name">${name}</span>
+          <div class="wpr-c-metro-right">
+            <span class="wpr-c-metro-price">${fmt(mp)}</span>
+            <span class="wpr-c-metro-delta ${md.cls}">${md.text}</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    widget.innerHTML = `
+      <div class="wpr-c-header">
+        <img src="${WPR_LOGO}" alt="WPR" class="wpr-c-logo" />
+        <div class="wpr-c-kicker">Fuel Watch</div>
+        <div class="wpr-c-title">Wisconsin Gas Prices</div>
+        <div class="wpr-c-date">Updated ${data.price_date}</div>
+      </div>
+      <div class="wpr-c-hero">
+        <div class="wpr-c-hero-label">State Avg · ${fuelLabel(activeFuel)}</div>
+        <div class="wpr-c-hero-price">${fmt(price)}</div>
+        <div class="wpr-c-hero-change ${d.cls}">${d.text} vs yesterday</div>
+      </div>
+      <div class="wpr-c-fuels">${fuelBtns}</div>
+      <div class="wpr-c-metro-list">${metroRows}</div>
+      <a href="${FULL_PAGE_URL}" target="_blank" class="wpr-c-cta">View full dashboard & trends →</a>
+      <div class="wpr-c-footer">
+        <span>Data via <a href="https://gasprices.aaa.com/?state=WI" target="_blank">AAA</a>${usingFallback ? ' · <em style="color:var(--accent)">sample</em>' : ''}</span>
+        <span>WPR</span>
+      </div>
+    `;
+
+    widget.querySelectorAll('.wpr-c-fuel-btn').forEach(btn => {
+      btn.addEventListener('click', () => { activeFuel = btn.dataset.fuel; render(); });
+    });
+  }
+
+  async function init() {
+    try {
+      const resp = await fetch(DATA_URL);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      data = await resp.json();
+      usingFallback = false;
+    } catch (err) {
+      console.warn('Using fallback data:', err.message);
+      data = FALLBACK_DATA;
+      usingFallback = true;
+    }
+    render();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
