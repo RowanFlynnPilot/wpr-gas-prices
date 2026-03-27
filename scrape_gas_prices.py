@@ -91,37 +91,106 @@ def fetch_page(url: str) -> str:
                 java_script_enabled=True,
             )
             page = context.new_page()
-
-            # Navigate — use 'commit' to start early, then wait for content
             page.goto(url, wait_until="commit", timeout=60000)
 
-            # Wait for the actual gas price table to render
-            # This handles Cloudflare interstitials — we keep waiting until
-            # the real content appears (up to 30 seconds)
             for attempt in range(6):
                 time.sleep(5)
                 html = page.content()
-                # Check if we have actual price data in the page
-                if "Current Avg" in html or "current_avg" in html.lower():
+                if "Current Avg" in html:
                     log.info("Price data found after %d seconds", (attempt + 1) * 5)
-                    break
-                log.info("Waiting for content... (attempt %d, %d bytes so far)", attempt + 1, len(html))
-            else:
-                log.warning("Price data not found after 30s, using whatever we have")
+                    browser.close()
+                    return html
+                log.info("Waiting for content... (attempt %d, %d bytes)", attempt + 1, len(html))
 
-            html = page.content()
+            log.warning("Price data not found after 30s")
             browser.close()
-
-            log.info("Headless browser returned %d bytes", len(html))
-            if "Current Avg" in html:
-                return html
-            log.warning("Page content doesn't contain expected price data")
     except ImportError:
         log.warning("Playwright not installed")
     except Exception as e:
         log.warning("Headless browser failed: %s", e)
 
-    raise RuntimeError("Failed to fetch AAA page — site may be blocking automated access")
+    raise RuntimeError("Failed to fetch AAA page")
+
+
+def fetch_state_averages() -> dict:
+    """Fallback: scrape the AAA state averages page for WI statewide data only."""
+    import time
+    log.info("Attempting fallback: AAA state averages page...")
+
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
+            )
+            context = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                ),
+                viewport={"width": 1920, "height": 1080},
+            )
+            page = context.new_page()
+            page.goto("https://gasprices.aaa.com/state-gas-price-averages/", wait_until="commit", timeout=60000)
+
+            html = None
+            for attempt in range(6):
+                time.sleep(5)
+                content = page.content()
+                if "Wisconsin" in content:
+                    html = content
+                    log.info("State averages page loaded after %d seconds", (attempt + 1) * 5)
+                    break
+                log.info("Waiting for state averages... (attempt %d)", attempt + 1)
+
+            browser.close()
+
+            if not html:
+                log.warning("State averages page didn't load")
+                return {}
+
+            soup = BeautifulSoup(html, "html.parser")
+            # Find the Wisconsin row in the state averages table
+            for row in soup.find_all("tr"):
+                cells = row.find_all("td")
+                if not cells:
+                    continue
+                # First cell contains the state name/link
+                state_text = cells[0].get_text(strip=True)
+                if "Wisconsin" in state_text and len(cells) >= 5:
+                    regular = parse_price(cells[1].get_text(strip=True))
+                    midgrade = parse_price(cells[2].get_text(strip=True))
+                    premium = parse_price(cells[3].get_text(strip=True))
+                    diesel = parse_price(cells[4].get_text(strip=True))
+
+                    today = datetime.now(timezone.utc).strftime("%m/%d/%y")
+                    result = {
+                        "source": "AAA Gas Prices",
+                        "source_url": AAA_URL,
+                        "state": "Wisconsin",
+                        "price_date": today,
+                        "scraped_at": datetime.now(timezone.utc).isoformat(),
+                        "statewide": {
+                            "current_avg": {
+                                "regular": regular,
+                                "mid_grade": midgrade,
+                                "premium": premium,
+                                "diesel": diesel,
+                            },
+                        },
+                        "metros": {},
+                        "priority_metros": PRIORITY_METROS,
+                    }
+                    log.info("Fallback got WI prices: regular=%s", regular)
+                    return result
+
+            log.warning("Wisconsin row not found in state averages table")
+    except Exception as e:
+        log.warning("State averages fallback failed: %s", e)
+
+    return {}
 
 
 def parse_price(text: str) -> float | None:
@@ -241,10 +310,23 @@ def main():
     aaa_success = False
     try:
         data = scrape_gas_prices()
-        aaa_success = True
+        # Check if we actually got data
+        if data.get("statewide") and len(data["statewide"]) > 0:
+            aaa_success = True
+        else:
+            log.warning("Main scrape returned no data, trying state averages fallback...")
+            data = fetch_state_averages()
+            if data.get("statewide"):
+                aaa_success = True
     except Exception:
-        log.exception("Failed to scrape AAA gas prices — will still update EIA data")
-        data = None
+        log.exception("Failed to scrape AAA detail page, trying state averages fallback...")
+        try:
+            data = fetch_state_averages()
+            if data.get("statewide"):
+                aaa_success = True
+        except Exception:
+            log.exception("State averages fallback also failed")
+            data = None
 
     # Ensure output directory exists
     out_dir = os.path.dirname(os.path.abspath(args.output))
