@@ -69,14 +69,17 @@ def fetch_page(url: str) -> str:
     """Fetch the AAA gas prices page HTML using a headless browser."""
     import time
 
-    # Use Playwright headless browser (bypasses Cloudflare)
     try:
         from playwright.sync_api import sync_playwright
         log.info("Fetching %s via headless browser", url)
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+                args=[
+                    "--no-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                ],
             )
             context = browser.new_context(
                 user_agent=(
@@ -89,22 +92,30 @@ def fetch_page(url: str) -> str:
             )
             page = context.new_page()
 
-            # Navigate and wait for content to load
-            page.goto(url, wait_until="domcontentloaded", timeout=45000)
-            # Wait for the price table to appear
-            try:
-                page.wait_for_selector("table", timeout=15000)
-            except Exception:
-                log.warning("Table selector not found, waiting extra time...")
+            # Navigate — use 'commit' to start early, then wait for content
+            page.goto(url, wait_until="commit", timeout=60000)
+
+            # Wait for the actual gas price table to render
+            # This handles Cloudflare interstitials — we keep waiting until
+            # the real content appears (up to 30 seconds)
+            for attempt in range(6):
                 time.sleep(5)
+                html = page.content()
+                # Check if we have actual price data in the page
+                if "Current Avg" in html or "current_avg" in html.lower():
+                    log.info("Price data found after %d seconds", (attempt + 1) * 5)
+                    break
+                log.info("Waiting for content... (attempt %d, %d bytes so far)", attempt + 1, len(html))
+            else:
+                log.warning("Price data not found after 30s, using whatever we have")
 
             html = page.content()
             browser.close()
 
             log.info("Headless browser returned %d bytes", len(html))
-            if len(html) > 5000:
+            if "Current Avg" in html:
                 return html
-            log.warning("Page content too short, may have been blocked")
+            log.warning("Page content doesn't contain expected price data")
     except ImportError:
         log.warning("Playwright not installed")
     except Exception as e:
