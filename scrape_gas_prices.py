@@ -66,53 +66,51 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def fetch_page(url: str) -> str:
-    """Fetch the AAA gas prices page HTML using a headless browser or requests fallback."""
+    """Fetch the AAA gas prices page HTML using a headless browser."""
     import time
 
-    # Try 1: Playwright headless browser (bypasses Cloudflare)
+    # Use Playwright headless browser (bypasses Cloudflare)
     try:
         from playwright.sync_api import sync_playwright
         log.info("Fetching %s via headless browser", url)
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+            )
             context = browser.new_context(
                 user_agent=(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/131.0.0.0 Safari/537.36"
-                )
+                ),
+                viewport={"width": 1920, "height": 1080},
+                java_script_enabled=True,
             )
             page = context.new_page()
-            page.goto(url, wait_until="networkidle", timeout=30000)
-            time.sleep(2)  # Let any JS/Cloudflare challenge finish
+
+            # Navigate and wait for content to load
+            page.goto(url, wait_until="domcontentloaded", timeout=45000)
+            # Wait for the price table to appear
+            try:
+                page.wait_for_selector("table", timeout=15000)
+            except Exception:
+                log.warning("Table selector not found, waiting extra time...")
+                time.sleep(5)
+
             html = page.content()
             browser.close()
-            if len(html) > 5000:  # Sanity check we got real content
-                return html
-            log.warning("Headless browser returned short page (%d bytes), trying requests", len(html))
-    except ImportError:
-        log.info("Playwright not installed, trying requests directly")
-    except Exception as e:
-        log.warning("Headless browser failed: %s, trying requests", e)
 
-    # Try 2: Standard requests with session/cookies
-    for attempt in range(3):
-        log.info("Fetching %s via requests (attempt %d)", url, attempt + 1)
-        try:
-            session = requests.Session()
-            if attempt > 0:
-                time.sleep(2 * attempt)
-            session.get("https://gasprices.aaa.com/", headers=HEADERS, timeout=15)
-            time.sleep(1)
-            resp = session.get(url, headers=HEADERS, timeout=30)
-            resp.raise_for_status()
-            return resp.text
-        except requests.exceptions.HTTPError as e:
-            if e.response is not None and e.response.status_code == 403 and attempt < 2:
-                log.warning("Got 403, retrying after delay...")
-                continue
-            raise
-    raise RuntimeError("Failed to fetch page after all attempts")
+            log.info("Headless browser returned %d bytes", len(html))
+            if len(html) > 5000:
+                return html
+            log.warning("Page content too short, may have been blocked")
+    except ImportError:
+        log.warning("Playwright not installed")
+    except Exception as e:
+        log.warning("Headless browser failed: %s", e)
+
+    raise RuntimeError("Failed to fetch AAA page — site may be blocking automated access")
 
 
 def parse_price(text: str) -> float | None:
@@ -229,59 +227,64 @@ def main():
     )
     args = parser.parse_args()
 
+    aaa_success = False
     try:
         data = scrape_gas_prices()
+        aaa_success = True
     except Exception:
-        log.exception("Failed to scrape gas prices")
-        sys.exit(1)
+        log.exception("Failed to scrape AAA gas prices — will still update EIA data")
+        data = None
 
     # Ensure output directory exists
     out_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(out_dir, exist_ok=True)
 
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-    log.info("Wrote gas prices to %s", args.output)
+    if aaa_success and data:
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        log.info("Wrote gas prices to %s", args.output)
+    else:
+        log.warning("Skipping AAA JSON write — using previous data")
 
     # ── Append to rolling history ──
-    history_path = os.path.join(out_dir, "gas_prices_history.json")
-    today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
+    if aaa_success and data:
+        history_path = os.path.join(out_dir, "gas_prices_history.json")
+        today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
 
-    # Load existing history or start fresh
-    history = {}
-    if os.path.exists(history_path):
-        try:
-            with open(history_path, "r", encoding="utf-8") as f:
-                history = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            log.warning("Could not read history file, starting fresh.")
-            history = {}
+        # Load existing history or start fresh
+        history = {}
+        if os.path.exists(history_path):
+            try:
+                with open(history_path, "r", encoding="utf-8") as f:
+                    history = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                log.warning("Could not read history file, starting fresh.")
+                history = {}
 
-    # Build today's entry: statewide + each metro, current_avg only
-    entry = {}
-    sw = data.get("statewide", {}).get("current_avg", {})
-    if sw:
-        entry["statewide"] = sw
+        # Build today's entry: statewide + each metro, current_avg only
+        entry = {}
+        sw = data.get("statewide", {}).get("current_avg", {})
+        if sw:
+            entry["statewide"] = sw
 
-    for metro_name, metro_data in data.get("metros", {}).items():
-        current = metro_data.get("current_avg", {})
-        if current:
-            entry[metro_name] = current
+        for metro_name, metro_data in data.get("metros", {}).items():
+            current = metro_data.get("current_avg", {})
+            if current:
+                entry[metro_name] = current
 
-    if entry:
-        history[today_key] = entry
+        if entry:
+            history[today_key] = entry
 
-    # Trim to last 400 days to keep file size manageable
-    if len(history) > 400:
-        sorted_keys = sorted(history.keys(), key=lambda k: k)
-        for old_key in sorted_keys[: len(history) - 400]:
-            del history[old_key]
+        # Trim to last 400 days to keep file size manageable
+        if len(history) > 400:
+            sorted_keys = sorted(history.keys(), key=lambda k: k)
+            for old_key in sorted_keys[: len(history) - 400]:
+                del history[old_key]
 
-    with open(history_path, "w", encoding="utf-8") as f:
-        json.dump(history, f, separators=(",", ":"), ensure_ascii=False)
+        with open(history_path, "w", encoding="utf-8") as f:
+            json.dump(history, f, separators=(",", ":"), ensure_ascii=False)
 
-    log.info("Updated history (%d days) at %s", len(history), history_path)
+        log.info("Updated history (%d days) at %s", len(history), history_path)
 
     # ── Fetch EIA weekly statewide data ──
     eia_path = os.path.join(out_dir, "eia_weekly.json")
