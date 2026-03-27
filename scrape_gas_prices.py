@@ -75,26 +75,31 @@ def get_proxy_url():
 
 
 def fetch_page(url: str) -> str:
-    """Fetch the AAA gas prices page HTML via residential proxy."""
+    """Fetch the AAA gas prices page HTML via residential proxy with Chrome TLS fingerprint."""
     proxy_url = get_proxy_url()
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
 
-    if proxy_url:
-        log.info("Fetching %s via residential proxy", url)
-        proxies = {"http": proxy_url, "https": proxy_url}
-        resp = requests.get(url, headers=HEADERS, proxies=proxies, timeout=30)
-        resp.raise_for_status()
-        if "Current Avg" in resp.text:
-            log.info("Proxy fetch succeeded (%d bytes)", len(resp.text))
+    # Method 1: curl_cffi with Chrome impersonation + residential proxy
+    # This combines residential IP (bypasses IP blocking) with Chrome TLS fingerprint (bypasses Cloudflare)
+    try:
+        from curl_cffi import requests as cffi_requests
+        log.info("Fetching %s via curl_cffi + residential proxy", url)
+        resp = cffi_requests.get(url, impersonate="chrome131", proxies=proxies, timeout=30)
+        if resp.status_code == 200 and "Current Avg" in resp.text:
+            log.info("curl_cffi + proxy succeeded (%d bytes)", len(resp.text))
             return resp.text
-        log.warning("Proxy returned %d bytes but no price data — may be a challenge page", len(resp.text))
-    else:
-        log.info("No proxy configured, fetching %s directly", url)
+        log.warning("curl_cffi + proxy: status %d, has price data: %s", resp.status_code, "Current Avg" in resp.text)
+    except ImportError:
+        log.warning("curl_cffi not installed, falling back to requests")
+    except Exception as e:
+        log.warning("curl_cffi + proxy failed: %s", e)
 
-    # Fallback: direct request (works from residential IPs / local machines)
-    resp = requests.get(url, headers=HEADERS, timeout=30)
+    # Method 2: Plain requests with proxy (may fail due to TLS fingerprint)
+    log.info("Fetching %s via requests + proxy", url)
+    resp = requests.get(url, headers=HEADERS, proxies=proxies, timeout=30)
     resp.raise_for_status()
     if "Current Avg" in resp.text:
-        log.info("Direct fetch succeeded (%d bytes)", len(resp.text))
+        log.info("requests + proxy succeeded (%d bytes)", len(resp.text))
         return resp.text
 
     raise RuntimeError("Failed to fetch AAA page")
@@ -108,17 +113,28 @@ def fetch_state_averages() -> dict:
     proxy_url = get_proxy_url()
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
 
+    html = None
+    # Try curl_cffi first
     try:
-        resp = requests.get(state_url, headers=HEADERS, proxies=proxies, timeout=30)
-        resp.raise_for_status()
-        html = resp.text
+        from curl_cffi import requests as cffi_requests
+        resp = cffi_requests.get(state_url, impersonate="chrome131", proxies=proxies, timeout=30)
+        if resp.status_code == 200 and "Wisconsin" in resp.text:
+            html = resp.text
+            log.info("State averages via curl_cffi + proxy succeeded")
+    except ImportError:
+        pass
     except Exception as e:
-        log.warning("Could not fetch state averages page: %s", e)
-        return {}
+        log.warning("curl_cffi state averages failed: %s", e)
 
-    if "Wisconsin" not in html:
-        log.warning("State averages page doesn't contain Wisconsin data")
-        return {}
+    # Fallback to requests
+    if not html:
+        try:
+            resp = requests.get(state_url, headers=HEADERS, proxies=proxies, timeout=30)
+            resp.raise_for_status()
+            if "Wisconsin" in resp.text:
+                html = resp.text
+        except Exception as e:
+            log.warning("requests state averages failed: %s", e)
 
     soup = BeautifulSoup(html, "html.parser")
     for row in soup.find_all("tr"):
