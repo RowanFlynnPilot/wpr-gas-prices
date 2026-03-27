@@ -33,10 +33,21 @@ HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        "Chrome/131.0.0.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 # Metros of particular interest to central Wisconsin readers
@@ -55,11 +66,27 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def fetch_page(url: str) -> str:
-    """Fetch the AAA gas prices page HTML."""
-    log.info("Fetching %s", url)
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    return resp.text
+    """Fetch the AAA gas prices page HTML with retries."""
+    import time
+
+    for attempt in range(3):
+        log.info("Fetching %s (attempt %d)", url, attempt + 1)
+        try:
+            session = requests.Session()
+            # First hit the homepage to get cookies
+            if attempt > 0:
+                time.sleep(2 * attempt)  # Back off on retries
+            session.get("https://gasprices.aaa.com/", headers=HEADERS, timeout=15)
+            time.sleep(1)
+            resp = session.get(url, headers=HEADERS, timeout=30)
+            resp.raise_for_status()
+            return resp.text
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 403 and attempt < 2:
+                log.warning("Got 403, retrying after delay...")
+                continue
+            raise
+    raise RuntimeError("Failed to fetch page after 3 attempts")
 
 
 def parse_price(text: str) -> float | None:
