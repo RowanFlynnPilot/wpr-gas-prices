@@ -65,64 +65,39 @@ log = logging.getLogger(__name__)
 # Scraper helpers
 # ---------------------------------------------------------------------------
 
+def get_proxy_url():
+    """Build proxy URL from environment variables."""
+    user = os.environ.get("WEBSHARE_PROXY_USER", "")
+    pwd = os.environ.get("WEBSHARE_PROXY_PASS", "")
+    if user and pwd:
+        return f"http://{user}:{pwd}@p.webshare.io:80"
+    return None
+
+
 def fetch_page(url: str) -> str:
-    """Fetch the AAA gas prices page HTML, trying multiple methods."""
-    import time
+    """Fetch the AAA gas prices page HTML via residential proxy."""
+    proxy_url = get_proxy_url()
 
-    # Method 1: curl_cffi (impersonates Chrome TLS fingerprint — best Cloudflare bypass)
-    try:
-        from curl_cffi import requests as cffi_requests
-        log.info("Fetching %s via curl_cffi (Chrome impersonation)", url)
-        resp = cffi_requests.get(url, impersonate="chrome131", timeout=30)
-        if resp.status_code == 200 and "Current Avg" in resp.text:
-            log.info("curl_cffi succeeded (%d bytes)", len(resp.text))
+    if proxy_url:
+        log.info("Fetching %s via residential proxy", url)
+        proxies = {"http": proxy_url, "https": proxy_url}
+        resp = requests.get(url, headers=HEADERS, proxies=proxies, timeout=30)
+        resp.raise_for_status()
+        if "Current Avg" in resp.text:
+            log.info("Proxy fetch succeeded (%d bytes)", len(resp.text))
             return resp.text
-        log.warning("curl_cffi got status %d or no price data", resp.status_code)
-    except ImportError:
-        log.info("curl_cffi not installed, skipping")
-    except Exception as e:
-        log.warning("curl_cffi failed: %s", e)
+        log.warning("Proxy returned %d bytes but no price data — may be a challenge page", len(resp.text))
+    else:
+        log.info("No proxy configured, fetching %s directly", url)
 
-    # Method 2: Playwright headless browser
-    try:
-        from playwright.sync_api import sync_playwright
-        log.info("Fetching %s via headless browser", url)
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
-            )
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                viewport={"width": 1920, "height": 1080},
-            )
-            page = context.new_page()
-            page.goto(url, wait_until="commit", timeout=60000)
-            for attempt in range(6):
-                time.sleep(5)
-                html = page.content()
-                if "Current Avg" in html:
-                    log.info("Playwright succeeded after %ds (%d bytes)", (attempt+1)*5, len(html))
-                    browser.close()
-                    return html
-            browser.close()
-            log.warning("Playwright: price data not found after 30s")
-    except ImportError:
-        log.info("Playwright not installed, skipping")
-    except Exception as e:
-        log.warning("Playwright failed: %s", e)
+    # Fallback: direct request (works from residential IPs / local machines)
+    resp = requests.get(url, headers=HEADERS, timeout=30)
+    resp.raise_for_status()
+    if "Current Avg" in resp.text:
+        log.info("Direct fetch succeeded (%d bytes)", len(resp.text))
+        return resp.text
 
-    # Method 3: Plain requests (unlikely to work if others failed, but try)
-    try:
-        log.info("Fetching %s via plain requests", url)
-        resp = requests.get(url, headers=HEADERS, timeout=30)
-        if resp.status_code == 200 and "Current Avg" in resp.text:
-            return resp.text
-        log.warning("Plain requests got status %d", resp.status_code)
-    except Exception as e:
-        log.warning("Plain requests failed: %s", e)
-
-    raise RuntimeError("All fetch methods failed for AAA page")
+    raise RuntimeError("Failed to fetch AAA page")
 
 
 def fetch_state_averages() -> dict:
@@ -130,49 +105,19 @@ def fetch_state_averages() -> dict:
     log.info("Attempting fallback: AAA state averages page...")
     state_url = "https://gasprices.aaa.com/state-gas-price-averages/"
 
-    html = None
+    proxy_url = get_proxy_url()
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
 
-    # Try curl_cffi first
     try:
-        from curl_cffi import requests as cffi_requests
-        resp = cffi_requests.get(state_url, impersonate="chrome131", timeout=30)
-        if resp.status_code == 200 and "Wisconsin" in resp.text:
-            html = resp.text
-            log.info("State averages via curl_cffi succeeded")
-    except ImportError:
-        pass
+        resp = requests.get(state_url, headers=HEADERS, proxies=proxies, timeout=30)
+        resp.raise_for_status()
+        html = resp.text
     except Exception as e:
-        log.warning("curl_cffi state averages failed: %s", e)
+        log.warning("Could not fetch state averages page: %s", e)
+        return {}
 
-    # Try Playwright if curl_cffi didn't work
-    if not html:
-        try:
-            import time
-            from playwright.sync_api import sync_playwright
-            with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
-                )
-                context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                    viewport={"width": 1920, "height": 1080},
-                )
-                page = context.new_page()
-                page.goto(state_url, wait_until="commit", timeout=60000)
-                for attempt in range(6):
-                    time.sleep(5)
-                    content = page.content()
-                    if "Wisconsin" in content:
-                        html = content
-                        log.info("State averages via Playwright after %ds", (attempt+1)*5)
-                        break
-                browser.close()
-        except Exception as e:
-            log.warning("Playwright state averages failed: %s", e)
-
-    if not html:
-        log.warning("Could not fetch state averages page")
+    if "Wisconsin" not in html:
+        log.warning("State averages page doesn't contain Wisconsin data")
         return {}
 
     soup = BeautifulSoup(html, "html.parser")
