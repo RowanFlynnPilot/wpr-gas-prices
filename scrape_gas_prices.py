@@ -66,130 +66,149 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def fetch_page(url: str) -> str:
-    """Fetch the AAA gas prices page HTML using a headless browser."""
+    """Fetch the AAA gas prices page HTML, trying multiple methods."""
     import time
 
+    # Method 1: curl_cffi (impersonates Chrome TLS fingerprint — best Cloudflare bypass)
+    try:
+        from curl_cffi import requests as cffi_requests
+        log.info("Fetching %s via curl_cffi (Chrome impersonation)", url)
+        resp = cffi_requests.get(url, impersonate="chrome131", timeout=30)
+        if resp.status_code == 200 and "Current Avg" in resp.text:
+            log.info("curl_cffi succeeded (%d bytes)", len(resp.text))
+            return resp.text
+        log.warning("curl_cffi got status %d or no price data", resp.status_code)
+    except ImportError:
+        log.info("curl_cffi not installed, skipping")
+    except Exception as e:
+        log.warning("curl_cffi failed: %s", e)
+
+    # Method 2: Playwright headless browser
     try:
         from playwright.sync_api import sync_playwright
         log.info("Fetching %s via headless browser", url)
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-blink-features=AutomationControlled",
-                    "--disable-dev-shm-usage",
-                ],
+                args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
             )
             context = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36"
-                ),
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                 viewport={"width": 1920, "height": 1080},
-                java_script_enabled=True,
             )
             page = context.new_page()
             page.goto(url, wait_until="commit", timeout=60000)
-
             for attempt in range(6):
                 time.sleep(5)
                 html = page.content()
                 if "Current Avg" in html:
-                    log.info("Price data found after %d seconds", (attempt + 1) * 5)
+                    log.info("Playwright succeeded after %ds (%d bytes)", (attempt+1)*5, len(html))
                     browser.close()
                     return html
-                log.info("Waiting for content... (attempt %d, %d bytes)", attempt + 1, len(html))
-
-            log.warning("Price data not found after 30s")
             browser.close()
+            log.warning("Playwright: price data not found after 30s")
     except ImportError:
-        log.warning("Playwright not installed")
+        log.info("Playwright not installed, skipping")
     except Exception as e:
-        log.warning("Headless browser failed: %s", e)
+        log.warning("Playwright failed: %s", e)
 
-    raise RuntimeError("Failed to fetch AAA page")
+    # Method 3: Plain requests (unlikely to work if others failed, but try)
+    try:
+        log.info("Fetching %s via plain requests", url)
+        resp = requests.get(url, headers=HEADERS, timeout=30)
+        if resp.status_code == 200 and "Current Avg" in resp.text:
+            return resp.text
+        log.warning("Plain requests got status %d", resp.status_code)
+    except Exception as e:
+        log.warning("Plain requests failed: %s", e)
+
+    raise RuntimeError("All fetch methods failed for AAA page")
 
 
 def fetch_state_averages() -> dict:
-    """Fallback: scrape the AAA state averages page for WI statewide data only."""
-    import time
+    """Fallback: scrape the AAA state averages page for WI data only."""
     log.info("Attempting fallback: AAA state averages page...")
+    state_url = "https://gasprices.aaa.com/state-gas-price-averages/"
 
+    html = None
+
+    # Try curl_cffi first
     try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
-            )
-            context = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36"
-                ),
-                viewport={"width": 1920, "height": 1080},
-            )
-            page = context.new_page()
-            page.goto("https://gasprices.aaa.com/state-gas-price-averages/", wait_until="commit", timeout=60000)
-
-            html = None
-            for attempt in range(6):
-                time.sleep(5)
-                content = page.content()
-                if "Wisconsin" in content:
-                    html = content
-                    log.info("State averages page loaded after %d seconds", (attempt + 1) * 5)
-                    break
-                log.info("Waiting for state averages... (attempt %d)", attempt + 1)
-
-            browser.close()
-
-            if not html:
-                log.warning("State averages page didn't load")
-                return {}
-
-            soup = BeautifulSoup(html, "html.parser")
-            # Find the Wisconsin row in the state averages table
-            for row in soup.find_all("tr"):
-                cells = row.find_all("td")
-                if not cells:
-                    continue
-                # First cell contains the state name/link
-                state_text = cells[0].get_text(strip=True)
-                if "Wisconsin" in state_text and len(cells) >= 5:
-                    regular = parse_price(cells[1].get_text(strip=True))
-                    midgrade = parse_price(cells[2].get_text(strip=True))
-                    premium = parse_price(cells[3].get_text(strip=True))
-                    diesel = parse_price(cells[4].get_text(strip=True))
-
-                    today = datetime.now(timezone.utc).strftime("%m/%d/%y")
-                    result = {
-                        "source": "AAA Gas Prices",
-                        "source_url": AAA_URL,
-                        "state": "Wisconsin",
-                        "price_date": today,
-                        "scraped_at": datetime.now(timezone.utc).isoformat(),
-                        "statewide": {
-                            "current_avg": {
-                                "regular": regular,
-                                "mid_grade": midgrade,
-                                "premium": premium,
-                                "diesel": diesel,
-                            },
-                        },
-                        "metros": {},
-                        "priority_metros": PRIORITY_METROS,
-                    }
-                    log.info("Fallback got WI prices: regular=%s", regular)
-                    return result
-
-            log.warning("Wisconsin row not found in state averages table")
+        from curl_cffi import requests as cffi_requests
+        resp = cffi_requests.get(state_url, impersonate="chrome131", timeout=30)
+        if resp.status_code == 200 and "Wisconsin" in resp.text:
+            html = resp.text
+            log.info("State averages via curl_cffi succeeded")
+    except ImportError:
+        pass
     except Exception as e:
-        log.warning("State averages fallback failed: %s", e)
+        log.warning("curl_cffi state averages failed: %s", e)
 
+    # Try Playwright if curl_cffi didn't work
+    if not html:
+        try:
+            import time
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
+                )
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    viewport={"width": 1920, "height": 1080},
+                )
+                page = context.new_page()
+                page.goto(state_url, wait_until="commit", timeout=60000)
+                for attempt in range(6):
+                    time.sleep(5)
+                    content = page.content()
+                    if "Wisconsin" in content:
+                        html = content
+                        log.info("State averages via Playwright after %ds", (attempt+1)*5)
+                        break
+                browser.close()
+        except Exception as e:
+            log.warning("Playwright state averages failed: %s", e)
+
+    if not html:
+        log.warning("Could not fetch state averages page")
+        return {}
+
+    soup = BeautifulSoup(html, "html.parser")
+    for row in soup.find_all("tr"):
+        cells = row.find_all("td")
+        if not cells:
+            continue
+        state_text = cells[0].get_text(strip=True)
+        if "Wisconsin" in state_text and len(cells) >= 5:
+            regular = parse_price(cells[1].get_text(strip=True))
+            midgrade = parse_price(cells[2].get_text(strip=True))
+            premium = parse_price(cells[3].get_text(strip=True))
+            diesel = parse_price(cells[4].get_text(strip=True))
+
+            today = datetime.now(timezone.utc).strftime("%m/%d/%y")
+            result = {
+                "source": "AAA Gas Prices",
+                "source_url": AAA_URL,
+                "state": "Wisconsin",
+                "price_date": today,
+                "scraped_at": datetime.now(timezone.utc).isoformat(),
+                "statewide": {
+                    "current_avg": {
+                        "regular": regular,
+                        "mid_grade": midgrade,
+                        "premium": premium,
+                        "diesel": diesel,
+                    },
+                },
+                "metros": {},
+                "priority_metros": PRIORITY_METROS,
+            }
+            log.info("Fallback got WI prices: regular=%s mid=%s premium=%s diesel=%s", regular, midgrade, premium, diesel)
+            return result
+
+    log.warning("Wisconsin row not found in state averages table")
     return {}
 
 
