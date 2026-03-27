@@ -24,14 +24,13 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          playwright install chromium
-          playwright install-deps chromium
+        run: pip install -r requirements.txt
 
       - name: Run scraper
         env:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+          WEBSHARE_PROXY_USER: ${{ secrets.WEBSHARE_PROXY_USER }}
+          WEBSHARE_PROXY_PASS: ${{ secrets.WEBSHARE_PROXY_PASS }}
         run: python scrape_gas_prices.py --output docs/gas_prices.json
 
       - name: Commit and push updated data
