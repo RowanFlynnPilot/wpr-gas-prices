@@ -66,16 +66,42 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def fetch_page(url: str) -> str:
-    """Fetch the AAA gas prices page HTML with retries."""
+    """Fetch the AAA gas prices page HTML using a headless browser or requests fallback."""
     import time
 
+    # Try 1: Playwright headless browser (bypasses Cloudflare)
+    try:
+        from playwright.sync_api import sync_playwright
+        log.info("Fetching %s via headless browser", url)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                )
+            )
+            page = context.new_page()
+            page.goto(url, wait_until="networkidle", timeout=30000)
+            time.sleep(2)  # Let any JS/Cloudflare challenge finish
+            html = page.content()
+            browser.close()
+            if len(html) > 5000:  # Sanity check we got real content
+                return html
+            log.warning("Headless browser returned short page (%d bytes), trying requests", len(html))
+    except ImportError:
+        log.info("Playwright not installed, trying requests directly")
+    except Exception as e:
+        log.warning("Headless browser failed: %s, trying requests", e)
+
+    # Try 2: Standard requests with session/cookies
     for attempt in range(3):
-        log.info("Fetching %s (attempt %d)", url, attempt + 1)
+        log.info("Fetching %s via requests (attempt %d)", url, attempt + 1)
         try:
             session = requests.Session()
-            # First hit the homepage to get cookies
             if attempt > 0:
-                time.sleep(2 * attempt)  # Back off on retries
+                time.sleep(2 * attempt)
             session.get("https://gasprices.aaa.com/", headers=HEADERS, timeout=15)
             time.sleep(1)
             resp = session.get(url, headers=HEADERS, timeout=30)
@@ -86,7 +112,7 @@ def fetch_page(url: str) -> str:
                 log.warning("Got 403, retrying after delay...")
                 continue
             raise
-    raise RuntimeError("Failed to fetch page after 3 attempts")
+    raise RuntimeError("Failed to fetch page after all attempts")
 
 
 def parse_price(text: str) -> float | None:
