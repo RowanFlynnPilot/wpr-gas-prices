@@ -118,19 +118,33 @@ def scrape_city(page, city_name, city_url):
         time.sleep(3)
 
     city_data = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
+    prev_prices = None
 
-    # Always explicitly switch to each fuel type (including Regular)
-    # This avoids stale data from the previous city's fuel selection
     for fuel_value, fuel_key in FUEL_TYPES.items():
-        switch_fuel_type(page, fuel_value)
-        time.sleep(5)
+        # Switch fuel type and verify it took
+        for retry in range(3):
+            switch_fuel_type(page, fuel_value)
+            time.sleep(2)
+            actual = page.evaluate("document.querySelector('#fuelType')?.value")
+            if str(actual) == str(fuel_value):
+                break
+            log.info("    %s %s: switch retry %d (got value=%s)", city_name, fuel_key, retry + 1, actual)
 
+        # Wait for prices to update — poll until they change from previous read
+        time.sleep(3)
         prices = get_prices_from_page(page)
 
-        # Retry once if no prices found (page might still be updating)
+        # If prices look the same as previous fuel type, wait more
+        if prev_prices and prices and fuel_value != "1":
+            if prices[:3] == prev_prices[:3]:
+                log.info("    %s %s: prices unchanged, waiting longer...", city_name, fuel_key)
+                time.sleep(4)
+                prices = get_prices_from_page(page)
+
+        # Retry once if no prices found
         if not prices:
             log.info("    %s %s: no prices on first try, retrying...", city_name, fuel_key)
-            time.sleep(3)
+            time.sleep(4)
             prices = get_prices_from_page(page)
 
         if prices:
@@ -140,6 +154,7 @@ def scrape_city(page, city_name, city_url):
             city_data["station_count"][fuel_key] = len(prices)
             log.info("    %s %s: %d stations, avg=$%.3f",
                      city_name, fuel_key, len(prices), city_data["current_avg"][fuel_key])
+            prev_prices = prices
         else:
             log.warning("    %s %s: NO PRICES FOUND", city_name, fuel_key)
 
