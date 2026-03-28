@@ -148,6 +148,65 @@ def scrape_city(page, city_name, city_url):
     return city_data if city_data["current_avg"] else None
 
 
+def scrape_fuel_insights(page):
+    """Scrape statewide historical comparisons from GasBuddy Fuel Insights."""
+    log.info("  Scraping Fuel Insights for Wisconsin historical data...")
+
+    # Block geolocation to prevent popup
+    page.add_init_script("""
+        navigator.geolocation.getCurrentPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); };
+        navigator.geolocation.watchPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); return 0; };
+    """)
+
+    try:
+        page.goto("https://fuelinsights.gasbuddy.com/Home/US/Wisconsin",
+                  wait_until="domcontentloaded", timeout=30000)
+        time.sleep(6)
+    except Exception as e:
+        log.warning("  Fuel Insights page load failed: %s", e)
+        return {}
+
+    text = page.inner_text("body")
+    if "Yesterday" not in text:
+        log.warning("  Fuel Insights: no comparison data found")
+        return {}
+
+    result = {}
+
+    # Parse: "from Yesterday's Avg* of $X.XXX"
+    yest_match = re.search(r"Yesterday's Avg\*?\s+of\s+\$([\d.]+)", text)
+    if yest_match:
+        result["yesterday_avg"] = {"regular": float(yest_match.group(1))}
+
+    # Parse: "from Last Week's Avg* of $X.XXX"
+    week_match = re.search(r"Last Week's Avg\*?\s+of\s+\$([\d.]+)", text)
+    if week_match:
+        result["week_ago_avg"] = {"regular": float(week_match.group(1))}
+
+    # Parse: "from Last Month's Avg* of $X.XXX"
+    month_match = re.search(r"Last Month's Avg\*?\s+of\s+\$([\d.]+)", text)
+    if month_match:
+        result["month_ago_avg"] = {"regular": float(month_match.group(1))}
+
+    # Parse: "from Last Year's Avg* of $X.XXX"
+    year_match = re.search(r"Last Year's Avg\*?\s+of\s+\$([\d.]+)", text)
+    if year_match:
+        result["year_ago_avg"] = {"regular": float(year_match.group(1))}
+
+    # Parse the live ticking average
+    live_match = re.search(r"\$([\d.]+)\s*/gal", text)
+    if live_match:
+        result["gasbuddy_live_avg"] = {"regular": float(live_match.group(1))}
+
+    log.info("  Fuel Insights: yest=$%s, week=$%s, month=$%s, year=$%s",
+             result.get("yesterday_avg", {}).get("regular", "—"),
+             result.get("week_ago_avg", {}).get("regular", "—"),
+             result.get("month_ago_avg", {}).get("regular", "—"),
+             result.get("year_ago_avg", {}).get("regular", "—"))
+
+    return result
+
+
 def scrape_gasbuddy():
     """Scrape all Wisconsin cities from GasBuddy using Playwright."""
     from playwright.sync_api import sync_playwright
@@ -156,6 +215,7 @@ def scrape_gasbuddy():
     log.info("Scraping GasBuddy for %d Wisconsin cities (all fuel types)...", len(CITIES))
 
     metros = {}
+    insights = {}
 
     with sync_playwright() as p:
         launch_args = {
@@ -177,6 +237,10 @@ def scrape_gasbuddy():
         )
         page = context.new_page()
 
+        # Scrape fuel insights first (historical comparisons)
+        insights = scrape_fuel_insights(page)
+
+        # Then scrape each city
         for city_name, city_url in CITIES.items():
             data = scrape_city(page, city_name, city_url)
             if data:
@@ -198,6 +262,11 @@ def scrape_gasbuddy():
             statewide["current_avg"][fuel_key] = round(statistics.mean(all_avgs), 3)
             statewide["low"][fuel_key] = round(min(all_lows), 3)
             statewide["high"][fuel_key] = round(max(all_highs), 3)
+
+    # Merge in historical comparisons from Fuel Insights (Regular only)
+    for period in ["yesterday_avg", "week_ago_avg", "month_ago_avg", "year_ago_avg", "gasbuddy_live_avg"]:
+        if period in insights:
+            statewide[period] = insights[period]
 
     reg = statewide["current_avg"].get("regular")
     log.info("Statewide avg: reg=$%s (%d cities)",
