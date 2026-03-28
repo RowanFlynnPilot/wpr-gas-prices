@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """
-Wisconsin Gas Price Scraper for Wausau Pilot & Review
-=====================================================
-Scrapes AAA gas price data for Wisconsin and saves it as a JSON file
-that the frontend widget reads. Run daily via cron.
-
-Usage:
-    python scrape_gas_prices.py [--output /path/to/gas_prices.json]
-
-Cron example (runs daily at 7:00 AM):
-    0 7 * * * /usr/bin/python3 /opt/gas-widget/scrape_gas_prices.py --output /var/www/html/data/gas_prices.json
+WPR Gas Price Scraper — GasBuddy + EIA Edition
+================================================
+Scrapes all fuel types from GasBuddy for Wisconsin cities using
+Playwright + Webshare residential proxy, plus EIA weekly trend data.
+Fully automated via GitHub Actions.
 """
 
 import argparse
@@ -17,414 +12,311 @@ import json
 import logging
 import os
 import re
+import statistics
 import sys
+import time
 from datetime import datetime, timezone
 
 import requests
-from bs4 import BeautifulSoup
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-AAA_URL = "https://gasprices.aaa.com/?state=WI"
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-    "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1",
+CITIES = {
+    "Wausau": "https://www.gasbuddy.com/gasprices/wisconsin/wausau",
+    "Eau Claire": "https://www.gasbuddy.com/gasprices/wisconsin/eau-claire",
+    "Green Bay": "https://www.gasbuddy.com/gasprices/wisconsin/green-bay",
+    "Appleton": "https://www.gasbuddy.com/gasprices/wisconsin/appleton",
+    "Madison": "https://www.gasbuddy.com/gasprices/wisconsin/madison",
+    "Milwaukee": "https://www.gasbuddy.com/gasprices/wisconsin/milwaukee",
+    "La Crosse": "https://www.gasbuddy.com/gasprices/wisconsin/la-crosse",
+    "Fond du Lac": "https://www.gasbuddy.com/gasprices/wisconsin/fond-du-lac",
+    "Janesville": "https://www.gasbuddy.com/gasprices/wisconsin/janesville",
+    "Kenosha": "https://www.gasbuddy.com/gasprices/wisconsin/kenosha",
+    "Oshkosh": "https://www.gasbuddy.com/gasprices/wisconsin/oshkosh",
+    "Racine": "https://www.gasbuddy.com/gasprices/wisconsin/racine",
+    "Sheboygan": "https://www.gasbuddy.com/gasprices/wisconsin/sheboygan",
+    "Superior": "https://www.gasbuddy.com/gasprices/wisconsin/superior",
+    "Waukesha": "https://www.gasbuddy.com/gasprices/wisconsin/waukesha",
 }
 
-# Metros of particular interest to central Wisconsin readers
-PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee-Waukesha"]
+FUEL_TYPES = {
+    "1": "regular",
+    "2": "mid_grade",
+    "3": "premium",
+    "4": "diesel",
+}
 
+PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee"]
 DEFAULT_OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "gas_prices.json")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Scraper helpers
+# Proxy
 # ---------------------------------------------------------------------------
 
-def get_proxy_url():
-    """Build proxy URL from environment variables."""
+def get_proxy_config():
     user = os.environ.get("WEBSHARE_PROXY_USER", "")
     pwd = os.environ.get("WEBSHARE_PROXY_PASS", "")
     if user and pwd:
-        return f"http://{user}:{pwd}@p.webshare.io:80"
+        return {"server": "http://p.webshare.io:80", "username": user, "password": pwd}
     return None
 
+# ---------------------------------------------------------------------------
+# GasBuddy scraper (Playwright)
+# ---------------------------------------------------------------------------
 
-def fetch_page(url: str) -> str:
-    """Fetch the AAA gas prices page HTML via residential proxy with Chrome TLS fingerprint."""
-    proxy_url = get_proxy_url()
-    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
-
-    # Method 1: curl_cffi with Chrome impersonation + residential proxy
-    # This combines residential IP (bypasses IP blocking) with Chrome TLS fingerprint (bypasses Cloudflare)
-    try:
-        from curl_cffi import requests as cffi_requests
-        log.info("Fetching %s via curl_cffi + residential proxy", url)
-        resp = cffi_requests.get(url, impersonate="chrome131", proxies=proxies, timeout=30)
-        if resp.status_code == 200 and "Current Avg" in resp.text:
-            log.info("curl_cffi + proxy succeeded (%d bytes)", len(resp.text))
-            return resp.text
-        log.warning("curl_cffi + proxy: status %d, has price data: %s", resp.status_code, "Current Avg" in resp.text)
-    except ImportError:
-        log.warning("curl_cffi not installed, falling back to requests")
-    except Exception as e:
-        log.warning("curl_cffi + proxy failed: %s", e)
-
-    # Method 2: Plain requests with proxy (may fail due to TLS fingerprint)
-    log.info("Fetching %s via requests + proxy", url)
-    resp = requests.get(url, headers=HEADERS, proxies=proxies, timeout=30)
-    resp.raise_for_status()
-    if "Current Avg" in resp.text:
-        log.info("requests + proxy succeeded (%d bytes)", len(resp.text))
-        return resp.text
-
-    raise RuntimeError("Failed to fetch AAA page")
-
-
-def fetch_state_averages() -> dict:
-    """Fallback: scrape the AAA state averages page for WI data only."""
-    log.info("Attempting fallback: AAA state averages page...")
-    state_url = "https://gasprices.aaa.com/state-gas-price-averages/"
-
-    proxy_url = get_proxy_url()
-    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
-
-    html = None
-    # Try curl_cffi first
-    try:
-        from curl_cffi import requests as cffi_requests
-        resp = cffi_requests.get(state_url, impersonate="chrome131", proxies=proxies, timeout=30)
-        if resp.status_code == 200 and "Wisconsin" in resp.text:
-            html = resp.text
-            log.info("State averages via curl_cffi + proxy succeeded")
-    except ImportError:
-        pass
-    except Exception as e:
-        log.warning("curl_cffi state averages failed: %s", e)
-
-    # Fallback to requests
-    if not html:
+def get_prices_from_page(page):
+    """Extract visible station prices from the current page state."""
+    prices = []
+    elements = page.query_selector_all('[class*="StationDisplayPrice-module__price"]')
+    for el in elements:
         try:
-            resp = requests.get(state_url, headers=HEADERS, proxies=proxies, timeout=30)
-            resp.raise_for_status()
-            if "Wisconsin" in resp.text:
-                html = resp.text
-        except Exception as e:
-            log.warning("requests state averages failed: %s", e)
-
-    soup = BeautifulSoup(html, "html.parser")
-    for row in soup.find_all("tr"):
-        cells = row.find_all("td")
-        if not cells:
-            continue
-        state_text = cells[0].get_text(strip=True)
-        if "Wisconsin" in state_text and len(cells) >= 5:
-            regular = parse_price(cells[1].get_text(strip=True))
-            midgrade = parse_price(cells[2].get_text(strip=True))
-            premium = parse_price(cells[3].get_text(strip=True))
-            diesel = parse_price(cells[4].get_text(strip=True))
-
-            today = datetime.now(timezone.utc).strftime("%m/%d/%y")
-            result = {
-                "source": "AAA Gas Prices",
-                "source_url": AAA_URL,
-                "state": "Wisconsin",
-                "price_date": today,
-                "scraped_at": datetime.now(timezone.utc).isoformat(),
-                "statewide": {
-                    "current_avg": {
-                        "regular": regular,
-                        "mid_grade": midgrade,
-                        "premium": premium,
-                        "diesel": diesel,
-                    },
-                },
-                "metros": {},
-                "priority_metros": PRIORITY_METROS,
-            }
-            log.info("Fallback got WI prices: regular=%s mid=%s premium=%s diesel=%s", regular, midgrade, premium, diesel)
-            return result
-
-    log.warning("Wisconsin row not found in state averages table")
-    return {}
+            text = el.inner_text()
+            match = re.search(r'\$?([\d]+\.[\d]+)', text)
+            if match:
+                price = float(match.group(1))
+                if 1.0 < price < 10.0:
+                    prices.append(price)
+        except Exception:
+            pass
+    return prices
 
 
-def parse_price(text: str) -> float | None:
-    """Extract a numeric price from text like '$2.445'."""
-    match = re.search(r"\$?([\d]+\.[\d]+)", text.strip())
-    if match:
-        return float(match.group(1))
-    return None
+def switch_fuel_type(page, fuel_value):
+    """Switch the fuel type dropdown via JavaScript injection."""
+    page.evaluate(f"""
+        (() => {{
+            const select = document.querySelector('#fuelType');
+            if (!select) return;
+            const setter = Object.getOwnPropertyDescriptor(
+                window.HTMLSelectElement.prototype, 'value'
+            ).set;
+            setter.call(select, '{fuel_value}');
+            select.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            select.dispatchEvent(new Event('change', {{ bubbles: true }}));
+        }})()
+    """)
 
 
-def parse_price_table(table) -> dict:
-    """Parse a standard AAA price comparison table into a dict."""
-    rows = table.find_all("tr")
-    data = {}
-    for row in rows:
-        cells = row.find_all(["th", "td"])
-        if len(cells) < 2:
-            continue
-        label = cells[0].get_text(strip=True)
-        if not label or label in ("", "Regular", "Mid-Grade", "Mid", "Premium", "Diesel"):
-            continue
-        prices = {}
-        fuel_types = ["regular", "mid_grade", "premium", "diesel"]
-        for i, fuel in enumerate(fuel_types):
-            cell_idx = i + 1
-            if cell_idx < len(cells):
-                price = parse_price(cells[cell_idx].get_text(strip=True))
-                if price is not None:
-                    prices[fuel] = price
+def scrape_city(page, city_name, city_url):
+    """Navigate to a city page and scrape all fuel types."""
+    log.info("  %s: loading...", city_name)
+    try:
+        page.goto(city_url, wait_until="domcontentloaded", timeout=30000)
+    except Exception as e:
+        log.warning("  %s: page load failed — %s", city_name, e)
+        return None
+
+    # Wait for initial prices
+    try:
+        page.wait_for_selector('[class*="StationDisplayPrice"]', timeout=15000)
+    except Exception:
+        time.sleep(3)
+
+    city_data = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
+
+    for fuel_value, fuel_key in FUEL_TYPES.items():
+        if fuel_value != "1":
+            switch_fuel_type(page, fuel_value)
+            time.sleep(4)
+
+        prices = get_prices_from_page(page)
         if prices:
-            # Normalize label
-            key = label.lower().replace(" ", "_").replace(".", "")
-            data[key] = prices
-    return data
+            city_data["current_avg"][fuel_key] = round(statistics.mean(prices), 3)
+            city_data["low"][fuel_key] = round(min(prices), 3)
+            city_data["high"][fuel_key] = round(max(prices), 3)
+            city_data["station_count"][fuel_key] = len(prices)
+
+    # Log summary
+    reg = city_data["current_avg"].get("regular")
+    prem = city_data["current_avg"].get("premium")
+    diesel = city_data["current_avg"].get("diesel")
+    log.info("  %s: reg=$%s, prem=$%s, diesel=$%s",
+             city_name,
+             f"{reg:.3f}" if reg else "—",
+             f"{prem:.3f}" if prem else "—",
+             f"{diesel:.3f}" if diesel else "—")
+
+    return city_data if city_data["current_avg"] else None
 
 
-def parse_date_from_page(soup) -> str:
-    """Try to extract the 'Price as of' date from the page."""
-    text = soup.get_text()
-    match = re.search(r"Price as of\s+(\d{1,2}/\d{1,2}/\d{2,4})", text)
-    if match:
-        return match.group(1)
-    return datetime.now(timezone.utc).strftime("%m/%d/%y")
+def scrape_gasbuddy():
+    """Scrape all Wisconsin cities from GasBuddy using Playwright."""
+    from playwright.sync_api import sync_playwright
 
+    proxy_config = get_proxy_config()
+    log.info("Scraping GasBuddy for %d Wisconsin cities (all fuel types)...", len(CITIES))
 
-# ---------------------------------------------------------------------------
-# Main scrape logic
-# ---------------------------------------------------------------------------
-
-def scrape_gas_prices() -> dict:
-    """Scrape AAA Wisconsin gas prices and return structured data."""
-    html = fetch_page(AAA_URL)
-    soup = BeautifulSoup(html, "html.parser")
-
-    price_date = parse_date_from_page(soup)
-
-    # --- State-wide averages ---
-    # The first large table is the statewide average
-    tables = soup.find_all("table")
-    statewide = {}
-    if tables:
-        statewide = parse_price_table(tables[0])
-
-    # --- Metro averages ---
-    # Each metro is inside a section with an <h3> header
     metros = {}
-    metro_headers = soup.find_all("h3")
-    for header in metro_headers:
-        metro_name = header.get_text(strip=True)
-        if not metro_name:
-            continue
-        # Find the next table after this header
-        table = header.find_next("table")
-        if table:
-            metro_data = parse_price_table(table)
-            if metro_data:
-                metros[metro_name] = metro_data
 
-    # --- Build output ---
-    result = {
-        "source": "AAA Gas Prices",
-        "source_url": AAA_URL,
+    with sync_playwright() as p:
+        launch_args = {
+            "headless": True,
+            "args": ["--no-sandbox", "--disable-blink-features=AutomationControlled",
+                     "--disable-dev-shm-usage"],
+        }
+        if proxy_config:
+            launch_args["proxy"] = proxy_config
+
+        browser = p.chromium.launch(**launch_args)
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1280, "height": 900},
+        )
+        page = context.new_page()
+
+        for city_name, city_url in CITIES.items():
+            data = scrape_city(page, city_name, city_url)
+            if data:
+                metros[city_name] = data
+            time.sleep(1)
+
+        browser.close()
+
+    # Compute statewide averages across all cities
+    statewide = {"current_avg": {}, "low": {}, "high": {}}
+    for fuel_key in ["regular", "mid_grade", "premium", "diesel"]:
+        all_avgs = [m["current_avg"][fuel_key] for m in metros.values()
+                    if fuel_key in m.get("current_avg", {})]
+        all_lows = [m["low"][fuel_key] for m in metros.values()
+                    if fuel_key in m.get("low", {})]
+        all_highs = [m["high"][fuel_key] for m in metros.values()
+                     if fuel_key in m.get("high", {})]
+        if all_avgs:
+            statewide["current_avg"][fuel_key] = round(statistics.mean(all_avgs), 3)
+            statewide["low"][fuel_key] = round(min(all_lows), 3)
+            statewide["high"][fuel_key] = round(max(all_highs), 3)
+
+    reg = statewide["current_avg"].get("regular")
+    log.info("Statewide avg: reg=$%s (%d cities)",
+             f"{reg:.3f}" if reg else "—", len(metros))
+
+    today = datetime.now(timezone.utc).strftime("%m/%d/%y")
+    return {
+        "source": "GasBuddy",
+        "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
         "state": "Wisconsin",
-        "price_date": price_date,
+        "price_date": today,
         "scraped_at": datetime.now(timezone.utc).isoformat(),
         "statewide": statewide,
         "metros": metros,
         "priority_metros": PRIORITY_METROS,
     }
 
-    # Quick validation
-    if not statewide:
-        log.warning("No statewide data found — page structure may have changed.")
-    if not metros:
-        log.warning("No metro data found — page structure may have changed.")
+# ---------------------------------------------------------------------------
+# EIA trend data
+# ---------------------------------------------------------------------------
 
-    log.info(
-        "Scraped: statewide rows=%d, metros=%d, date=%s",
-        len(statewide), len(metros), price_date,
-    )
-    return result
+def fetch_eia_data(out_dir):
+    eia_path = os.path.join(out_dir, "eia_weekly.json")
+    api_key = os.environ.get("EIA_API_KEY", "")
+    if not api_key:
+        log.warning("EIA_API_KEY not set, skipping.")
+        return
 
+    log.info("Fetching EIA weekly data (Midwest/PADD 2)...")
+    products = {"regular": "EPMR", "mid_grade": "EPMM", "premium": "EPMP", "diesel": "EPD2D"}
+    base = "https://api.eia.gov/v2/petroleum/pri/gnd/data/"
+    result = {}
+
+    for fuel, code in products.items():
+        try:
+            url = (f"{base}?api_key={api_key}&frequency=weekly&data[0]=value"
+                   f"&facets[duoarea][]=R20&facets[product][]={code}"
+                   f"&sort[0][column]=period&sort[0][direction]=asc&length=5000")
+            resp = requests.get(url, timeout=30)
+            resp.raise_for_status()
+            entries = []
+            for row in resp.json().get("response", {}).get("data", []):
+                val = row.get("value")
+                if val is not None:
+                    try:
+                        entries.append({"date": row["period"], "price": float(val)})
+                    except (ValueError, KeyError):
+                        pass
+            entries.sort(key=lambda e: e["date"])
+            result[fuel] = entries
+            log.info("  EIA %s: %d data points", fuel, len(entries))
+        except Exception:
+            log.exception("  EIA fetch failed for %s", fuel)
+
+    if result:
+        with open(eia_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, separators=(",", ":"), ensure_ascii=False)
+        log.info("Wrote EIA data to %s", eia_path)
 
 # ---------------------------------------------------------------------------
-# Entry point
+# History
+# ---------------------------------------------------------------------------
+
+def update_history(data, out_dir):
+    history_path = os.path.join(out_dir, "gas_prices_history.json")
+    today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
+    history = {}
+    if os.path.exists(history_path):
+        try:
+            with open(history_path, "r", encoding="utf-8") as f:
+                history = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            history = {}
+
+    entry = {}
+    sw = data.get("statewide", {}).get("current_avg", {})
+    if sw:
+        entry["statewide"] = sw
+    for name, md in data.get("metros", {}).items():
+        c = md.get("current_avg", {})
+        if c:
+            entry[name] = c
+    if entry:
+        history[today_key] = entry
+
+    if len(history) > 400:
+        for k in sorted(history.keys())[: len(history) - 400]:
+            del history[k]
+
+    with open(history_path, "w", encoding="utf-8") as f:
+        json.dump(history, f, separators=(",", ":"), ensure_ascii=False)
+    log.info("Updated history (%d days)", len(history))
+
+# ---------------------------------------------------------------------------
+# Main
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Scrape Wisconsin gas prices from AAA")
-    parser.add_argument(
-        "--output", "-o",
-        default=DEFAULT_OUTPUT,
-        help="Path to write JSON output (default: docs/gas_prices.json)",
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-
-    aaa_success = False
-    try:
-        data = scrape_gas_prices()
-        # Check if we actually got data
-        if data.get("statewide") and len(data["statewide"]) > 0:
-            aaa_success = True
-        else:
-            log.warning("Main scrape returned no data, trying state averages fallback...")
-            data = fetch_state_averages()
-            if data.get("statewide"):
-                aaa_success = True
-    except Exception:
-        log.exception("Failed to scrape AAA detail page, trying state averages fallback...")
-        try:
-            data = fetch_state_averages()
-            if data.get("statewide"):
-                aaa_success = True
-        except Exception:
-            log.exception("State averages fallback also failed")
-            data = None
-
-    # Ensure output directory exists
     out_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(out_dir, exist_ok=True)
 
-    if aaa_success and data:
-        with open(args.output, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        log.info("Wrote gas prices to %s", args.output)
-    else:
-        log.warning("Skipping AAA JSON write — using previous data")
+    gb_success = False
+    try:
+        data = scrape_gasbuddy()
+        if data.get("statewide", {}).get("current_avg"):
+            gb_success = True
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            log.info("Wrote gas prices to %s", args.output)
+            update_history(data, out_dir)
+        else:
+            log.warning("No statewide data from GasBuddy")
+    except Exception:
+        log.exception("GasBuddy scrape failed — will still update EIA data")
 
-    # ── Append to rolling history ──
-    if aaa_success and data:
-        history_path = os.path.join(out_dir, "gas_prices_history.json")
-        today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
+    fetch_eia_data(out_dir)
 
-        # Load existing history or start fresh
-        history = {}
-        if os.path.exists(history_path):
-            try:
-                with open(history_path, "r", encoding="utf-8") as f:
-                    history = json.load(f)
-            except (json.JSONDecodeError, OSError):
-                log.warning("Could not read history file, starting fresh.")
-                history = {}
-
-        # Build today's entry: statewide + each metro, current_avg only
-        entry = {}
-        sw = data.get("statewide", {}).get("current_avg", {})
-        if sw:
-            entry["statewide"] = sw
-
-        for metro_name, metro_data in data.get("metros", {}).items():
-            current = metro_data.get("current_avg", {})
-            if current:
-                entry[metro_name] = current
-
-        if entry:
-            history[today_key] = entry
-
-        # Trim to last 400 days to keep file size manageable
-        if len(history) > 400:
-            sorted_keys = sorted(history.keys(), key=lambda k: k)
-            for old_key in sorted_keys[: len(history) - 400]:
-                del history[old_key]
-
-        with open(history_path, "w", encoding="utf-8") as f:
-            json.dump(history, f, separators=(",", ":"), ensure_ascii=False)
-
-        log.info("Updated history (%d days) at %s", len(history), history_path)
-
-    # ── Fetch EIA weekly statewide data ──
-    eia_path = os.path.join(out_dir, "eia_weekly.json")
-    eia_api_key = os.environ.get("EIA_API_KEY", "")
-
-    if eia_api_key:
-        log.info("Fetching EIA weekly data (Midwest/PADD 2)...")
-
-        # Wisconsin doesn't have its own EIA weekly retail series.
-        # We use Midwest (PADD 2, code R20) which includes Wisconsin.
-        eia_duoarea = "R20"
-
-        eia_products = {
-            "regular": "EPMR",
-            "mid_grade": "EPMM",
-            "premium": "EPMP",
-            "diesel": "EPD2D",
-        }
-        eia_base = "https://api.eia.gov/v2/petroleum/pri/gnd/data/"
-        eia_result = {}
-
-        for fuel, product_code in eia_products.items():
-            try:
-                url = (
-                    f"{eia_base}"
-                    f"?api_key={eia_api_key}"
-                    f"&frequency=weekly"
-                    f"&data[0]=value"
-                    f"&facets[duoarea][]={eia_duoarea}"
-                    f"&facets[product][]={product_code}"
-                    f"&sort[0][column]=period"
-                    f"&sort[0][direction]=asc"
-                    f"&length=5000"
-                )
-                resp = requests.get(url, timeout=30)
-                resp.raise_for_status()
-                eia_json = resp.json()
-
-                if "error" in eia_json:
-                    log.error("  EIA %s API error: %s", fuel, eia_json["error"])
-                    continue
-
-                entries = []
-                for row in eia_json.get("response", {}).get("data", []):
-                    val = row.get("value")
-                    if val is not None:
-                        try:
-                            entries.append({
-                                "date": row["period"],
-                                "price": float(val),
-                            })
-                        except (ValueError, KeyError):
-                            pass
-
-                entries.sort(key=lambda e: e["date"])
-                eia_result[fuel] = entries
-                log.info("  EIA %s: %d data points", fuel, len(entries))
-
-            except Exception:
-                log.exception("  EIA fetch failed for %s", fuel)
-
-        if eia_result:
-            with open(eia_path, "w", encoding="utf-8") as f:
-                json.dump(eia_result, f, separators=(",", ":"), ensure_ascii=False)
-            log.info("Wrote EIA data to %s", eia_path)
-    else:
-        log.warning("EIA_API_KEY not set, skipping EIA data fetch.")
+    if not gb_success:
+        log.warning("GasBuddy failed but EIA data was updated.")
+    log.info("Done!")
 
 
 if __name__ == "__main__":
