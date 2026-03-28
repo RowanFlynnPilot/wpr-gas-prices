@@ -111,22 +111,19 @@ def scrape_city(page, city_name, city_url):
         log.warning("  %s: page load failed — %s", city_name, e)
         return None
 
-    # Wait for initial prices
+    # Wait for initial prices to appear
     try:
         page.wait_for_selector('[class*="StationDisplayPrice"]', timeout=15000)
     except Exception:
         time.sleep(3)
 
-    # Always reset to Regular first (previous city may have left it on Diesel)
-    switch_fuel_type(page, "1")
-    time.sleep(3)
-
     city_data = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
 
+    # Always explicitly switch to each fuel type (including Regular)
+    # This avoids stale data from the previous city's fuel selection
     for fuel_value, fuel_key in FUEL_TYPES.items():
-        if fuel_value != "1":
-            switch_fuel_type(page, fuel_value)
-            time.sleep(4)
+        switch_fuel_type(page, fuel_value)
+        time.sleep(4)
 
         prices = get_prices_from_page(page)
         if prices:
