@@ -106,7 +106,7 @@ def scrape_city(page, city_name, city_url):
     """Navigate to a city page and scrape all fuel types."""
     log.info("  %s: loading...", city_name)
     try:
-        page.goto(city_url, wait_until="domcontentloaded", timeout=30000)
+        page.goto(city_url, wait_until="domcontentloaded", timeout=45000)
     except Exception as e:
         log.warning("  %s: page load failed — %s", city_name, e)
         return None
@@ -193,21 +193,43 @@ def scrape_fuel_insights(page):
 
     result = {}
 
-    yest_match = re.search(r"Yesterday's Avg\*?\s+of\s+\$([\d.]+)", text)
-    if yest_match:
-        result["yesterday_avg"] = {"regular": float(yest_match.group(1))}
+    # Log the relevant section for debugging
+    yest_idx = text.find("Yesterday")
+    if yest_idx > -1:
+        snippet = text[max(0, yest_idx-20):yest_idx+200].replace('\n', '|')
+        log.info("  Fuel Insights text around 'Yesterday': %s", snippet)
 
-    week_match = re.search(r"Last Week's Avg\*?\s+of\s+\$([\d.]+)", text)
-    if week_match:
-        result["week_ago_avg"] = {"regular": float(week_match.group(1))}
-
-    month_match = re.search(r"Last Month's Avg\*?\s+of\s+\$([\d.]+)", text)
-    if month_match:
-        result["month_ago_avg"] = {"regular": float(month_match.group(1))}
-
-    year_match = re.search(r"Last Year's Avg\*?\s+of\s+\$([\d.]+)", text)
-    if year_match:
-        result["year_ago_avg"] = {"regular": float(year_match.group(1))}
+    # Try multiple regex patterns (page format may vary)
+    # Pattern 1: "Yesterday's Avg* of $X.XXX"
+    # Pattern 2: "$X.XXX" near "Yesterday"
+    # Pattern 3: "from Yesterday's Avg*\nof $X.XXX" (newline between)
+    for label, key, patterns in [
+        ("Yesterday", "yesterday_avg", [
+            r"Yesterday'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
+            r"Yesterday'?s?\s+Avg\*?[^$]*\$([\d.]+)",
+            r"from\s+Yesterday[^$]*\$([\d.]+)",
+        ]),
+        ("Last Week", "week_ago_avg", [
+            r"Last\s+Week'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
+            r"Last\s+Week'?s?\s+Avg\*?[^$]*\$([\d.]+)",
+            r"from\s+Last\s+Week[^$]*\$([\d.]+)",
+        ]),
+        ("Last Month", "month_ago_avg", [
+            r"Last\s+Month'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
+            r"Last\s+Month'?s?\s+Avg\*?[^$]*\$([\d.]+)",
+            r"from\s+Last\s+Month[^$]*\$([\d.]+)",
+        ]),
+        ("Last Year", "year_ago_avg", [
+            r"Last\s+Year'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
+            r"Last\s+Year'?s?\s+Avg\*?[^$]*\$([\d.]+)",
+            r"from\s+Last\s+Year[^$]*\$([\d.]+)",
+        ]),
+    ]:
+        for pat in patterns:
+            match = re.search(pat, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                result[key] = {"regular": float(match.group(1))}
+                break
 
     live_match = re.search(r"\$([\d.]+)\s*/gal", text)
     if live_match:
