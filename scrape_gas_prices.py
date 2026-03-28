@@ -123,14 +123,25 @@ def scrape_city(page, city_name, city_url):
     # This avoids stale data from the previous city's fuel selection
     for fuel_value, fuel_key in FUEL_TYPES.items():
         switch_fuel_type(page, fuel_value)
-        time.sleep(4)
+        time.sleep(5)
 
         prices = get_prices_from_page(page)
+
+        # Retry once if no prices found (page might still be updating)
+        if not prices:
+            log.info("    %s %s: no prices on first try, retrying...", city_name, fuel_key)
+            time.sleep(3)
+            prices = get_prices_from_page(page)
+
         if prices:
             city_data["current_avg"][fuel_key] = round(statistics.mean(prices), 3)
             city_data["low"][fuel_key] = round(min(prices), 3)
             city_data["high"][fuel_key] = round(max(prices), 3)
             city_data["station_count"][fuel_key] = len(prices)
+            log.info("    %s %s: %d stations, avg=$%.3f",
+                     city_name, fuel_key, len(prices), city_data["current_avg"][fuel_key])
+        else:
+            log.warning("    %s %s: NO PRICES FOUND", city_name, fuel_key)
 
     # Log summary
     reg = city_data["current_avg"].get("regular")
