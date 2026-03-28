@@ -149,48 +149,55 @@ def scrape_fuel_insights(page):
     """Scrape statewide historical comparisons from GasBuddy Fuel Insights."""
     log.info("  Scraping Fuel Insights for Wisconsin historical data...")
 
-    # Block geolocation to prevent popup
-    page.add_init_script("""
-        navigator.geolocation.getCurrentPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); };
-        navigator.geolocation.watchPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); return 0; };
-    """)
-
     try:
         page.goto("https://fuelinsights.gasbuddy.com/Home/US/Wisconsin",
                   wait_until="domcontentloaded", timeout=30000)
-        time.sleep(6)
     except Exception as e:
         log.warning("  Fuel Insights page load failed: %s", e)
         return {}
 
-    text = page.inner_text("body")
-    if "Yesterday" not in text:
-        log.warning("  Fuel Insights: no comparison data found")
+    # Dismiss geolocation popup if it appears
+    try:
+        page.evaluate("""
+            navigator.geolocation.getCurrentPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); };
+            navigator.geolocation.watchPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); return 0; };
+        """)
+    except Exception:
+        pass
+
+    # Wait for the page to render — poll for "Yesterday" text
+    text = ""
+    for attempt in range(8):
+        time.sleep(3)
+        text = page.inner_text("body")
+        if "Yesterday" in text:
+            log.info("  Fuel Insights: data found after %ds", (attempt + 1) * 3)
+            break
+        log.info("  Fuel Insights: waiting... (%d bytes, attempt %d)", len(text), attempt + 1)
+    else:
+        log.warning("  Fuel Insights: no comparison data after 24s (page: %d chars)", len(text))
+        # Log first 300 chars to debug
+        log.info("  Page preview: %s", text[:300].replace('\n', ' '))
         return {}
 
     result = {}
 
-    # Parse: "from Yesterday's Avg* of $X.XXX"
     yest_match = re.search(r"Yesterday's Avg\*?\s+of\s+\$([\d.]+)", text)
     if yest_match:
         result["yesterday_avg"] = {"regular": float(yest_match.group(1))}
 
-    # Parse: "from Last Week's Avg* of $X.XXX"
     week_match = re.search(r"Last Week's Avg\*?\s+of\s+\$([\d.]+)", text)
     if week_match:
         result["week_ago_avg"] = {"regular": float(week_match.group(1))}
 
-    # Parse: "from Last Month's Avg* of $X.XXX"
     month_match = re.search(r"Last Month's Avg\*?\s+of\s+\$([\d.]+)", text)
     if month_match:
         result["month_ago_avg"] = {"regular": float(month_match.group(1))}
 
-    # Parse: "from Last Year's Avg* of $X.XXX"
     year_match = re.search(r"Last Year's Avg\*?\s+of\s+\$([\d.]+)", text)
     if year_match:
         result["year_ago_avg"] = {"regular": float(year_match.group(1))}
 
-    # Parse the live ticking average
     live_match = re.search(r"\$([\d.]+)\s*/gal", text)
     if live_match:
         result["gasbuddy_live_avg"] = {"regular": float(live_match.group(1))}
