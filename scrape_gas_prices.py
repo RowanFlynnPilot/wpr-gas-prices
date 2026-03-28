@@ -117,6 +117,10 @@ def scrape_city(page, city_name, city_url):
     except Exception:
         time.sleep(3)
 
+    # Always reset to Regular first (previous city may have left it on Diesel)
+    switch_fuel_type(page, "1")
+    time.sleep(3)
+
     city_data = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
 
     for fuel_value, fuel_key in FUEL_TYPES.items():
