@@ -330,7 +330,7 @@
       }
 
       // Middle card shows city avg if selected, otherwise state avg
-      const middleLabel = selectedCity ? `<span class="wpr-state-card-city-dot"></span>${selectedCity}` : 'State Avg';
+      const middleLabel = selectedCity ? `<span class="wpr-state-card-city-dot"></span>${selectedCity} Average` : 'State Average';
       const middleValue = selectedCity ? cityPrice : avg;
 
       let cityOptions = cityNames.map(n =>
