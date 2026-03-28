@@ -40,20 +40,27 @@
   .wpr-gas-tab.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
 
   .wpr-gas-fuel-row { display:flex; flex-wrap:wrap; gap:6px; padding:12px 14px 8px; justify-content:center; }
-  .wpr-gas-fuel-btn { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; padding:5px 16px; border-radius:100px; border:1px solid var(--rule); background:#fff; color:var(--ink-mid); cursor:pointer; transition:all 0.15s; }
-  .wpr-gas-fuel-btn:hover { border-color:var(--accent); color:var(--accent); }
-  .wpr-gas-fuel-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .wpr-gas-fuel-btn { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; padding:6px 18px; border-radius:100px; border:1.5px solid var(--rule); background:#fff; color:var(--ink-mid); cursor:pointer; transition:all 0.18s; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+  .wpr-gas-fuel-btn:hover { border-color:var(--accent); color:var(--accent); box-shadow:0 2px 6px rgba(62,132,122,0.15); transform:translateY(-1px); }
+  .wpr-gas-fuel-btn.active { background:linear-gradient(135deg, var(--accent-dark), var(--accent)); color:#fff; border-color:var(--accent-dark); box-shadow:0 2px 8px rgba(62,132,122,0.3); }
 
   .wpr-state-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:12px 14px 16px; }
   .wpr-state-card { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:14px; text-align:center; }
-  .wpr-state-card-label { font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-faint); margin-bottom:4px; }
+  .wpr-state-card-label { font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-faint); margin-bottom:4px; font-weight:700; }
   .wpr-state-card-value { font-family:'Playfair Display',Georgia,serif; font-size:24px; font-weight:700; }
-  .wpr-state-card-sub { font-size:10px; margin-top:2px; }
+  .wpr-state-card-sub { font-size:10px; margin-top:2px; color:var(--ink-light); }
   .wpr-state-range { padding:0 14px 16px; }
-  .wpr-state-range-bar { background:var(--rule-light); border-radius:10px; height:10px; position:relative; margin:8px 0 4px; }
+  .wpr-state-range-bar { background:var(--rule-light); border-radius:10px; height:12px; position:relative; margin:8px 0 4px; }
   .wpr-state-range-fill { background:linear-gradient(90deg,var(--down),var(--accent),var(--up)); border-radius:10px; height:100%; position:absolute; left:0; width:100%; }
-  .wpr-state-range-marker { position:absolute; top:-4px; width:3px; height:18px; background:var(--ink); border-radius:2px; transform:translateX(-50%); }
+  .wpr-state-range-marker { position:absolute; top:-4px; width:3px; height:20px; background:var(--ink); border-radius:2px; transform:translateX(-50%); z-index:2; }
+  .wpr-state-range-marker-city { position:absolute; top:50%; width:16px; height:16px; background:var(--accent); border:3px solid #fff; border-radius:50%; transform:translate(-50%, -50%); z-index:3; box-shadow:0 1px 4px rgba(0,0,0,0.35); }
   .wpr-state-range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); }
+  .wpr-state-city-select-wrap { padding:0 14px 14px; }
+  .wpr-state-city-select { font-family:'DM Sans',sans-serif; font-size:12px; width:100%; padding:8px 12px; border:1.5px solid var(--rule); border-radius:var(--radius); background:#fff; color:var(--ink); cursor:pointer; appearance:auto; }
+  .wpr-state-city-select:hover { border-color:var(--accent); }
+  .wpr-state-city-select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-pale); }
+  .wpr-state-city-label { font-size:10px; color:var(--ink-faint); text-align:center; margin-bottom:2px; }
+  .wpr-state-card-city-dot { display:inline-block; width:10px; height:10px; background:var(--accent); border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px var(--accent); vertical-align:middle; margin-right:4px; }
 
   .wpr-metro-list { padding:8px 14px 14px; }
   .wpr-metro-card { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--rule-light); border-radius:var(--radius); margin-bottom:6px; background:#fff; transition:all 0.12s; }
@@ -125,6 +132,7 @@
   let historyData = null;
   let activeFuel = 'regular';
   let activeTab = 'statewide';
+  let selectedCity = '';
   let usingFallback = false;
   const widget = document.getElementById('gasWidget');
 
@@ -192,6 +200,23 @@
     return null;
   }
 
+  function findExtremeCities(fuel) {
+    const metros = data?.metros || {};
+    let lowCity = null, lowPrice = Infinity;
+    let highCity = null, highPrice = -Infinity;
+    for (const [name, m] of Object.entries(metros)) {
+      const avg = m?.current_avg?.[fuel];
+      if (avg != null) {
+        if (avg < lowPrice) { lowPrice = avg; lowCity = name; }
+        if (avg > highPrice) { highPrice = avg; highCity = name; }
+      }
+    }
+    return {
+      lowCity: lowPrice < Infinity ? lowCity : null,
+      highCity: highPrice > -Infinity ? highCity : null,
+    };
+  }
+
   // ── Render ──
   function render() {
     if (!data) return;
@@ -252,6 +277,10 @@
         if (btn.dataset.range) { trendRange = parseInt(btn.dataset.range); eiaCache = {}; render(); }
       });
     });
+    const citySelect = widget.querySelector('#citySelect');
+    if (citySelect) {
+      citySelect.addEventListener('change', () => { selectedCity = citySelect.value; render(); });
+    }
   }
 
   // ── Statewide Tab ──
@@ -284,38 +313,66 @@
       const avg = sw?.current_avg?.[activeFuel];
       const low = sw?.low?.[activeFuel];
       const high = sw?.high?.[activeFuel];
+      const { lowCity, highCity } = findExtremeCities(activeFuel);
+
+      // City comparison
+      const metros = data?.metros || {};
+      const cityNames = Object.keys(metros).sort();
+      const cityPrice = selectedCity ? metros[selectedCity]?.current_avg?.[activeFuel] : null;
 
       let markerPct = 50;
       if (avg != null && low != null && high != null && high > low) {
         markerPct = ((avg - low) / (high - low)) * 100;
       }
+      let cityMarkerPct = null;
+      if (cityPrice != null && low != null && high != null && high > low) {
+        cityMarkerPct = ((cityPrice - low) / (high - low)) * 100;
+      }
+
+      // Middle card shows city avg if selected, otherwise state avg
+      const middleLabel = selectedCity ? `<span class="wpr-state-card-city-dot"></span>${selectedCity}` : 'State Avg';
+      const middleValue = selectedCity ? cityPrice : avg;
+
+      let cityOptions = cityNames.map(n =>
+        `<option value="${n}" ${selectedCity === n ? 'selected' : ''}>${n}</option>`
+      ).join('');
 
       return `
         <div class="wpr-gas-fuel-row">${fuelBtns}</div>
         <div class="wpr-state-grid">
           <div class="wpr-state-card">
-            <div class="wpr-state-card-label">State Avg</div>
-            <div class="wpr-state-card-value">${fmt(avg)}</div>
-          </div>
-          <div class="wpr-state-card">
             <div class="wpr-state-card-label">Lowest</div>
             <div class="wpr-state-card-value" style="color:var(--down)">${fmt(low)}</div>
+            ${lowCity ? `<div class="wpr-state-card-sub">${lowCity}</div>` : ''}
+          </div>
+          <div class="wpr-state-card">
+            <div class="wpr-state-card-label">${middleLabel}</div>
+            <div class="wpr-state-card-value">${fmt(middleValue)}</div>
           </div>
           <div class="wpr-state-card">
             <div class="wpr-state-card-label">Highest</div>
             <div class="wpr-state-card-value" style="color:var(--up)">${fmt(high)}</div>
+            ${highCity ? `<div class="wpr-state-card-sub">${highCity}</div>` : ''}
           </div>
         </div>
         <div class="wpr-state-range">
           <div class="wpr-state-range-bar">
             <div class="wpr-state-range-fill"></div>
             <div class="wpr-state-range-marker" style="left:${markerPct}%" title="State Average"></div>
+            ${cityMarkerPct != null ? `<div class="wpr-state-range-marker-city" style="left:${cityMarkerPct}%" title="${selectedCity}: $${cityPrice.toFixed(3)}"></div>` : ''}
           </div>
           <div class="wpr-state-range-labels">
             <span>Low ${low != null ? '$' + low.toFixed(2) : '—'}</span>
-            <span>Avg ${avg != null ? '$' + avg.toFixed(3) : '—'}</span>
+            <span>State Avg ${avg != null ? '$' + avg.toFixed(3) : '—'}</span>
             <span>High ${high != null ? '$' + high.toFixed(2) : '—'}</span>
           </div>
+        </div>
+        <div class="wpr-state-city-select-wrap">
+          <div class="wpr-state-city-label">Compare a city</div>
+          <select class="wpr-state-city-select" id="citySelect">
+            <option value="">State Average</option>
+            ${cityOptions}
+          </select>
         </div>
       `;
     }
