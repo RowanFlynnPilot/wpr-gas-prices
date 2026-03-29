@@ -316,6 +316,28 @@ def scrape_gasbuddy():
             statewide["high"][fuel_key] = round(max(all_highs), 3)
 
     # Merge in historical comparisons from Fuel Insights (Regular only)
+    # If insights were scraped, save them to cache; otherwise load from cache
+    insights_cache_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "docs", "fuel_insights_cache.json"
+    )
+
+    if insights and insights.get("yesterday_avg"):
+        # Successful scrape — save to cache
+        try:
+            with open(insights_cache_path, "w", encoding="utf-8") as f:
+                json.dump(insights, f, separators=(",", ":"), ensure_ascii=False)
+            log.info("Saved Fuel Insights to cache")
+        except Exception:
+            pass
+    elif os.path.exists(insights_cache_path):
+        # Failed scrape — load from cache
+        try:
+            with open(insights_cache_path, "r", encoding="utf-8") as f:
+                insights = json.load(f)
+            log.info("Loaded Fuel Insights from cache (previous successful scrape)")
+        except (json.JSONDecodeError, OSError):
+            pass
+
     for period in ["yesterday_avg", "week_ago_avg", "month_ago_avg", "year_ago_avg", "gasbuddy_live_avg"]:
         if period in insights:
             statewide[period] = insights[period]
