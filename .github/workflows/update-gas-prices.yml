@@ -43,6 +43,7 @@ jobs:
           git add docs/gas_prices.json || true
           git add docs/gas_prices_history.json || true
           git add docs/eia_weekly.json || true
+          git add docs/fuel_insights_cache.json || true
           if git diff --staged --quiet; then
             echo "No price changes detected, skipping commit."
           else
