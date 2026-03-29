@@ -279,24 +279,56 @@ def scrape_gasbuddy():
             launch_args["proxy"] = proxy_config
 
         browser = p.chromium.launch(**launch_args)
-        context = browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/131.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1280, "height": 900},
-        )
-        page = context.new_page()
+
+        def make_context():
+            ctx = browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                ),
+                viewport={"width": 1280, "height": 900},
+            )
+            return ctx, ctx.new_page()
+
+        context, page = make_context()
 
         # Scrape fuel insights first (historical comparisons)
         insights = scrape_fuel_insights(page)
 
-        # Then scrape each city
+        # Then scrape each city with retry logic
+        consecutive_fails = 0
         for city_name, city_url in CITIES.items():
+            # If too many consecutive failures, refresh the browser context
+            if consecutive_fails >= 2:
+                log.info("  Refreshing browser context after %d failures...", consecutive_fails)
+                try:
+                    context.close()
+                except Exception:
+                    pass
+                context, page = make_context()
+                consecutive_fails = 0
+                time.sleep(2)
+
             data = scrape_city(page, city_name, city_url)
+
+            # Retry once with a fresh page if city failed
+            if not data:
+                log.info("  Retrying %s with fresh page...", city_name)
+                try:
+                    context.close()
+                except Exception:
+                    pass
+                context, page = make_context()
+                time.sleep(2)
+                data = scrape_city(page, city_name, city_url)
+
             if data:
                 metros[city_name] = data
+                consecutive_fails = 0
+            else:
+                consecutive_fails += 1
+
             time.sleep(1)
 
         browser.close()
