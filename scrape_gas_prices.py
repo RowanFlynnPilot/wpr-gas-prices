@@ -272,21 +272,31 @@ def scrape_gasbuddy() -> dict:
     # Scrape Fuel Insights for historical comparisons
     insights = scrape_fuel_insights(session)
 
-    # Scrape all cities sequentially with paced delays.
-    # GasBuddy rate-limits datacenter IPs (GitHub Actions uses Azure).
-    # A 60s warmup + 5s between cities keeps us within the rate limit window.
+    # Scrape all cities in two batches with a mid-run pause.
+    # GasBuddy rate-limits datacenter IPs (GitHub Actions / Azure) to ~7 requests
+    # per minute. We scrape batch 1, wait 90s for the window to reset, then batch 2.
     metros: dict = {}
-    log.info("Scraping %d cities sequentially (60s warmup + 5s between)...", len(CITIES))
-    log.info("Waiting 60s for rate-limit window to reset...")
-    time.sleep(60)
-    for i, (city_name, search_term) in enumerate(CITIES.items()):
-        data = scrape_city_graphql(session, city_name, search_term, headers)
-        if data:
-            metros[city_name] = data
+    city_items = list(CITIES.items())
+    batch_size = 7
+
+    for batch_num, batch_start in enumerate(range(0, len(city_items), batch_size)):
+        batch = city_items[batch_start: batch_start + batch_size]
+        if batch_num == 0:
+            log.info("Batch 1/%d: waiting 60s for rate-limit window...",
+                     -(-len(city_items) // batch_size))
+            time.sleep(60)
         else:
-            log.warning("  %s: skipped (no usable data)", city_name)
-        if i < len(CITIES) - 1:
-            time.sleep(5)
+            log.info("Batch %d: waiting 90s for rate-limit window to reset...", batch_num + 1)
+            time.sleep(90)
+
+        for i, (city_name, search_term) in enumerate(batch):
+            data = scrape_city_graphql(session, city_name, search_term, headers)
+            if data:
+                metros[city_name] = data
+            else:
+                log.warning("  %s: skipped (no usable data)", city_name)
+            if i < len(batch) - 1:
+                time.sleep(5)
 
     # Compute statewide averages across all scraped cities
     statewide: dict = {"current_avg": {}, "low": {}, "high": {}}
