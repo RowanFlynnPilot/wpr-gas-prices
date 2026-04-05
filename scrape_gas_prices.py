@@ -272,17 +272,21 @@ def scrape_gasbuddy() -> dict:
     # Scrape Fuel Insights for historical comparisons
     insights = scrape_fuel_insights(session)
 
-    # Scrape all cities sequentially with a small inter-request delay.
-    # Sequential is necessary from cloud/datacenter IPs to avoid 429 rate limits.
+    # Scrape all cities sequentially with paced delays.
+    # GasBuddy rate-limits datacenter IPs (GitHub Actions uses Azure).
+    # A 60s warmup + 5s between cities keeps us within the rate limit window.
     metros: dict = {}
-    log.info("Scraping %d cities sequentially...", len(CITIES))
-    for city_name, search_term in CITIES.items():
+    log.info("Scraping %d cities sequentially (60s warmup + 5s between)...", len(CITIES))
+    log.info("Waiting 60s for rate-limit window to reset...")
+    time.sleep(60)
+    for i, (city_name, search_term) in enumerate(CITIES.items()):
         data = scrape_city_graphql(session, city_name, search_term, headers)
         if data:
             metros[city_name] = data
         else:
             log.warning("  %s: skipped (no usable data)", city_name)
-        time.sleep(1.5)  # Stay well within GasBuddy's rate limit
+        if i < len(CITIES) - 1:
+            time.sleep(5)
 
     # Compute statewide averages across all scraped cities
     statewide: dict = {"current_avg": {}, "low": {}, "high": {}}
