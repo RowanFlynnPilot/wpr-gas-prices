@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-WPR Gas Price Scraper — GasBuddy + EIA Edition
-================================================
-Scrapes all fuel types from GasBuddy for Wisconsin cities using
-Playwright + Webshare residential proxy, plus EIA weekly trend data.
+WPR Gas Price Scraper — GasBuddy GraphQL + EIA Edition
+=======================================================
+Fetches all fuel types from GasBuddy for Wisconsin cities via their
+GraphQL API using curl_cffi (Chrome impersonation — no proxy needed),
+plus EIA weekly trend data.
 Fully automated via GitHub Actions.
 """
 
@@ -15,6 +16,7 @@ import re
 import statistics
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 import requests
@@ -24,337 +26,271 @@ import requests
 # ---------------------------------------------------------------------------
 
 CITIES = {
-    "Wausau": "https://www.gasbuddy.com/gasprices/wisconsin/wausau",
-    "Eau Claire": "https://www.gasbuddy.com/gasprices/wisconsin/eau-claire",
-    "Green Bay": "https://www.gasbuddy.com/gasprices/wisconsin/green-bay",
-    "Appleton": "https://www.gasbuddy.com/gasprices/wisconsin/appleton",
-    "Madison": "https://www.gasbuddy.com/gasprices/wisconsin/madison",
-    "Milwaukee": "https://www.gasbuddy.com/gasprices/wisconsin/milwaukee",
-    "La Crosse": "https://www.gasbuddy.com/gasprices/wisconsin/la-crosse",
-    "Fond du Lac": "https://www.gasbuddy.com/gasprices/wisconsin/fond-du-lac",
-    "Janesville": "https://www.gasbuddy.com/gasprices/wisconsin/janesville",
-    "Kenosha": "https://www.gasbuddy.com/gasprices/wisconsin/kenosha",
-    "Oshkosh": "https://www.gasbuddy.com/gasprices/wisconsin/oshkosh",
-    "Racine": "https://www.gasbuddy.com/gasprices/wisconsin/racine",
-    "Sheboygan": "https://www.gasbuddy.com/gasprices/wisconsin/sheboygan",
-    "Superior": "https://www.gasbuddy.com/gasprices/wisconsin/superior",
-    "Waukesha": "https://www.gasbuddy.com/gasprices/wisconsin/waukesha",
+    "Wausau":      "Wausau, WI",
+    "Eau Claire":  "Eau Claire, WI",
+    "Green Bay":   "Green Bay, WI",
+    "Appleton":    "Appleton, WI",
+    "Madison":     "Madison, WI",
+    "Milwaukee":   "Milwaukee, WI",
+    "La Crosse":   "La Crosse, WI",
+    "Fond du Lac": "Fond du Lac, WI",
+    "Janesville":  "Janesville, WI",
+    "Kenosha":     "Kenosha, WI",
+    "Oshkosh":     "Oshkosh, WI",
+    "Racine":      "Racine, WI",
+    "Sheboygan":   "Sheboygan, WI",
+    "Superior":    "Superior, WI",
+    "Waukesha":    "Waukesha, WI",
 }
 
-FUEL_TYPES = {
-    "1": "regular",
-    "2": "mid_grade",
-    "3": "premium",
-    "4": "diesel",
+# GasBuddy fuelProduct values → our internal keys
+FUEL_MAP = {
+    "regular_gas":  "regular",
+    "midgrade_gas": "mid_grade",
+    "premium_gas":  "premium",
+    "diesel":       "diesel",
 }
 
 PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee"]
 DEFAULT_OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "gas_prices.json")
 
+GASBUDDY_HOME    = "https://www.gasbuddy.com/home"
+GASBUDDY_GRAPHQL = "https://www.gasbuddy.com/graphql"
+FUEL_INSIGHTS_URL = "https://fuelinsights.gasbuddy.com/Home/US/Wisconsin"
+
+# GraphQL query: stations with prices + statewide trend data
+LOCATION_QUERY = (
+    "query LocationBySearchTerm("
+    "$brandId: Int, $cursor: String, $fuel: Int, $lat: Float, "
+    "$lng: Float, $maxAge: Int, $search: String) { "
+    "locationBySearchTerm(lat: $lat, lng: $lng, search: $search) { "
+    "stations(brandId: $brandId cursor: $cursor fuel: $fuel lat: $lat "
+    "lng: $lng maxAge: $maxAge) { results { "
+    "prices { cash { price } credit { price } fuelProduct } } } "
+    "trends { areaName country today todayLow trend } } }"
+)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Proxy
+# GasBuddy GraphQL helpers
 # ---------------------------------------------------------------------------
 
-def get_proxy_config():
-    user = os.environ.get("WEBSHARE_PROXY_USER", "")
-    pwd = os.environ.get("WEBSHARE_PROXY_PASS", "")
-    if user and pwd:
-        return {"server": "http://p.webshare.io:80", "username": user, "password": pwd}
-    return None
-
-# ---------------------------------------------------------------------------
-# GasBuddy scraper (Playwright)
-# ---------------------------------------------------------------------------
-
-def get_prices_from_page(page):
-    """Extract visible station prices from the current page state."""
-    prices = []
-    elements = page.query_selector_all('[class*="StationDisplayPrice-module__price"]')
-    for el in elements:
-        try:
-            text = el.inner_text()
-            match = re.search(r'\$?([\d]+\.[\d]+)', text)
-            if match:
-                price = float(match.group(1))
-                if 1.0 < price < 10.0:
-                    prices.append(price)
-        except Exception:
-            pass
-    return prices
-
-
-def switch_fuel_type(page, fuel_value):
-    """Switch the fuel type dropdown via JavaScript injection."""
-    page.evaluate(f"""
-        (() => {{
-            const select = document.querySelector('#fuelType');
-            if (!select) return;
-            const setter = Object.getOwnPropertyDescriptor(
-                window.HTMLSelectElement.prototype, 'value'
-            ).set;
-            setter.call(select, '{fuel_value}');
-            select.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            select.dispatchEvent(new Event('change', {{ bubbles: true }}));
-        }})()
-    """)
-
-
-def scrape_city(page, city_name, city_url):
-    """Navigate to a city page and scrape all fuel types."""
-    log.info("  %s: loading...", city_name)
+def get_csrf_token(session) -> str:
+    """Fetch GasBuddy homepage and extract the CSRF token."""
     try:
-        page.goto(city_url, wait_until="domcontentloaded", timeout=45000)
+        resp = session.get(GASBUDDY_HOME, timeout=20)
+        resp.raise_for_status()
+        match = re.search(r"window\.gbcsrf\s*=\s*[\"'](.*?)[\"']", resp.text)
+        if match:
+            token = match.group(1)
+            log.info("CSRF token obtained (%.10s...)", token)
+            return token
+        log.warning("CSRF token not found in homepage HTML")
     except Exception as e:
-        log.warning("  %s: page load failed — %s", city_name, e)
+        log.warning("Failed to fetch CSRF token: %s", e)
+    return ""
+
+
+def make_graphql_headers(token: str) -> dict:
+    return {
+        "Content-Type": "application/json",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "apollo-require-preflight": "true",
+        "Origin": "https://www.gasbuddy.com",
+        "Referer": GASBUDDY_HOME,
+        "gbcsrf": token,
+    }
+
+
+def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict) -> dict | None:
+    """Query GasBuddy GraphQL for a single city and return structured price data."""
+    payload = {
+        "operationName": "LocationBySearchTerm",
+        "query": LOCATION_QUERY,
+        "variables": {"maxAge": 0, "search": search_term},
+    }
+    try:
+        resp = session.post(GASBUDDY_GRAPHQL, json=payload, headers=headers, timeout=20)
+        resp.raise_for_status()
+        body = resp.json()
+    except Exception as e:
+        log.warning("  %s: request failed — %s", city_name, e)
         return None
 
-    # Wait for initial prices to appear
     try:
-        page.wait_for_selector('[class*="StationDisplayPrice"]', timeout=15000)
-    except Exception:
-        time.sleep(3)
+        results = body["data"]["locationBySearchTerm"]["stations"]["results"]
+    except (KeyError, TypeError):
+        log.warning("  %s: unexpected response shape", city_name)
+        return None
 
-    city_data = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
-    prev_prices = None
+    if not results:
+        log.warning("  %s: no stations returned", city_name)
+        return None
 
-    for fuel_value, fuel_key in FUEL_TYPES.items():
-        # Switch fuel type and verify it took
-        for retry in range(3):
-            switch_fuel_type(page, fuel_value)
-            time.sleep(2)
-            actual = page.evaluate("document.querySelector('#fuelType')?.value")
-            if str(actual) == str(fuel_value):
-                break
-            log.info("    %s %s: switch retry %d (got value=%s)", city_name, fuel_key, retry + 1, actual)
+    # Collect prices by fuel type
+    fuel_prices: dict[str, list[float]] = {}
+    for station in results:
+        for price_node in station.get("prices", []):
+            fp = price_node.get("fuelProduct")
+            fuel_key = FUEL_MAP.get(fp)
+            if not fuel_key:
+                continue
+            raw = (price_node.get("credit") or price_node.get("cash") or {}).get("price")
+            if raw is not None:
+                try:
+                    p = float(raw)
+                    if 1.0 < p < 10.0:
+                        fuel_prices.setdefault(fuel_key, []).append(p)
+                except (ValueError, TypeError):
+                    pass
 
-        # Wait for prices to update — poll until they change from previous read
-        time.sleep(3)
-        prices = get_prices_from_page(page)
+    if not fuel_prices.get("regular"):
+        log.warning("  %s: no regular prices found", city_name)
+        return None
 
-        # If prices look the same as previous fuel type, wait more
-        if prev_prices and prices and fuel_value != "1":
-            if prices[:3] == prev_prices[:3]:
-                log.info("    %s %s: prices unchanged, waiting longer...", city_name, fuel_key)
-                time.sleep(4)
-                prices = get_prices_from_page(page)
+    city_data: dict = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
+    for fuel_key, prices in fuel_prices.items():
+        city_data["current_avg"][fuel_key] = round(statistics.mean(prices), 3)
+        city_data["low"][fuel_key]         = round(min(prices), 3)
+        city_data["high"][fuel_key]        = round(max(prices), 3)
+        city_data["station_count"][fuel_key] = len(prices)
 
-        # Retry once if no prices found
-        if not prices:
-            log.info("    %s %s: no prices on first try, retrying...", city_name, fuel_key)
-            time.sleep(4)
-            prices = get_prices_from_page(page)
-
-        if prices:
-            city_data["current_avg"][fuel_key] = round(statistics.mean(prices), 3)
-            city_data["low"][fuel_key] = round(min(prices), 3)
-            city_data["high"][fuel_key] = round(max(prices), 3)
-            city_data["station_count"][fuel_key] = len(prices)
-            log.info("    %s %s: %d stations, avg=$%.3f",
-                     city_name, fuel_key, len(prices), city_data["current_avg"][fuel_key])
-            prev_prices = prices
-        else:
-            log.warning("    %s %s: NO PRICES FOUND", city_name, fuel_key)
-
-    # Log summary
     reg = city_data["current_avg"].get("regular")
-    prem = city_data["current_avg"].get("premium")
-    diesel = city_data["current_avg"].get("diesel")
-    log.info("  %s: reg=$%s, prem=$%s, diesel=$%s",
-             city_name,
-             f"{reg:.3f}" if reg else "—",
-             f"{prem:.3f}" if prem else "—",
-             f"{diesel:.3f}" if diesel else "—")
+    log.info(
+        "  %s: reg=$%.3f, mid=$%s, prem=$%s, diesel=$%s (%d stations)",
+        city_name, reg,
+        f"{city_data['current_avg'].get('mid_grade', 0):.3f}" if city_data["current_avg"].get("mid_grade") else "—",
+        f"{city_data['current_avg'].get('premium', 0):.3f}"   if city_data["current_avg"].get("premium")   else "—",
+        f"{city_data['current_avg'].get('diesel', 0):.3f}"    if city_data["current_avg"].get("diesel")    else "—",
+        len(results),
+    )
+    return city_data
 
-    return city_data if city_data["current_avg"] else None
 
+# ---------------------------------------------------------------------------
+# Fuel Insights (historical statewide comparisons — best-effort)
+# ---------------------------------------------------------------------------
 
-def scrape_fuel_insights(page):
+def scrape_fuel_insights(session) -> dict:
     """Scrape statewide historical comparisons from GasBuddy Fuel Insights."""
     log.info("  Scraping Fuel Insights for Wisconsin historical data...")
-
     try:
-        page.goto("https://fuelinsights.gasbuddy.com/Home/US/Wisconsin",
-                  wait_until="domcontentloaded", timeout=30000)
+        resp = session.get(FUEL_INSIGHTS_URL, timeout=20)
+        text = resp.text
     except Exception as e:
-        log.warning("  Fuel Insights page load failed: %s", e)
+        log.warning("  Fuel Insights fetch failed: %s", e)
         return {}
 
-    # Dismiss geolocation popup if it appears
-    try:
-        page.evaluate("""
-            navigator.geolocation.getCurrentPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); };
-            navigator.geolocation.watchPosition = (s, e) => { if (e) e({code: 1, message: 'denied'}); return 0; };
-        """)
-    except Exception:
-        pass
-
-    # Wait for the page to render — poll for "Yesterday" text
-    text = ""
-    for attempt in range(8):
-        time.sleep(3)
-        text = page.inner_text("body")
-        if "Yesterday" in text:
-            log.info("  Fuel Insights: data found after %ds", (attempt + 1) * 3)
-            break
-        log.info("  Fuel Insights: waiting... (%d bytes, attempt %d)", len(text), attempt + 1)
-    else:
-        log.warning("  Fuel Insights: no comparison data after 24s (page: %d chars)", len(text))
-        # Log first 300 chars to debug
-        log.info("  Page preview: %s", text[:300].replace('\n', ' '))
+    if "Yesterday" not in text:
+        log.warning("  Fuel Insights: 'Yesterday' not found in response (%d chars)", len(text))
         return {}
 
     result = {}
-
-    # Log the relevant section for debugging
-    yest_idx = text.find("Yesterday")
-    if yest_idx > -1:
-        snippet = text[max(0, yest_idx-20):yest_idx+200].replace('\n', '|')
-        log.info("  Fuel Insights text around 'Yesterday': %s", snippet)
-
-    # Try multiple regex patterns (page format may vary)
-    # Pattern 1: "Yesterday's Avg* of $X.XXX"
-    # Pattern 2: "$X.XXX" near "Yesterday"
-    # Pattern 3: "from Yesterday's Avg*\nof $X.XXX" (newline between)
-    for label, key, patterns in [
-        ("Yesterday", "yesterday_avg", [
+    for key, patterns in [
+        ("yesterday_avg", [
             r"Yesterday'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
             r"Yesterday'?s?\s+Avg\*?[^$]*\$([\d.]+)",
             r"from\s+Yesterday[^$]*\$([\d.]+)",
         ]),
-        ("Last Week", "week_ago_avg", [
+        ("week_ago_avg", [
             r"Last\s+Week'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
             r"Last\s+Week'?s?\s+Avg\*?[^$]*\$([\d.]+)",
             r"from\s+Last\s+Week[^$]*\$([\d.]+)",
         ]),
-        ("Last Month", "month_ago_avg", [
+        ("month_ago_avg", [
             r"Last\s+Month'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
             r"Last\s+Month'?s?\s+Avg\*?[^$]*\$([\d.]+)",
             r"from\s+Last\s+Month[^$]*\$([\d.]+)",
         ]),
-        ("Last Year", "year_ago_avg", [
+        ("year_ago_avg", [
             r"Last\s+Year'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
             r"Last\s+Year'?s?\s+Avg\*?[^$]*\$([\d.]+)",
             r"from\s+Last\s+Year[^$]*\$([\d.]+)",
         ]),
     ]:
         for pat in patterns:
-            match = re.search(pat, text, re.IGNORECASE | re.DOTALL)
-            if match:
-                result[key] = {"regular": float(match.group(1))}
+            m = re.search(pat, text, re.IGNORECASE | re.DOTALL)
+            if m:
+                result[key] = {"regular": float(m.group(1))}
                 break
 
-    live_match = re.search(r"\$([\d.]+)\s*/gal", text)
-    if live_match:
-        result["gasbuddy_live_avg"] = {"regular": float(live_match.group(1))}
+    live = re.search(r"\$([\d.]+)\s*/gal", text)
+    if live:
+        result["gasbuddy_live_avg"] = {"regular": float(live.group(1))}
 
-    log.info("  Fuel Insights: yest=$%s, week=$%s, month=$%s, year=$%s",
-             result.get("yesterday_avg", {}).get("regular", "—"),
-             result.get("week_ago_avg", {}).get("regular", "—"),
-             result.get("month_ago_avg", {}).get("regular", "—"),
-             result.get("year_ago_avg", {}).get("regular", "—"))
-
+    log.info(
+        "  Fuel Insights: yest=$%s, week=$%s, month=$%s, year=$%s",
+        result.get("yesterday_avg", {}).get("regular", "—"),
+        result.get("week_ago_avg",  {}).get("regular", "—"),
+        result.get("month_ago_avg", {}).get("regular", "—"),
+        result.get("year_ago_avg",  {}).get("regular", "—"),
+    )
     return result
 
 
-def scrape_gasbuddy():
-    """Scrape all Wisconsin cities from GasBuddy using Playwright."""
-    from playwright.sync_api import sync_playwright
+# ---------------------------------------------------------------------------
+# Main GasBuddy scrape
+# ---------------------------------------------------------------------------
 
-    proxy_config = get_proxy_config()
-    log.info("Scraping GasBuddy for %d Wisconsin cities (all fuel types)...", len(CITIES))
+def scrape_gasbuddy() -> dict:
+    """Scrape all Wisconsin cities from GasBuddy via GraphQL (no proxy needed)."""
+    try:
+        import curl_cffi.requests as cffi_req
+    except ImportError:
+        log.error("curl_cffi is not installed. Run: pip install curl_cffi")
+        sys.exit(1)
 
-    metros = {}
-    insights = {}
+    log.info("Scraping GasBuddy GraphQL for %d Wisconsin cities...", len(CITIES))
 
-    with sync_playwright() as p:
-        launch_args = {
-            "headless": True,
-            "args": ["--no-sandbox", "--disable-blink-features=AutomationControlled",
-                     "--disable-dev-shm-usage"],
-        }
-        if proxy_config:
-            launch_args["proxy"] = proxy_config
+    # One shared session with Chrome impersonation (bypasses Cloudflare)
+    session = cffi_req.Session(impersonate="chrome")
 
-        browser = p.chromium.launch(**launch_args)
+    # Get CSRF token (required for GraphQL requests)
+    token = get_csrf_token(session)
+    if not token:
+        log.error("Could not obtain CSRF token — aborting GasBuddy scrape")
+        raise RuntimeError("No CSRF token")
 
-        def make_context():
-            ctx = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36"
-                ),
-                viewport={"width": 1280, "height": 900},
-            )
-            return ctx, ctx.new_page()
+    headers = make_graphql_headers(token)
 
-        context, page = make_context()
+    # Scrape Fuel Insights for historical comparisons
+    insights = scrape_fuel_insights(session)
 
-        # Scrape fuel insights first (historical comparisons)
-        insights = scrape_fuel_insights(page)
+    # Scrape all cities in parallel (up to 5 concurrent requests)
+    metros: dict = {}
 
-        # Then scrape each city with retry logic
-        consecutive_fails = 0
-        for city_name, city_url in CITIES.items():
-            # If too many consecutive failures, refresh the browser context
-            if consecutive_fails >= 2:
-                log.info("  Refreshing browser context after %d failures...", consecutive_fails)
-                try:
-                    context.close()
-                except Exception:
-                    pass
-                context, page = make_context()
-                consecutive_fails = 0
-                time.sleep(2)
+    def _fetch(city_name, search_term):
+        return city_name, scrape_city_graphql(session, city_name, search_term, headers)
 
-            data = scrape_city(page, city_name, city_url)
-
-            # Retry once with a fresh page if city failed
-            if not data:
-                log.info("  Retrying %s with fresh page...", city_name)
-                try:
-                    context.close()
-                except Exception:
-                    pass
-                context, page = make_context()
-                time.sleep(2)
-                data = scrape_city(page, city_name, city_url)
-
+    log.info("Scraping %d cities (parallel, max 5 workers)...", len(CITIES))
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {pool.submit(_fetch, name, term): name for name, term in CITIES.items()}
+        for future in as_completed(futures):
+            city_name, data = future.result()
             if data:
                 metros[city_name] = data
-                consecutive_fails = 0
             else:
-                consecutive_fails += 1
+                log.warning("  %s: skipped (no usable data)", city_name)
 
-            time.sleep(1)
-
-        browser.close()
-
-    # Compute statewide averages across all cities
-    statewide = {"current_avg": {}, "low": {}, "high": {}}
+    # Compute statewide averages across all scraped cities
+    statewide: dict = {"current_avg": {}, "low": {}, "high": {}}
     for fuel_key in ["regular", "mid_grade", "premium", "diesel"]:
-        all_avgs = [m["current_avg"][fuel_key] for m in metros.values()
-                    if fuel_key in m.get("current_avg", {})]
-        all_lows = [m["low"][fuel_key] for m in metros.values()
-                    if fuel_key in m.get("low", {})]
-        all_highs = [m["high"][fuel_key] for m in metros.values()
-                     if fuel_key in m.get("high", {})]
-        if all_avgs:
-            statewide["current_avg"][fuel_key] = round(statistics.mean(all_avgs), 3)
-            statewide["low"][fuel_key] = round(min(all_lows), 3)
-            statewide["high"][fuel_key] = round(max(all_highs), 3)
+        avgs  = [m["current_avg"][fuel_key] for m in metros.values() if fuel_key in m.get("current_avg", {})]
+        lows  = [m["low"][fuel_key]         for m in metros.values() if fuel_key in m.get("low", {})]
+        highs = [m["high"][fuel_key]        for m in metros.values() if fuel_key in m.get("high", {})]
+        if avgs:
+            statewide["current_avg"][fuel_key] = round(statistics.mean(avgs), 3)
+            statewide["low"][fuel_key]         = round(min(lows), 3)
+            statewide["high"][fuel_key]        = round(max(highs), 3)
 
-    # Merge in historical comparisons from Fuel Insights (Regular only)
-    # If insights were scraped, save them to cache; otherwise load from cache
+    # Merge Fuel Insights historical data (cache on success, load cache on failure)
     insights_cache_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "docs", "fuel_insights_cache.json"
     )
-
     if insights and insights.get("yesterday_avg"):
-        # Successful scrape — save to cache
         try:
             with open(insights_cache_path, "w", encoding="utf-8") as f:
                 json.dump(insights, f, separators=(",", ":"), ensure_ascii=False)
@@ -362,11 +298,10 @@ def scrape_gasbuddy():
         except Exception:
             pass
     elif os.path.exists(insights_cache_path):
-        # Failed scrape — load from cache
         try:
             with open(insights_cache_path, "r", encoding="utf-8") as f:
                 insights = json.load(f)
-            log.info("Loaded Fuel Insights from cache (previous successful scrape)")
+            log.info("Loaded Fuel Insights from cache (fallback)")
         except (json.JSONDecodeError, OSError):
             pass
 
@@ -375,26 +310,27 @@ def scrape_gasbuddy():
             statewide[period] = insights[period]
 
     reg = statewide["current_avg"].get("regular")
-    log.info("Statewide avg: reg=$%s (%d cities)",
-             f"{reg:.3f}" if reg else "—", len(metros))
+    log.info("Statewide avg: reg=$%s (%d/%d cities scraped)",
+             f"{reg:.3f}" if reg else "—", len(metros), len(CITIES))
 
     today = datetime.now(timezone.utc).strftime("%m/%d/%y")
     return {
-        "source": "GasBuddy",
-        "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
-        "state": "Wisconsin",
-        "price_date": today,
-        "scraped_at": datetime.now(timezone.utc).isoformat(),
-        "statewide": statewide,
-        "metros": metros,
+        "source":      "GasBuddy",
+        "source_url":  "https://www.gasbuddy.com/gasprices/wisconsin",
+        "state":       "Wisconsin",
+        "price_date":  today,
+        "scraped_at":  datetime.now(timezone.utc).isoformat(),
+        "statewide":   statewide,
+        "metros":      metros,
         "priority_metros": PRIORITY_METROS,
     }
+
 
 # ---------------------------------------------------------------------------
 # EIA trend data
 # ---------------------------------------------------------------------------
 
-def fetch_eia_data(out_dir):
+def fetch_eia_data(out_dir: str) -> None:
     eia_path = os.path.join(out_dir, "eia_weekly.json")
     api_key = os.environ.get("EIA_API_KEY", "")
     if not api_key:
@@ -408,9 +344,11 @@ def fetch_eia_data(out_dir):
 
     for fuel, code in products.items():
         try:
-            url = (f"{base}?api_key={api_key}&frequency=weekly&data[0]=value"
-                   f"&facets[duoarea][]=R20&facets[product][]={code}"
-                   f"&sort[0][column]=period&sort[0][direction]=asc&length=5000")
+            url = (
+                f"{base}?api_key={api_key}&frequency=weekly&data[0]=value"
+                f"&facets[duoarea][]=R20&facets[product][]={code}"
+                f"&sort[0][column]=period&sort[0][direction]=asc&length=5000"
+            )
             resp = requests.get(url, timeout=30)
             resp.raise_for_status()
             entries = []
@@ -432,11 +370,12 @@ def fetch_eia_data(out_dir):
             json.dump(result, f, separators=(",", ":"), ensure_ascii=False)
         log.info("Wrote EIA data to %s", eia_path)
 
+
 # ---------------------------------------------------------------------------
 # History
 # ---------------------------------------------------------------------------
 
-def update_history(data, out_dir):
+def update_history(data: dict, out_dir: str) -> None:
     history_path = os.path.join(out_dir, "gas_prices_history.json")
     today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
     history = {}
@@ -447,14 +386,18 @@ def update_history(data, out_dir):
         except (json.JSONDecodeError, OSError):
             history = {}
 
-    entry = {}
+    entry: dict = {}
     sw = data.get("statewide", {}).get("current_avg", {})
     if sw:
         entry["statewide"] = sw
     for name, md in data.get("metros", {}).items():
+        # Don't record stale (preserved) entries in history
+        if md.get("stale"):
+            continue
         c = md.get("current_avg", {})
         if c:
             entry[name] = c
+
     if entry:
         history[today_key] = entry
 
@@ -466,35 +409,96 @@ def update_history(data, out_dir):
         json.dump(history, f, separators=(",", ":"), ensure_ascii=False)
     log.info("Updated history (%d days)", len(history))
 
+
+# ---------------------------------------------------------------------------
+# Data preservation — merge stale cities from previous run
+# ---------------------------------------------------------------------------
+
+def recalculate_statewide(data: dict) -> None:
+    """Recompute statewide averages from all metros (fresh + preserved stale)."""
+    metros = data.get("metros", {})
+    sw = data.get("statewide", {})
+    for fuel_key in ["regular", "mid_grade", "premium", "diesel"]:
+        avgs  = [m["current_avg"][fuel_key] for m in metros.values() if fuel_key in m.get("current_avg", {})]
+        lows  = [m["low"][fuel_key]         for m in metros.values() if fuel_key in m.get("low", {})]
+        highs = [m["high"][fuel_key]        for m in metros.values() if fuel_key in m.get("high", {})]
+        if avgs:
+            sw.setdefault("current_avg", {})[fuel_key] = round(statistics.mean(avgs), 3)
+            sw.setdefault("low", {})[fuel_key]         = round(min(lows), 3)
+            sw.setdefault("high", {})[fuel_key]        = round(max(highs), 3)
+    data["statewide"] = sw
+
+
+def merge_with_previous(data: dict, previous_data: dict) -> None:
+    """Preserve city data from the previous run for any cities that failed today."""
+    if not previous_data or "metros" not in previous_data:
+        return
+
+    prev_metros = previous_data["metros"]
+    prev_date   = previous_data.get("price_date", "unknown")
+    fresh       = data.get("metros", {})
+    preserved   = 0
+
+    for city_name, city_data in prev_metros.items():
+        if city_name not in fresh:
+            stale = dict(city_data)
+            stale["stale"]      = True
+            stale["stale_from"] = prev_date
+            fresh[city_name]    = stale
+            preserved += 1
+
+    if preserved:
+        log.info("Preserved %d stale cities from previous data (%s)", preserved, prev_date)
+        recalculate_statewide(data)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT)
     args = parser.parse_args()
     out_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(out_dir, exist_ok=True)
 
+    # Load previous data for stale-city preservation
+    previous_data: dict = {}
+    if os.path.exists(args.output):
+        try:
+            with open(args.output, "r", encoding="utf-8") as f:
+                previous_data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            previous_data = {}
+
     gb_success = False
     try:
         data = scrape_gasbuddy()
-        if data.get("statewide", {}).get("current_avg"):
+
+        fresh_count = len(data.get("metros", {}))
+        merge_with_previous(data, previous_data)
+        total_count = len(data.get("metros", {}))
+
+        log.info("Cities: %d fresh, %d stale preserved, %d total",
+                 fresh_count, total_count - fresh_count, total_count)
+
+        if fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
             gb_success = True
             with open(args.output, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             log.info("Wrote gas prices to %s", args.output)
             update_history(data, out_dir)
         else:
-            log.warning("No statewide data from GasBuddy")
+            log.warning("No fresh city data — preserving previous file unchanged")
+
     except Exception:
         log.exception("GasBuddy scrape failed — will still update EIA data")
 
     fetch_eia_data(out_dir)
 
     if not gb_success:
-        log.warning("GasBuddy failed but EIA data was updated.")
+        log.warning("GasBuddy scrape failed but EIA data was updated.")
     log.info("Done!")
 
 
