@@ -16,7 +16,6 @@ import re
 import statistics
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 import requests
@@ -106,18 +105,32 @@ def make_graphql_headers(token: str) -> dict:
 
 
 def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict) -> dict | None:
-    """Query GasBuddy GraphQL for a single city and return structured price data."""
+    """Query GasBuddy GraphQL for a single city and return structured price data.
+
+    Retries once on HTTP 429 (rate limit) with a backoff delay.
+    """
     payload = {
         "operationName": "LocationBySearchTerm",
         "query": LOCATION_QUERY,
         "variables": {"maxAge": 0, "search": search_term},
     }
-    try:
-        resp = session.post(GASBUDDY_GRAPHQL, json=payload, headers=headers, timeout=20)
-        resp.raise_for_status()
-        body = resp.json()
-    except Exception as e:
-        log.warning("  %s: request failed — %s", city_name, e)
+    for attempt in range(3):
+        try:
+            resp = session.post(GASBUDDY_GRAPHQL, json=payload, headers=headers, timeout=20)
+            if resp.status_code == 429:
+                wait = 8 * (attempt + 1)
+                log.warning("  %s: 429 rate limited — waiting %ds (attempt %d/3)",
+                            city_name, wait, attempt + 1)
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            body = resp.json()
+            break
+        except Exception as e:
+            log.warning("  %s: request failed — %s", city_name, e)
+            return None
+    else:
+        log.warning("  %s: all attempts rate-limited", city_name)
         return None
 
     try:
@@ -259,21 +272,17 @@ def scrape_gasbuddy() -> dict:
     # Scrape Fuel Insights for historical comparisons
     insights = scrape_fuel_insights(session)
 
-    # Scrape all cities in parallel (up to 5 concurrent requests)
+    # Scrape all cities sequentially with a small inter-request delay.
+    # Sequential is necessary from cloud/datacenter IPs to avoid 429 rate limits.
     metros: dict = {}
-
-    def _fetch(city_name, search_term):
-        return city_name, scrape_city_graphql(session, city_name, search_term, headers)
-
-    log.info("Scraping %d cities (parallel, max 5 workers)...", len(CITIES))
-    with ThreadPoolExecutor(max_workers=5) as pool:
-        futures = {pool.submit(_fetch, name, term): name for name, term in CITIES.items()}
-        for future in as_completed(futures):
-            city_name, data = future.result()
-            if data:
-                metros[city_name] = data
-            else:
-                log.warning("  %s: skipped (no usable data)", city_name)
+    log.info("Scraping %d cities sequentially...", len(CITIES))
+    for city_name, search_term in CITIES.items():
+        data = scrape_city_graphql(session, city_name, search_term, headers)
+        if data:
+            metros[city_name] = data
+        else:
+            log.warning("  %s: skipped (no usable data)", city_name)
+        time.sleep(1.5)  # Stay well within GasBuddy's rate limit
 
     # Compute statewide averages across all scraped cities
     statewide: dict = {"current_avg": {}, "low": {}, "high": {}}
