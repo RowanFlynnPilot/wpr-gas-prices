@@ -2,25 +2,25 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "04/05/26",
-  "scraped_at": "2026-04-05T17:37:47.866992+00:00",
+  "price_date": "04/06/26",
+  "scraped_at": "2026-04-06T13:12:39.667792+00:00",
   "statewide": {
     "current_avg": {
-      "regular": 3.71,
-      "mid_grade": 4.201,
-      "premium": 4.768,
-      "diesel": 4.851
+      "regular": 3.716,
+      "mid_grade": 4.202,
+      "premium": 4.787,
+      "diesel": 4.88
     },
     "low": {
       "regular": 3.3,
-      "mid_grade": 3.51,
+      "mid_grade": 3.46,
       "premium": 4.0,
       "diesel": 4.19
     },
     "high": {
       "regular": 3.99,
       "mid_grade": 4.99,
-      "premium": 5.28,
+      "premium": 5.59,
       "diesel": 5.29
     },
     "yesterday_avg": {
@@ -40,30 +40,186 @@
     }
   },
   "metros": {
+    "Wausau": {
+      "current_avg": {
+        "regular": 3.827,
+        "premium": 5.026,
+        "diesel": 4.984,
+        "mid_grade": 4.425
+      },
+      "low": {
+        "regular": 3.8,
+        "premium": 4.6,
+        "diesel": 4.84,
+        "mid_grade": 4.26
+      },
+      "high": {
+        "regular": 3.86,
+        "premium": 5.59,
+        "diesel": 5.06,
+        "mid_grade": 4.59
+      },
+      "station_count": {
+        "regular": 20,
+        "premium": 14,
+        "diesel": 13,
+        "mid_grade": 2
+      }
+    },
     "Eau Claire": {
       "current_avg": {
-        "regular": 3.418,
-        "mid_grade": 3.788,
-        "premium": 4.389,
-        "diesel": 4.854
+        "regular": 3.427,
+        "mid_grade": 3.809,
+        "premium": 4.444,
+        "diesel": 4.884
       },
       "low": {
         "regular": 3.3,
-        "mid_grade": 3.69,
+        "mid_grade": 3.7,
         "premium": 4.0,
         "diesel": 4.59
       },
       "high": {
         "regular": 3.49,
-        "mid_grade": 3.94,
-        "premium": 4.74,
+        "mid_grade": 3.99,
+        "premium": 4.69,
         "diesel": 4.99
       },
       "station_count": {
         "regular": 20,
-        "mid_grade": 8,
+        "mid_grade": 7,
+        "premium": 15,
+        "diesel": 16
+      }
+    },
+    "Green Bay": {
+      "current_avg": {
+        "regular": 3.792,
+        "premium": 4.889,
+        "mid_grade": 4.344,
+        "diesel": 4.855
+      },
+      "low": {
+        "regular": 3.57,
+        "premium": 4.47,
+        "mid_grade": 4.24,
+        "diesel": 4.49
+      },
+      "high": {
+        "regular": 3.87,
+        "premium": 5.09,
+        "mid_grade": 4.49,
+        "diesel": 4.99
+      },
+      "station_count": {
+        "regular": 20,
+        "premium": 17,
+        "mid_grade": 14,
+        "diesel": 12
+      }
+    },
+    "Appleton": {
+      "current_avg": {
+        "regular": 3.782,
+        "premium": 4.815,
+        "diesel": 4.74,
+        "mid_grade": 4.209
+      },
+      "low": {
+        "regular": 3.57,
+        "premium": 4.37,
+        "diesel": 4.39,
+        "mid_grade": 4.07
+      },
+      "high": {
+        "regular": 3.89,
+        "premium": 5.09,
+        "diesel": 4.99,
+        "mid_grade": 4.39
+      },
+      "station_count": {
+        "regular": 20,
+        "premium": 17,
+        "diesel": 13,
+        "mid_grade": 13
+      }
+    },
+    "Madison": {
+      "current_avg": {
+        "regular": 3.701,
+        "premium": 4.746,
+        "mid_grade": 4.234,
+        "diesel": 4.935
+      },
+      "low": {
+        "regular": 3.59,
+        "premium": 4.47,
+        "mid_grade": 4.09,
+        "diesel": 4.59
+      },
+      "high": {
+        "regular": 3.79,
+        "premium": 5.09,
+        "mid_grade": 4.49,
+        "diesel": 4.99
+      },
+      "station_count": {
+        "regular": 19,
         "premium": 14,
-        "diesel": 14
+        "mid_grade": 9,
+        "diesel": 11
+      }
+    },
+    "Milwaukee": {
+      "current_avg": {
+        "regular": 3.645,
+        "premium": 4.586,
+        "diesel": 4.64,
+        "mid_grade": 4.192
+      },
+      "low": {
+        "regular": 3.39,
+        "premium": 4.09,
+        "diesel": 4.19,
+        "mid_grade": 3.89
+      },
+      "high": {
+        "regular": 3.79,
+        "premium": 5.08,
+        "diesel": 4.99,
+        "mid_grade": 4.48
+      },
+      "station_count": {
+        "regular": 20,
+        "premium": 18,
+        "diesel": 8,
+        "mid_grade": 13
+      }
+    },
+    "La Crosse": {
+      "current_avg": {
+        "regular": 3.493,
+        "premium": 4.674,
+        "diesel": 4.938,
+        "mid_grade": 3.788
+      },
+      "low": {
+        "regular": 3.44,
+        "premium": 4.44,
+        "diesel": 4.73,
+        "mid_grade": 3.46
+      },
+      "high": {
+        "regular": 3.54,
+        "premium": 4.74,
+        "diesel": 4.99,
+        "mid_grade": 4.04
+      },
+      "station_count": {
+        "regular": 20,
+        "premium": 16,
+        "diesel": 16,
+        "mid_grade": 5
       }
     },
     "Kenosha": {
@@ -202,174 +358,6 @@
         "mid_grade": 5,
         "premium": 11,
         "diesel": 9
-      },
-      "stale": true,
-      "stale_from": "04/05/26"
-    },
-    "Wausau": {
-      "current_avg": {
-        "regular": 3.826,
-        "diesel": 4.972,
-        "mid_grade": 4.367,
-        "premium": 4.949
-      },
-      "low": {
-        "regular": 3.74,
-        "diesel": 4.89,
-        "mid_grade": 4.32,
-        "premium": 4.6
-      },
-      "high": {
-        "regular": 3.86,
-        "diesel": 4.99,
-        "mid_grade": 4.47,
-        "premium": 5.09
-      },
-      "station_count": {
-        "regular": 20,
-        "diesel": 13,
-        "mid_grade": 4,
-        "premium": 13
-      },
-      "stale": true,
-      "stale_from": "04/05/26"
-    },
-    "Green Bay": {
-      "current_avg": {
-        "regular": 3.77,
-        "premium": 4.826,
-        "mid_grade": 4.308,
-        "diesel": 4.7
-      },
-      "low": {
-        "regular": 3.57,
-        "premium": 4.47,
-        "mid_grade": 4.02,
-        "diesel": 4.49
-      },
-      "high": {
-        "regular": 3.85,
-        "premium": 5.09,
-        "mid_grade": 4.49,
-        "diesel": 4.99
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 14,
-        "mid_grade": 10,
-        "diesel": 10
-      },
-      "stale": true,
-      "stale_from": "04/05/26"
-    },
-    "Appleton": {
-      "current_avg": {
-        "regular": 3.773,
-        "mid_grade": 4.277,
-        "premium": 4.806,
-        "diesel": 4.769
-      },
-      "low": {
-        "regular": 3.57,
-        "mid_grade": 4.07,
-        "premium": 4.37,
-        "diesel": 4.39
-      },
-      "high": {
-        "regular": 3.85,
-        "mid_grade": 4.69,
-        "premium": 5.05,
-        "diesel": 4.99
-      },
-      "station_count": {
-        "regular": 20,
-        "mid_grade": 12,
-        "premium": 14,
-        "diesel": 12
-      },
-      "stale": true,
-      "stale_from": "04/05/26"
-    },
-    "Madison": {
-      "current_avg": {
-        "regular": 3.69,
-        "premium": 4.756,
-        "mid_grade": 4.263,
-        "diesel": 4.843
-      },
-      "low": {
-        "regular": 3.59,
-        "premium": 4.47,
-        "mid_grade": 3.99,
-        "diesel": 4.59
-      },
-      "high": {
-        "regular": 3.79,
-        "premium": 5.09,
-        "mid_grade": 4.49,
-        "diesel": 4.99
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 16,
-        "mid_grade": 11,
-        "diesel": 9
-      },
-      "stale": true,
-      "stale_from": "04/05/26"
-    },
-    "Milwaukee": {
-      "current_avg": {
-        "regular": 3.608,
-        "premium": 4.493,
-        "diesel": 4.49,
-        "mid_grade": 4.119
-      },
-      "low": {
-        "regular": 3.39,
-        "premium": 4.09,
-        "diesel": 4.19,
-        "mid_grade": 3.99
-      },
-      "high": {
-        "regular": 3.75,
-        "premium": 4.69,
-        "diesel": 4.99,
-        "mid_grade": 4.24
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 16,
-        "diesel": 5,
-        "mid_grade": 12
-      },
-      "stale": true,
-      "stale_from": "04/05/26"
-    },
-    "La Crosse": {
-      "current_avg": {
-        "regular": 3.494,
-        "premium": 4.677,
-        "diesel": 4.916,
-        "mid_grade": 3.868
-      },
-      "low": {
-        "regular": 3.44,
-        "premium": 4.44,
-        "diesel": 4.79,
-        "mid_grade": 3.51
-      },
-      "high": {
-        "regular": 3.54,
-        "premium": 4.74,
-        "diesel": 4.99,
-        "mid_grade": 4.47
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 17,
-        "diesel": 16,
-        "mid_grade": 6
       },
       "stale": true,
       "stale_from": "04/05/26"
