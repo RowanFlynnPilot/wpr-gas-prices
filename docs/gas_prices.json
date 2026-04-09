@@ -2,14 +2,14 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "04/08/26",
-  "scraped_at": "2026-04-08T18:12:49.841314+00:00",
+  "price_date": "04/09/26",
+  "scraped_at": "2026-04-09T13:34:04.957204+00:00",
   "statewide": {
     "current_avg": {
       "regular": 3.74,
-      "mid_grade": 4.241,
-      "premium": 4.789,
-      "diesel": 4.956
+      "mid_grade": 4.236,
+      "premium": 4.791,
+      "diesel": 4.957
     },
     "low": {
       "regular": 3.29,
@@ -40,6 +40,32 @@
     }
   },
   "metros": {
+    "La Crosse": {
+      "current_avg": {
+        "regular": 3.612,
+        "mid_grade": 3.974,
+        "diesel": 5.12,
+        "premium": 4.783
+      },
+      "low": {
+        "regular": 3.54,
+        "mid_grade": 3.66,
+        "diesel": 4.79,
+        "premium": 4.59
+      },
+      "high": {
+        "regular": 3.69,
+        "mid_grade": 4.19,
+        "diesel": 5.18,
+        "premium": 4.89
+      },
+      "station_count": {
+        "regular": 20,
+        "mid_grade": 5,
+        "diesel": 13,
+        "premium": 15
+      }
+    },
     "Appleton": {
       "current_avg": {
         "regular": 3.767,
@@ -64,7 +90,9 @@
         "mid_grade": 8,
         "premium": 15,
         "diesel": 11
-      }
+      },
+      "stale": true,
+      "stale_from": "04/08/26"
     },
     "Madison": {
       "current_avg": {
@@ -90,7 +118,9 @@
         "premium": 18,
         "mid_grade": 9,
         "diesel": 8
-      }
+      },
+      "stale": true,
+      "stale_from": "04/08/26"
     },
     "Milwaukee": {
       "current_avg": {
@@ -116,33 +146,9 @@
         "premium": 19,
         "diesel": 13,
         "mid_grade": 10
-      }
-    },
-    "La Crosse": {
-      "current_avg": {
-        "regular": 3.605,
-        "premium": 4.757,
-        "diesel": 5.105,
-        "mid_grade": 4.057
       },
-      "low": {
-        "regular": 3.54,
-        "premium": 4.59,
-        "diesel": 4.79,
-        "mid_grade": 3.99
-      },
-      "high": {
-        "regular": 3.69,
-        "premium": 4.89,
-        "diesel": 5.18,
-        "mid_grade": 4.09
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 15,
-        "diesel": 13,
-        "mid_grade": 3
-      }
+      "stale": true,
+      "stale_from": "04/08/26"
     },
     "Eau Claire": {
       "current_avg": {
