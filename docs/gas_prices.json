@@ -2,14 +2,14 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "04/21/26",
-  "scraped_at": "2026-04-21T18:04:20.866905+00:00",
+  "price_date": "04/22/26",
+  "scraped_at": "2026-04-22T13:33:34.787006+00:00",
   "statewide": {
     "current_avg": {
-      "regular": 3.611,
-      "mid_grade": 4.19,
-      "premium": 4.723,
-      "diesel": 4.893
+      "regular": 3.609,
+      "mid_grade": 4.186,
+      "premium": 4.72,
+      "diesel": 4.891
     },
     "low": {
       "regular": 3.32,
@@ -40,6 +40,58 @@
     }
   },
   "metros": {
+    "Superior": {
+      "current_avg": {
+        "regular": 3.643,
+        "mid_grade": 4.255,
+        "premium": 4.808,
+        "diesel": 5.229
+      },
+      "low": {
+        "regular": 3.5,
+        "mid_grade": 4.05,
+        "premium": 4.45,
+        "diesel": 5.16
+      },
+      "high": {
+        "regular": 3.69,
+        "mid_grade": 4.69,
+        "premium": 4.99,
+        "diesel": 5.29
+      },
+      "station_count": {
+        "regular": 14,
+        "mid_grade": 4,
+        "premium": 10,
+        "diesel": 12
+      }
+    },
+    "Waukesha": {
+      "current_avg": {
+        "regular": 3.6,
+        "mid_grade": 4.163,
+        "premium": 4.696,
+        "diesel": 4.876
+      },
+      "low": {
+        "regular": 3.49,
+        "mid_grade": 3.89,
+        "premium": 4.49,
+        "diesel": 4.69
+      },
+      "high": {
+        "regular": 3.69,
+        "mid_grade": 4.69,
+        "premium": 4.89,
+        "diesel": 4.99
+      },
+      "station_count": {
+        "regular": 20,
+        "mid_grade": 12,
+        "premium": 20,
+        "diesel": 14
+      }
+    },
     "Eau Claire": {
       "current_avg": {
         "regular": 3.375,
@@ -64,7 +116,9 @@
         "premium": 17,
         "diesel": 15,
         "mid_grade": 3
-      }
+      },
+      "stale": true,
+      "stale_from": "04/21/26"
     },
     "Green Bay": {
       "current_avg": {
@@ -90,7 +144,9 @@
         "premium": 19,
         "diesel": 15,
         "mid_grade": 15
-      }
+      },
+      "stale": true,
+      "stale_from": "04/21/26"
     },
     "Appleton": {
       "current_avg": {
@@ -116,7 +172,9 @@
         "premium": 16,
         "diesel": 10,
         "mid_grade": 8
-      }
+      },
+      "stale": true,
+      "stale_from": "04/21/26"
     },
     "Madison": {
       "current_avg": {
@@ -142,7 +200,9 @@
         "mid_grade": 11,
         "premium": 20,
         "diesel": 10
-      }
+      },
+      "stale": true,
+      "stale_from": "04/21/26"
     },
     "Milwaukee": {
       "current_avg": {
@@ -168,7 +228,9 @@
         "premium": 20,
         "diesel": 8,
         "mid_grade": 16
-      }
+      },
+      "stale": true,
+      "stale_from": "04/21/26"
     },
     "La Crosse": {
       "current_avg": {
@@ -194,32 +256,6 @@
         "premium": 18,
         "diesel": 16,
         "mid_grade": 5
-      }
-    },
-    "Waukesha": {
-      "current_avg": {
-        "regular": 3.605,
-        "mid_grade": 4.192,
-        "premium": 4.738,
-        "diesel": 4.898
-      },
-      "low": {
-        "regular": 3.49,
-        "mid_grade": 3.89,
-        "premium": 4.59,
-        "diesel": 4.69
-      },
-      "high": {
-        "regular": 3.69,
-        "mid_grade": 4.69,
-        "premium": 4.89,
-        "diesel": 4.99
-      },
-      "station_count": {
-        "regular": 20,
-        "mid_grade": 14,
-        "premium": 17,
-        "diesel": 13
       },
       "stale": true,
       "stale_from": "04/21/26"
@@ -388,34 +424,6 @@
         "mid_grade": 9,
         "premium": 14,
         "diesel": 15
-      },
-      "stale": true,
-      "stale_from": "04/21/26"
-    },
-    "Superior": {
-      "current_avg": {
-        "regular": 3.667,
-        "diesel": 5.224,
-        "mid_grade": 4.29,
-        "premium": 4.817
-      },
-      "low": {
-        "regular": 3.53,
-        "diesel": 5.16,
-        "mid_grade": 4.09,
-        "premium": 4.49
-      },
-      "high": {
-        "regular": 3.69,
-        "diesel": 5.29,
-        "mid_grade": 4.69,
-        "premium": 4.99
-      },
-      "station_count": {
-        "regular": 14,
-        "diesel": 13,
-        "mid_grade": 3,
-        "premium": 11
       },
       "stale": true,
       "stale_from": "04/21/26"
