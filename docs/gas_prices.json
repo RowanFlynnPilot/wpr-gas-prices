@@ -2,20 +2,20 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "05/25/26",
-  "scraped_at": "2026-05-25T18:34:29.061741+00:00",
+  "price_date": "05/26/26",
+  "scraped_at": "2026-05-26T15:11:31.632472+00:00",
   "statewide": {
     "current_avg": {
-      "regular": 4.247,
-      "mid_grade": 4.826,
-      "premium": 5.429,
-      "diesel": 5.695
+      "regular": 4.236,
+      "mid_grade": 4.821,
+      "premium": 5.426,
+      "diesel": 5.689
     },
     "low": {
       "regular": 3.99,
-      "mid_grade": 4.26,
+      "mid_grade": 4.14,
       "premium": 4.84,
-      "diesel": 5.19
+      "diesel": 4.99
     },
     "high": {
       "regular": 4.59,
@@ -40,64 +40,116 @@
     }
   },
   "metros": {
-    "Green Bay": {
+    "Wausau": {
       "current_avg": {
-        "regular": 4.277,
-        "premium": 5.461,
-        "diesel": 5.759,
-        "mid_grade": 4.88
+        "regular": 4.188,
+        "mid_grade": 4.96,
+        "premium": 5.443,
+        "diesel": 5.695
       },
       "low": {
-        "regular": 4.23,
+        "regular": 4.14,
+        "mid_grade": 4.49,
+        "premium": 5.19,
+        "diesel": 5.43
+      },
+      "high": {
+        "regular": 4.24,
+        "mid_grade": 5.49,
+        "premium": 5.99,
+        "diesel": 5.89
+      },
+      "station_count": {
+        "regular": 20,
+        "mid_grade": 10,
+        "premium": 15,
+        "diesel": 13
+      }
+    },
+    "Eau Claire": {
+      "current_avg": {
+        "regular": 4.16,
+        "diesel": 5.316,
+        "premium": 5.318,
+        "mid_grade": 4.415
+      },
+      "low": {
+        "regular": 3.99,
+        "diesel": 4.99,
+        "premium": 4.95,
+        "mid_grade": 4.14
+      },
+      "high": {
+        "regular": 4.21,
+        "diesel": 5.39,
+        "premium": 5.39,
+        "mid_grade": 4.69
+      },
+      "station_count": {
+        "regular": 20,
+        "diesel": 14,
+        "premium": 13,
+        "mid_grade": 4
+      }
+    },
+    "Green Bay": {
+      "current_avg": {
+        "regular": 4.262,
+        "premium": 5.409,
+        "diesel": 5.738,
+        "mid_grade": 4.942
+      },
+      "low": {
+        "regular": 4.19,
         "premium": 5.17,
-        "diesel": 5.67,
+        "diesel": 5.59,
         "mid_grade": 4.79
       },
       "high": {
         "regular": 4.29,
-        "premium": 5.63,
+        "premium": 5.59,
         "diesel": 5.99,
-        "mid_grade": 5.09
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 17,
-        "diesel": 14,
-        "mid_grade": 12
-      }
-    },
-    "Appleton": {
-      "current_avg": {
-        "regular": 4.256,
-        "premium": 5.416,
-        "diesel": 5.676,
-        "mid_grade": 4.923
-      },
-      "low": {
-        "regular": 4.09,
-        "premium": 4.89,
-        "diesel": 5.49,
-        "mid_grade": 4.59
-      },
-      "high": {
-        "regular": 4.35,
-        "premium": 5.79,
-        "diesel": 5.89,
-        "mid_grade": 5.29
+        "mid_grade": 5.49
       },
       "station_count": {
         "regular": 19,
         "premium": 14,
-        "diesel": 14,
-        "mid_grade": 10
+        "diesel": 13,
+        "mid_grade": 9
+      }
+    },
+    "Appleton": {
+      "current_avg": {
+        "regular": 4.178,
+        "premium": 5.392,
+        "mid_grade": 4.797,
+        "diesel": 5.625
+      },
+      "low": {
+        "regular": 4.09,
+        "premium": 4.89,
+        "mid_grade": 4.59,
+        "diesel": 5.49
+      },
+      "high": {
+        "regular": 4.29,
+        "premium": 5.59,
+        "mid_grade": 5.09,
+        "diesel": 5.79
+      },
+      "station_count": {
+        "regular": 20,
+        "premium": 18,
+        "mid_grade": 12,
+        "diesel": 13
       }
     },
     "Madison": {
       "current_avg": {
-        "regular": 4.15,
-        "mid_grade": 4.834,
-        "premium": 5.312,
-        "diesel": 5.713
+        "regular": 4.12,
+        "mid_grade": 4.777,
+        "premium": 5.256,
+        "diesel": 5.775
       },
       "low": {
         "regular": 4.09,
@@ -106,15 +158,15 @@
         "diesel": 5.27
       },
       "high": {
-        "regular": 4.29,
+        "regular": 4.19,
         "mid_grade": 5.59,
-        "premium": 5.69,
+        "premium": 5.39,
         "diesel": 5.99
       },
       "station_count": {
         "regular": 20,
-        "mid_grade": 10,
-        "premium": 20,
+        "mid_grade": 12,
+        "premium": 19,
         "diesel": 8
       }
     },
@@ -142,7 +194,9 @@
         "mid_grade": 12,
         "premium": 18,
         "diesel": 12
-      }
+      },
+      "stale": true,
+      "stale_from": "05/25/26"
     },
     "Waukesha": {
       "current_avg": {
@@ -168,60 +222,6 @@
         "mid_grade": 11,
         "premium": 20,
         "diesel": 14
-      }
-    },
-    "Wausau": {
-      "current_avg": {
-        "regular": 4.215,
-        "premium": 5.394,
-        "diesel": 5.692,
-        "mid_grade": 4.777
-      },
-      "low": {
-        "regular": 4.18,
-        "premium": 5.0,
-        "diesel": 5.39,
-        "mid_grade": 4.49
-      },
-      "high": {
-        "regular": 4.29,
-        "premium": 5.99,
-        "diesel": 5.85,
-        "mid_grade": 5.49
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 17,
-        "diesel": 17,
-        "mid_grade": 8
-      },
-      "stale": true,
-      "stale_from": "05/25/26"
-    },
-    "Eau Claire": {
-      "current_avg": {
-        "regular": 4.173,
-        "mid_grade": 4.555,
-        "diesel": 5.39,
-        "premium": 5.291
-      },
-      "low": {
-        "regular": 4.14,
-        "mid_grade": 4.47,
-        "diesel": 5.29,
-        "premium": 4.95
-      },
-      "high": {
-        "regular": 4.19,
-        "mid_grade": 4.69,
-        "diesel": 5.99,
-        "premium": 5.39
-      },
-      "station_count": {
-        "regular": 20,
-        "mid_grade": 6,
-        "diesel": 16,
-        "premium": 16
       },
       "stale": true,
       "stale_from": "05/25/26"
