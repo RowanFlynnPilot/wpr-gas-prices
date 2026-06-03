@@ -2,90 +2,93 @@
 
 **A zero-maintenance gas price widget for Wausau Pilot & Review.**
 
-The scraper runs automatically in the cloud (GitHub Actions), updates a JSON file twice daily, and the widget on your website reads that data. No servers to manage, no code to run.
+A scraper runs automatically in the cloud (GitHub Actions), updates a set of JSON
+files twice daily, and the widget on the website reads that data. No servers to
+manage, nothing to run by hand.
 
 ---
 
 ## How It Works
 
 ```
-  GitHub Actions             GitHub Pages            Your WPR Website
-  (runs daily)               (hosts the data)        (shows the widget)
- ┌──────────────┐          ┌──────────────┐         ┌──────────────────┐
- │ Scrapes AAA  │──saves──▶│gas_prices.json│◀─reads──│ Embedded widget  │
- │ gas prices   │          │ (public URL)  │         │ in WordPress     │
- └──────────────┘          └──────────────┘         └──────────────────┘
+  GitHub Actions               GitHub Pages              WPR Website
+  (runs twice daily)           (hosts the data)          (shows the widget)
+ ┌────────────────┐          ┌────────────────┐         ┌──────────────────┐
+ │ Scrapes        │          │ gas_prices.json│         │                  │
+ │  • GasBuddy    │──saves──▶ │ + history      │◀─reads──│ Embedded widget  │
+ │  • EIA trends  │          │ + EIA + cache  │         │ in WordPress     │
+ └────────────────┘          └────────────────┘         └──────────────────┘
 ```
 
-**Your mother's involvement: None.** It just runs. If prices look stale on the widget, check the Actions tab on GitHub.
+**Day-to-day involvement: none.** It just runs. If prices look stale on the widget,
+check the **Actions** tab on GitHub.
 
 ---
 
-## One-Time Setup (15–20 minutes)
+## Where the Data Comes From
 
-### Step 1: Create a GitHub Account
+The scraper pulls from three sources, all from the cloud — no proxies, no paid
+services beyond a free API key:
 
-If you don't already have one, sign up at [github.com](https://github.com/signup). The free tier is all you need.
+1. **GasBuddy** — per-city station prices for 15 Wisconsin cities, via GasBuddy's
+   GraphQL API. Uses `curl_cffi` (Chrome impersonation) to fetch like a real
+   browser, so no proxy is required.
+2. **GasBuddy Fuel Insights** — statewide historical comparisons (yesterday, last
+   week, last month, last year).
+3. **EIA** (U.S. Energy Information Administration) — weekly Midwest fuel-price
+   trends. Requires a free `EIA_API_KEY`; if it's missing, this part is simply
+   skipped and everything else still works.
 
-### Step 2: Create a New Repository
+If a city fails on a given run, its **previous price is carried forward** and marked
+stale, so the widget never shows blank cities.
 
-1. Go to [github.com/new](https://github.com/new)
-2. Name it: `wpr-gas-prices`
-3. Set it to **Public** (required for free GitHub Pages)
-4. Click **Create repository**
+---
 
-### Step 3: Upload the Files
+## One-Time Setup
 
-Upload ALL the files from this project folder to your new repository. The structure should look like this:
+> Already set up and running. This section is for rebuilding from scratch or moving
+> the project to a new account.
 
-```
-wpr-gas-prices/
-├── .github/
-│   └── workflows/
-│       └── update-gas-prices.yml   ← The automated schedule
-├── docs/
-│   ├── index.html                  ← The widget (also viewable directly)
-│   └── gas_prices.json             ← Gas price data (updated by scraper)
-├── scrape_gas_prices.py            ← The scraper script
-├── requirements.txt                ← Python dependencies
-└── README.md                       ← This file
-```
+### 1. Create the repository
 
-**How to upload:** On your repo page, click **"Add file" → "Upload files"**, then drag the entire folder contents in. Or use Git from the command line if you prefer.
+Create a **public** repo named `wpr-gas-prices` (public is required for free GitHub
+Pages) and push all the files in this project to it.
 
-### Step 4: Enable GitHub Pages
+### 2. Enable GitHub Pages
 
-1. Go to your repo → **Settings** → **Pages** (in the left sidebar)
-2. Under **Source**, select **Deploy from a branch**
-3. Set branch to `main` and folder to `/docs`
-4. Click **Save**
-5. After a minute, your widget will be live at:
-   `https://YOUR-USERNAME.github.io/wpr-gas-prices/`
+Settings → **Pages** → Source: **Deploy from a branch** → branch `main`, folder
+`/docs` → **Save**. After a minute the widget is live at:
 
-### Step 5: Enable Actions Permissions
+`https://rowanflynnpilot.github.io/wpr-gas-prices/`
 
-1. Go to your repo → **Settings** → **Actions** → **General**
-2. Under **Workflow permissions**, select **"Read and write permissions"**
-3. Click **Save**
+### 3. Enable Actions write permissions
 
-This allows the scraper to commit updated data back to the repo.
+Settings → **Actions** → **General** → **Workflow permissions** → **Read and write
+permissions** → **Save**. This lets the scheduled scraper commit fresh data back to
+the repo.
 
-### Step 6: Test the Scraper
+### 4. Add the EIA API key
 
-1. Go to your repo → **Actions** tab
-2. Click **"Update Gas Prices"** in the left sidebar
-3. Click **"Run workflow"** → **"Run workflow"** (the green button)
-4. Wait 1–2 minutes for it to complete (green checkmark = success)
-5. Check `docs/gas_prices.json` — it should now have today's real prices
+Get a free key at [eia.gov/opendata](https://www.eia.gov/opendata/), then add it
+under Settings → **Secrets and variables** → **Actions** → **New repository secret**:
 
-### Step 7: Embed on the WPR Website
+- Name: `EIA_API_KEY`
+- Value: *(your key)*
 
-In WordPress, add a **Custom HTML** block wherever you want the widget to appear. Paste this code, replacing `YOUR-USERNAME` with your actual GitHub username:
+### 5. Test the scraper
+
+**Actions** tab → **Update Gas Prices** → **Run workflow**. Wait 2–5 minutes (the
+scraper paces itself to respect GasBuddy's rate limits). A green check means
+`docs/gas_prices.json` now has fresh prices.
+
+### 6. Embed on the WPR website
+
+In WordPress, add a **Custom HTML** block where the widget should appear:
 
 ```html
 <div style="max-width:680px;margin:0 auto;">
   <iframe
-    src="https://YOUR-USERNAME.github.io/wpr-gas-prices/"
+    src="https://rowanflynnpilot.github.io/wpr-gas-prices/"
     width="100%"
     height="520"
     frameborder="0"
@@ -96,77 +99,90 @@ In WordPress, add a **Custom HTML** block wherever you want the widget to appear
 </div>
 ```
 
-**That's it. You're done.** The widget will update itself every day.
-
 ---
 
 ## Schedule
 
-The scraper runs automatically at:
-- **7:00 AM Central Time** (daily)
-- **12:00 PM Central Time** (daily)
-
-You can also trigger it manually anytime from the Actions tab.
+The scraper runs automatically at **7:00 AM** and **12:00 PM** Central Time daily.
+You can also trigger it anytime from the **Actions** tab. To change the timing, edit
+the cron expressions in `.github/workflows/update-gas-prices.yml`
+([crontab.guru](https://crontab.guru/) helps).
 
 ---
 
-## What Your Mother Needs to Know
+## What the Owner Needs to Know
 
-### Day-to-day: Nothing!
+**Day-to-day: nothing.** The widget updates itself — no logins, no buttons.
 
-The widget updates itself. No logins, no buttons to press.
+**If something seems wrong:**
 
-### If something seems wrong:
+1. **Prices look old?** → On github.com, open the repo → **Actions** tab. Green checks
+   = fine. A red X = a run failed (send Rowan a screenshot).
+2. **Widget not showing?** → Confirm the iframe embed is still in the WordPress page;
+   WordPress updates sometimes drop Custom HTML blocks.
+3. **Force an update?** → **Actions** → **Update Gas Prices** → **Run workflow**.
 
-1. **Prices look old?** → Go to github.com, open the repository, click the **Actions** tab. Green checkmarks = everything's fine. Red X = something failed (share a screenshot with Rowan).
-2. **Widget isn't showing?** → Check that the iframe embed code is still in the WordPress page. Sometimes WordPress updates can remove Custom HTML blocks.
-3. **Need to run it manually?** → Actions tab → "Update Gas Prices" → "Run workflow"
+---
+
+## Local Development
+
+```bash
+pip install -r requirements.txt          # requests + curl_cffi
+
+python scrape_gas_prices.py              # writes docs/gas_prices.json
+python scrape_gas_prices.py -o out.json  # custom output path
+
+# EIA trends (optional)
+export EIA_API_KEY=...                    # Windows cmd: set EIA_API_KEY=...
+
+# preview the widget
+cd docs && python -m http.server 8000     # → http://localhost:8000
+```
+
+A local run takes a few minutes by design — the scraper batches cities and waits
+between batches to avoid GasBuddy rate limits.
 
 ---
 
 ## Customization
 
-### Change Which Metros Appear First
-
-Edit `scrape_gas_prices.py`, find the `PRIORITY_METROS` line near the top, and reorder or swap cities:
+**Which metros appear first** — edit `PRIORITY_METROS` near the top of
+`scrape_gas_prices.py`:
 
 ```python
-PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee-Waukesha"]
+PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee"]
 ```
 
-### Change the Widget Colors
+**Which cities are scraped** — edit the `CITIES` dictionary in the same file.
 
-Edit `docs/index.html`, find the `:root` CSS variables near the top:
+**Widget appearance** — edit the `:root` CSS variables at the top of
+`docs/index.html`.
 
-```css
---accent: #b8232a;   /* Red accent — change to match WPR branding */
---ink: #1a1a1a;      /* Dark text */
---paper: #fafaf7;    /* Background */
-```
-
-### Change the Schedule
-
-Edit `.github/workflows/update-gas-prices.yml` and adjust the cron expressions. Use [crontab.guru](https://crontab.guru/) to help write cron schedules.
+**Schedule** — edit the cron lines in `.github/workflows/update-gas-prices.yml`.
 
 ---
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| Actions tab shows red X | Click into the failed run to see the error log. Usually means AAA changed their page layout. |
-| Widget shows "sample data" in footer | The JSON fetch failed — check that GitHub Pages is enabled and the URL is correct. |
-| Prices haven't changed in days | Check the Actions tab. If runs are green but data is unchanged, AAA may not have updated. |
-| Widget doesn't load on WPR site | Check browser console for CORS errors. GitHub Pages should handle CORS correctly for public repos. |
+| Problem | Likely cause / fix |
+| --- | --- |
+| Actions run shows a red X | Open the failed run's log. A "No CSRF token" error means GasBuddy changed their homepage and the scraper needs an update. |
+| Some cities show as stale | Those cities failed this run; their last-known price is preserved. Usually self-corrects on the next run. |
+| EIA trend data missing | Confirm the `EIA_API_KEY` secret is set. Without it, EIA data is skipped (everything else still works). |
+| Prices unchanged for days | Check the Actions tab. If runs are green but data is flat, GasBuddy genuinely hasn't moved. |
+| Widget won't load on WPR site | Check the browser console for errors and confirm GitHub Pages is enabled with the `/docs` folder. |
 
 ---
 
 ## Files Overview
 
-| File | Purpose | Who Edits It |
-|---|---|---|
-| `scrape_gas_prices.py` | Fetches prices from AAA | Rowan (if AAA changes their site) |
-| `requirements.txt` | Python packages needed | Rarely changes |
-| `.github/workflows/update-gas-prices.yml` | Automation schedule | Rowan (to change timing) |
-| `docs/index.html` | The widget itself | Rowan (to change design/colors) |
-| `docs/gas_prices.json` | Live price data | **Never edit manually** — the scraper updates this |
+| File | Purpose | Who edits it |
+| --- | --- | --- |
+| `scrape_gas_prices.py` | The scraper (GasBuddy + EIA + Fuel Insights) | Rowan |
+| `requirements.txt` | Python dependencies (`requests`, `curl_cffi`) | Rarely |
+| `.github/workflows/update-gas-prices.yml` | Automation schedule | Rowan |
+| `docs/index.html` | The widget UI | Rowan |
+| `docs/gas_prices.json` | Live price data | **Never by hand** — the scraper owns it |
+| `docs/gas_prices_history.json` | Daily history (last 400 days) | **Never by hand** |
+| `docs/eia_weekly.json` | EIA weekly trend series | **Never by hand** |
+| `docs/fuel_insights_cache.json` | Fuel Insights cache / fallback | **Never by hand** |
