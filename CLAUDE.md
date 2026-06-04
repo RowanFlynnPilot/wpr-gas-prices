@@ -154,10 +154,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   data is missing keys or has an implausible statewide regular avg; the live file is
   preserved on failure (caught like any scrape error).
 - **Run heartbeat + alerting.** `main()` always writes `docs/scrape_status.json`
-  (gitignored) with `gasbuddy_success`, fresh/stale counts, and failed cities. The
-  workflow's "Alert on scrape failure" step reads it and opens (or auto-closes) a
-  GitHub issue. `run_health` is assembled in `scrape_gasbuddy()` and popped from the
-  dict before `gas_prices.json` is written — it never lands in the live file.
+  (gitignored) with `gasbuddy_success`, `degraded`, fresh/stale counts, and failed
+  cities. The workflow's "Alert on scrape failure" step reads it and opens (or
+  auto-closes) one GitHub issue. It alerts on **failure** (0 fresh) *and* on a
+  **degraded** run — `is_degraded()` flags when fewer than half the cities scraped
+  fresh (rest carried forward as stale); the file is still written either way.
+  `run_health` is assembled in `scrape_gasbuddy()` and popped before `gas_prices.json`
+  is written — it never lands in the live file.
 - **Parsing is extracted for testability.** `parse_station_results()`,
   `extract_cheapest_stations()`, `parse_aaa()`, `build_summary()`, and
   `latest_eia_value()` are pure functions covered by `tests/test_scrape.py`;

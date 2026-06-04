@@ -698,6 +698,16 @@ def validate_output(data: dict) -> None:
         raise ValueError(f"statewide regular avg out of plausible range: {reg!r}")
 
 
+def is_degraded(run_health: dict | None) -> bool:
+    """A run is 'degraded' if fewer than half the cities scraped fresh — the file is
+    still written (stale-preservation fills the gaps), but it warrants an alert."""
+    if not run_health:
+        return False
+    total = run_health.get("cities_total", 0)
+    fresh = run_health.get("cities_fresh", 0)
+    return total > 0 and fresh < total / 2
+
+
 def write_status(out_dir: str, *, gasbuddy_success: bool,
                  run_health: dict | None, eia_updated: bool) -> None:
     """Always-written per-run heartbeat consumed by the failure-alert workflow step.
@@ -708,6 +718,7 @@ def write_status(out_dir: str, *, gasbuddy_success: bool,
     status = {
         "last_run":         datetime.now(timezone.utc).isoformat(),
         "gasbuddy_success": gasbuddy_success,
+        "degraded":         gasbuddy_success and is_degraded(run_health),
         "eia_updated":      eia_updated,
     }
     if run_health:
@@ -783,6 +794,9 @@ def main() -> None:
 
     if not gb_success:
         log.warning("GasBuddy scrape failed but EIA data was updated.")
+    elif is_degraded(run_health):
+        log.warning("Degraded run: only %d/%d cities fresh — output is mostly stale.",
+                    run_health.get("cities_fresh"), run_health.get("cities_total"))
     log.info("Done!")
 
 

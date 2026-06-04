@@ -52,36 +52,40 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TITLE="⚠️ Gas scraper: GasBuddy update failed"
+          TITLE="⚠️ Gas scraper needs attention"
           if [ -f docs/scrape_status.json ]; then
-            OK=$(python -c "import json;print(str(json.load(open('docs/scrape_status.json')).get('gasbuddy_success', False)).lower())")
+            read OK DEG FRESH TOTAL <<< "$(python -c "import json;d=json.load(open('docs/scrape_status.json'));print(str(d.get('gasbuddy_success',False)).lower(), str(d.get('degraded',False)).lower(), d.get('cities_fresh','?'), d.get('cities_total','?'))")"
           else
             echo "No scrape_status.json — scraper crashed before writing status."
-            OK=false
+            OK=false; DEG=false; FRESH=0; TOTAL="?"
           fi
           RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
 
-          if [ "$OK" = "true" ]; then
-            echo "GasBuddy scrape succeeded."
+          if [ "$OK" = "true" ] && [ "$DEG" != "true" ]; then
+            echo "Healthy run ($FRESH/$TOTAL cities fresh)."
             if [ -n "$EXISTING" ]; then
-              gh issue comment "$EXISTING" --body "✅ Recovered — a later run succeeded ($RUN_URL). Auto-closing."
+              gh issue comment "$EXISTING" --body "✅ Recovered — a healthy run ($FRESH/$TOTAL cities) succeeded ($RUN_URL). Auto-closing."
               gh issue close "$EXISTING"
             fi
             exit 0
           fi
 
-          echo "GasBuddy scrape failed — alerting."
+          if [ "$OK" != "true" ]; then
+            echo "GasBuddy scrape failed — alerting."
+            SUMMARY="did not produce any fresh GasBuddy data. The previous prices are preserved, so the widget still shows last-known values."
+            CAUSE="Common cause: GasBuddy changed its homepage and the CSRF-token scrape broke (see scrape_gas_prices.py)."
+          else
+            echo "Degraded run ($FRESH/$TOTAL fresh) — alerting."
+            SUMMARY="only scraped $FRESH of $TOTAL cities fresh; the rest fell back to carried-forward (stale) prices, and the statewide average was recomputed mostly from stale data."
+            CAUSE="Usually transient GasBuddy rate-limiting of the GitHub Actions IP. Often self-corrects on the next run."
+          fi
           BODY=$(printf '%s\n' \
-            "The scheduled gas-price update did not produce fresh GasBuddy data." \
-            "" \
-            "The previous prices have been preserved, so the widget still shows last-known values." \
-            "" \
-            "Failing run: $RUN_URL" \
-            "" \
-            "Common cause: GasBuddy changed its homepage and the CSRF-token scrape broke (see scrape_gas_prices.py). This issue will close itself automatically once a run succeeds.")
+            "The scheduled gas-price update $SUMMARY" "" \
+            "Run: $RUN_URL" "" \
+            "$CAUSE This issue closes itself automatically after a healthy run." )
           if [ -n "$EXISTING" ]; then
-            gh issue comment "$EXISTING" --body "Still failing as of $(date -u +'%Y-%m-%d %H:%M UTC'). Run: $RUN_URL"
+            gh issue comment "$EXISTING" --body "Still unhealthy as of $(date -u +'%Y-%m-%d %H:%M UTC') ($FRESH/$TOTAL fresh). Run: $RUN_URL"
           else
             gh issue create --title "$TITLE" --body "$BODY"
           fi
