@@ -53,7 +53,8 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/gas_prices.json` | Main output | **Never by hand** — scraper owns it |
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
-| `docs/eia_weekly.json` | EIA weekly series | **Never by hand** |
+| `docs/eia_weekly.json` | EIA weekly Midwest series (trends chart) | **Never by hand** |
+| `docs/eia_context.json` | EIA national reg-gas avg + WTI crude (context strip) | **Never by hand** |
 | `docs/fuel_insights_cache.json` | Fuel Insights cache/fallback | **Never by hand** |
 | `docs/scrape_status.json` | Per-run heartbeat (gitignored) — read in-job for failure alerting | **Never** — scraper owns it |
 
@@ -113,6 +114,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   named stations per city (by regular) with their address + all fuel prices, stored
   under `metros[city].stations`. The Metro tab makes each city row expandable to show
   them. Excluded from `gas_prices_history.json` (only `current_avg` is recorded).
+- **National + crude context.** `fetch_eia_context()` writes `docs/eia_context.json`
+  (national regular avg via `duoarea=NUS`; WTI crude via the `RWTC` series). Best-effort
+  and **independent per series** — if EIA renames a code, the other still lands. The
+  widget shows a "U.S. avg / WTI crude" strip on the Statewide tab (WI-vs-US only for
+  Regular, since the national series is regular gasoline).
+- **Newsroom blurb.** `build_summary()` writes a quotable `summary` blurb into
+  `gas_prices.json` each run; the Statewide tab shows it with a Copy button.
 - **Statewide average is station-count weighted.** `compute_statewide()` weights
   each city's average by how many stations it reported, so the figure equals the
   pooled mean of all stations (market-weighted) rather than an equal-per-city mean.

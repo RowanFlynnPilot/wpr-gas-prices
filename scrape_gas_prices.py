@@ -499,6 +499,68 @@ def fetch_eia_data(out_dir: str) -> bool:
     return False
 
 
+def latest_eia_value(rows: list) -> tuple | None:
+    """Most recent (period, value) from EIA data rows. Pure/testable."""
+    best = None
+    for row in rows:
+        period, val = row.get("period"), row.get("value")
+        if period is None or val is None:
+            continue
+        try:
+            v = float(val)
+        except (ValueError, TypeError):
+            continue
+        if best is None or period > best[0]:
+            best = (period, v)
+    return best
+
+
+def fetch_eia_context(out_dir: str) -> None:
+    """Fetch national regular-gas average + WTI crude for context (best-effort).
+
+    Writes docs/eia_context.json. Each series is independent — if one fails (e.g.
+    EIA changes a code), the other still lands.
+    """
+    api_key = os.environ.get("EIA_API_KEY", "")
+    if not api_key:
+        return
+
+    context: dict = {}
+
+    # National regular gasoline average (mirrors the Midwest call, duoarea=NUS)
+    try:
+        url = ("https://api.eia.gov/v2/petroleum/pri/gnd/data/"
+               f"?api_key={api_key}&frequency=weekly&data[0]=value"
+               "&facets[duoarea][]=NUS&facets[product][]=EPMR"
+               "&sort[0][column]=period&sort[0][direction]=desc&length=1")
+        rows = requests.get(url, timeout=30).json().get("response", {}).get("data", [])
+        latest = latest_eia_value(rows)
+        if latest:
+            context["national_regular"] = round(latest[1], 3)
+            context["national_as_of"] = latest[0]
+    except Exception:
+        log.exception("EIA national gasoline fetch failed")
+
+    # WTI crude spot, weekly (legacy series RWTC)
+    try:
+        url = ("https://api.eia.gov/v2/petroleum/pri/spt/data/"
+               f"?api_key={api_key}&frequency=weekly&data[0]=value"
+               "&facets[series][]=RWTC"
+               "&sort[0][column]=period&sort[0][direction]=desc&length=1")
+        rows = requests.get(url, timeout=30).json().get("response", {}).get("data", [])
+        latest = latest_eia_value(rows)
+        if latest:
+            context["wti"] = round(latest[1], 2)
+            context["wti_as_of"] = latest[0]
+    except Exception:
+        log.exception("EIA WTI fetch failed")
+
+    if context:
+        with open(os.path.join(out_dir, "eia_context.json"), "w", encoding="utf-8") as f:
+            json.dump(context, f, separators=(",", ":"), ensure_ascii=False)
+        log.info("Wrote EIA context: %s", context)
+
+
 # ---------------------------------------------------------------------------
 # History
 # ---------------------------------------------------------------------------
@@ -735,6 +797,7 @@ def main() -> None:
         log.exception("GasBuddy scrape failed — will still update EIA data")
 
     eia_updated = fetch_eia_data(out_dir)
+    fetch_eia_context(out_dir)
 
     write_status(out_dir, gasbuddy_success=gb_success,
                  run_health=run_health, eia_updated=eia_updated)
