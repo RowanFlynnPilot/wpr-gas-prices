@@ -89,20 +89,37 @@ log = logging.getLogger(__name__)
 # GasBuddy GraphQL helpers
 # ---------------------------------------------------------------------------
 
-def get_csrf_token(session) -> str:
-    """Fetch GasBuddy homepage and extract the CSRF token."""
-    try:
-        resp = session.get(GASBUDDY_HOME, timeout=20)
-        resp.raise_for_status()
-        match = re.search(r"window\.gbcsrf\s*=\s*[\"'](.*?)[\"']", resp.text)
-        if match:
-            token = match.group(1)
-            log.info("CSRF token obtained (%.10s...)", token)
-            return token
-        log.warning("CSRF token not found in homepage HTML")
-    except Exception as e:
-        log.warning("Failed to fetch CSRF token: %s", e)
-    return ""
+def establish_session(attempts: int = 4):
+    """Create a Chrome-impersonated session and obtain the CSRF token.
+
+    GasBuddy sits behind Cloudflare, which intermittently 403s the GitHub Actions
+    datacenter IP. The 403s are transient, so we retry with backoff and a **fresh
+    session each attempt** (the session that clears Cloudflare carries the cookies
+    needed for the GraphQL calls, so the winning session is the one we return).
+
+    Returns (session, token); token is "" if every attempt fails.
+    """
+    import curl_cffi.requests as cffi_req
+
+    session = None
+    for attempt in range(1, attempts + 1):
+        session = cffi_req.Session(impersonate="chrome")
+        try:
+            resp = session.get(GASBUDDY_HOME, timeout=20)
+            resp.raise_for_status()
+            match = re.search(r"window\.gbcsrf\s*=\s*[\"'](.*?)[\"']", resp.text)
+            if match:
+                log.info("CSRF token obtained (%.10s...) on attempt %d/%d",
+                         match.group(1), attempt, attempts)
+                return session, match.group(1)
+            log.warning("CSRF token not in homepage HTML (attempt %d/%d)", attempt, attempts)
+        except Exception as e:
+            log.warning("CSRF fetch failed (attempt %d/%d): %s", attempt, attempts, e)
+        if attempt < attempts:
+            wait = 15 * attempt  # 15s, 30s, 45s — ride out transient Cloudflare blocks
+            log.info("  retrying CSRF in %ds...", wait)
+            time.sleep(wait)
+    return session, ""
 
 
 def make_graphql_headers(token: str) -> dict:
@@ -332,20 +349,17 @@ def compute_statewide(metros: dict) -> dict:
 def scrape_gasbuddy() -> dict:
     """Scrape all Wisconsin cities from GasBuddy via GraphQL (no proxy needed)."""
     try:
-        import curl_cffi.requests as cffi_req
+        import curl_cffi.requests  # noqa: F401 — fail fast with a clear message if missing
     except ImportError:
         log.error("curl_cffi is not installed. Run: pip install curl_cffi")
         sys.exit(1)
 
     log.info("Scraping GasBuddy GraphQL for %d Wisconsin cities...", len(CITIES))
 
-    # One shared session with Chrome impersonation (bypasses Cloudflare)
-    session = cffi_req.Session(impersonate="chrome")
-
-    # Get CSRF token (required for GraphQL requests)
-    token = get_csrf_token(session)
+    # Establish a Cloudflare-cleared session + CSRF token (retries transient 403s)
+    session, token = establish_session()
     if not token:
-        log.error("Could not obtain CSRF token — aborting GasBuddy scrape")
+        log.error("Could not obtain CSRF token after retries — aborting GasBuddy scrape")
         raise RuntimeError("No CSRF token")
 
     headers = make_graphql_headers(token)

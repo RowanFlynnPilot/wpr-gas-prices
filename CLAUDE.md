@@ -29,7 +29,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 1. **GasBuddy GraphQL** (`/graphql`) — per-city station prices and names. Uses
    `curl_cffi` with `impersonate="chrome"` to clear Cloudflare; **no proxy needed**.
    - Requires a CSRF token scraped from `https://www.gasbuddy.com/home`
-     (`window.gbcsrf = "..."`). If that token can't be found, the scrape aborts.
+     (`window.gbcsrf = "..."`). `establish_session()` retries this up to 4× with
+     backoff and a **fresh impersonated session each time**, because Cloudflare
+     intermittently 403s the Actions datacenter IP; only if all attempts fail does the
+     scrape abort (→ failure alert). The session that clears Cloudflare is reused.
    - Query: `LocationBySearchTerm` → `stations.results[]` (name, address, prices).
 2. **AAA** (`gasprices.aaa.com/?state=WI`) — the **statewide trend** source
    (today / yesterday / week / month / year, all four fuels). Server-rendered table,
