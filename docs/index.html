@@ -28,7 +28,7 @@
     --up: #c0392b; --down: #27864a; --neutral: #888; --radius: 6px;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  .wpr-gas { font-family:'DM Sans',-apple-system,sans-serif; background:var(--paper); color:var(--ink); max-width:720px; margin:0 auto; border:1px solid var(--rule); border-radius:var(--radius); overflow:hidden; line-height:1.45; }
+  .wpr-gas { font-family:'DM Sans',-apple-system,sans-serif; background:var(--paper); color:var(--ink); max-width:720px; margin:0 auto; border:1px solid var(--rule); border-radius:10px; overflow:hidden; line-height:1.45; box-shadow:0 6px 24px rgba(20,50,45,0.09); }
 
   .wpr-gas-header { background:var(--ink); color:#fff; position:relative; }
   .wpr-gas-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--accent),var(--accent-light)); }
@@ -59,27 +59,36 @@
   .wpr-gas-fuel-btn:hover { border-color:var(--accent); color:var(--accent); box-shadow:0 2px 6px rgba(62,132,122,0.15); transform:translateY(-1px); }
   .wpr-gas-fuel-btn.active { background:linear-gradient(135deg, var(--accent-dark), var(--accent)); color:#fff; border-color:var(--accent-dark); box-shadow:0 2px 8px rgba(62,132,122,0.3); }
 
-  .wpr-state-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:12px 14px 16px; }
-  .wpr-state-card { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:14px; text-align:center; }
-  .wpr-state-card-label { font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-faint); margin-bottom:4px; font-weight:700; }
-  .wpr-state-card-value { font-family:'Playfair Display',Georgia,serif; font-size:24px; font-weight:700; }
-  .wpr-state-card-sub { font-size:10px; margin-top:2px; color:var(--ink-light); }
-  .wpr-state-range { padding:0 14px 16px; }
-  .wpr-state-range-bar { background:var(--rule-light); border-radius:10px; height:12px; position:relative; margin:8px 0 4px; }
-  .wpr-state-range-fill { background:linear-gradient(90deg,var(--down),var(--accent),var(--up)); border-radius:10px; height:100%; position:absolute; left:0; width:100%; }
-  .wpr-state-range-marker { position:absolute; top:-4px; width:3px; height:20px; background:var(--ink); border-radius:2px; transform:translateX(-50%); z-index:2; }
-  .wpr-state-range-marker-city { position:absolute; top:50%; width:16px; height:16px; background:var(--accent); border:3px solid #fff; border-radius:50%; transform:translate(-50%, -50%); z-index:3; box-shadow:0 1px 4px rgba(0,0,0,0.35); }
-  .wpr-state-range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); }
-  .wpr-state-city-select-wrap { padding:0 14px 14px; }
+  .wpr-state-grid { display:grid; grid-template-columns:1fr 1.18fr 1fr; gap:8px; padding:14px 14px 10px; align-items:stretch; }
+  .wpr-state-card { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:14px 8px; text-align:center; box-shadow:0 1px 3px rgba(20,50,45,0.05); display:flex; flex-direction:column; justify-content:center; }
+  .wpr-state-card-feature { background:linear-gradient(165deg,var(--accent-pale),#ffffff 75%); border-color:var(--accent-light); box-shadow:0 4px 12px rgba(62,132,122,0.18); }
+  .wpr-state-card-label { font-size:9px; text-transform:uppercase; letter-spacing:0.7px; color:var(--ink-faint); margin-bottom:5px; font-weight:700; }
+  .wpr-state-card-feature .wpr-state-card-label { color:var(--accent-dark); }
+  .wpr-state-card-value { font-family:'Playfair Display',Georgia,serif; font-size:22px; font-weight:700; line-height:1; }
+  .wpr-state-card-feature .wpr-state-card-value { font-size:30px; }
+  .wpr-state-card-sub { font-size:10px; margin-top:4px; color:var(--ink-light); }
+  .wpr-pin { font-size:7px; vertical-align:middle; margin-right:3px; }
+  .wpr-state-range { padding:20px 18px 14px; }
+  .wpr-state-range-bar { background:var(--rule-light); border-radius:10px; height:10px; position:relative; margin:4px 0; }
+  .wpr-state-range-fill { background:linear-gradient(90deg,var(--down),var(--accent),var(--up)); border-radius:10px; height:100%; position:absolute; left:0; width:100%; opacity:0.9; }
+  .wpr-state-range-marker { position:absolute; top:-4px; width:3px; height:18px; background:var(--ink); border-radius:2px; transform:translateX(-50%); z-index:2; }
+  .wpr-state-range-marker-city { position:absolute; top:50%; width:15px; height:15px; background:var(--accent); border:3px solid #fff; border-radius:50%; transform:translate(-50%, -50%); z-index:3; box-shadow:0 1px 4px rgba(0,0,0,0.35); }
+  .wpr-state-range-tag { position:absolute; transform:translateX(-50%); font-size:9px; font-weight:600; white-space:nowrap; padding:1px 6px; border-radius:4px; z-index:4; }
+  .wpr-state-range-tag-state { bottom:calc(100% + 7px); background:var(--ink); color:#fff; }
+  .wpr-state-range-tag-state::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:3px solid transparent; border-top-color:var(--ink); }
+  .wpr-state-range-tag-city { top:calc(100% + 9px); background:var(--accent); color:#fff; }
+  .wpr-state-range-tag-city::before { content:''; position:absolute; bottom:100%; left:50%; transform:translateX(-50%); border:3px solid transparent; border-bottom-color:var(--accent); }
+  .wpr-state-range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); margin-top:3px; }
+  .wpr-state-section-label { font-size:9px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-faint); font-weight:700; text-align:center; padding:2px 14px 0; }
+  .wpr-state-city-select-wrap { padding:4px 14px 14px; }
   .wpr-state-city-select { font-family:'DM Sans',sans-serif; font-size:12px; width:100%; padding:8px 12px; border:1.5px solid var(--rule); border-radius:var(--radius); background:#fff; color:var(--ink); cursor:pointer; appearance:auto; }
   .wpr-state-city-select:hover { border-color:var(--accent); }
   .wpr-state-city-select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-pale); }
-  .wpr-state-city-label { font-size:10px; color:var(--ink-faint); text-align:center; margin-bottom:2px; }
-  .wpr-state-card-city-dot { display:inline-block; width:10px; height:10px; background:var(--accent); border:2px solid #fff; border-radius:50%; box-shadow:0 0 0 1px var(--accent); vertical-align:middle; margin-right:4px; }
+  .wpr-state-city-label { font-size:10px; color:var(--ink-faint); text-align:center; margin-bottom:3px; }
 
   .wpr-metro-list { padding:8px 14px 14px; }
-  .wpr-metro-card { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--rule-light); border-radius:var(--radius); margin-bottom:6px; background:#fff; transition:all 0.12s; }
-  .wpr-metro-card:hover { border-color:var(--accent); }
+  .wpr-metro-card { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--rule-light); border-radius:var(--radius); margin-bottom:6px; background:#fff; box-shadow:0 1px 3px rgba(20,50,45,0.05); transition:all 0.12s; }
+  .wpr-metro-card:hover { border-color:var(--accent); box-shadow:0 3px 10px rgba(62,132,122,0.14); transform:translateY(-1px); }
   .wpr-metro-card.highlight { background:var(--accent-pale); border-color:var(--accent); }
   .wpr-metro-name { font-size:13px; font-weight:600; }
   .wpr-metro-right { text-align:right; display:flex; align-items:center; gap:12px; }
@@ -222,6 +231,42 @@
       }
     }
     return null;
+  }
+
+  // Parse a "mm/dd/yy" history key to a Date (local midnight).
+  function parseHistKey(k) {
+    const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(k || '');
+    return m ? new Date(2000 + (+m[3]), (+m[1]) - 1, +m[2]) : null;
+  }
+
+  // Statewide value for `fuel` ~`daysAgo` days back, from history (nearest entry
+  // within `tol` days). Lets every fuel show temporal comparisons, not just Regular.
+  function historyStatewideAt(daysAgo, fuel, tol) {
+    if (!historyData) return null;
+    const today = parseHistKey(data?.price_date) || new Date();
+    const target = today.getTime() - daysAgo * 86400000;
+    let best = null, bestDiff = Infinity;
+    for (const k of Object.keys(historyData)) {
+      const dt = parseHistKey(k);
+      const v = historyData[k]?.statewide?.[fuel];
+      if (!dt || typeof v !== 'number') continue;
+      const diff = Math.abs(dt.getTime() - target) / 86400000;
+      if (diff < bestDiff) { bestDiff = diff; best = v; }
+    }
+    return (best != null && bestDiff <= tol) ? best : null;
+  }
+
+  const PERIOD_DAYS = { yesterday_avg: 1, week_ago_avg: 7, month_ago_avg: 30, year_ago_avg: 365 };
+  const PERIOD_TOL  = { yesterday_avg: 3, week_ago_avg: 4, month_ago_avg: 10, year_ago_avg: 45 };
+
+  // A period's statewide value: prefer Fuel Insights (accurate, Regular only),
+  // else derive from stored history (works for all fuels).
+  function statewidePeriodValue(periodKey, fuel) {
+    const sw = data?.statewide;
+    if (periodKey === 'current_avg') return sw?.current_avg?.[fuel];
+    const fromInsights = sw?.[periodKey]?.[fuel];
+    if (fromInsights != null) return fromInsights;
+    return historyStatewideAt(PERIOD_DAYS[periodKey], fuel, PERIOD_TOL[periodKey]);
   }
 
   function findExtremeCities(fuel) {
@@ -399,110 +444,96 @@
       { key: 'year_ago_avg', label: 'Year Ago' },
     ];
 
-    // Gather values for bar scaling
-    let values = [];
-    periods.forEach(p => {
-      const val = sw?.[p.key]?.[activeFuel];
-      if (val != null) values.push(val);
-    });
+    // ── Spatial snapshot: lowest / average / highest + range ──
+    const avg = sw?.current_avg?.[activeFuel];
+    const low = sw?.low?.[activeFuel];
+    const high = sw?.high?.[activeFuel];
+    const { lowCity, highCity } = findExtremeCities(activeFuel);
 
-    // If we only have current (no history), show the card layout instead
-    if (values.length <= 1) {
-      const avg = sw?.current_avg?.[activeFuel];
-      const low = sw?.low?.[activeFuel];
-      const high = sw?.high?.[activeFuel];
-      const { lowCity, highCity } = findExtremeCities(activeFuel);
+    const metros = data?.metros || {};
+    const cityNames = Object.keys(metros).sort();
+    const cityPrice = selectedCity ? metros[selectedCity]?.current_avg?.[activeFuel] : null;
 
-      // City comparison
-      const metros = data?.metros || {};
-      const cityNames = Object.keys(metros).sort();
-      const cityPrice = selectedCity ? metros[selectedCity]?.current_avg?.[activeFuel] : null;
+    const pctOf = v => (v != null && low != null && high != null && high > low)
+      ? Math.max(0, Math.min(100, ((v - low) / (high - low)) * 100)) : null;
+    const markerPct = pctOf(avg) ?? 50;
+    const cityMarkerPct = pctOf(cityPrice);
 
-      let markerPct = 50;
-      if (avg != null && low != null && high != null && high > low) {
-        markerPct = ((avg - low) / (high - low)) * 100;
-      }
-      let cityMarkerPct = null;
-      if (cityPrice != null && low != null && high != null && high > low) {
-        cityMarkerPct = ((cityPrice - low) / (high - low)) * 100;
-      }
+    const middleLabel = selectedCity ? `${selectedCity} Avg` : 'State Average';
+    const middleValue = selectedCity ? cityPrice : avg;
+    const middleVs = (selectedCity && cityPrice != null && avg != null) ? delta(cityPrice, avg) : null;
 
-      // Middle card shows city avg if selected, otherwise state avg
-      const middleLabel = selectedCity ? `<span class="wpr-state-card-city-dot"></span>${selectedCity} Average` : 'State Average';
-      const middleValue = selectedCity ? cityPrice : avg;
+    const cityOptions = cityNames.map(n =>
+      `<option value="${n}" ${selectedCity === n ? 'selected' : ''}>${n}</option>`
+    ).join('');
 
-      let cityOptions = cityNames.map(n =>
-        `<option value="${n}" ${selectedCity === n ? 'selected' : ''}>${n}</option>`
-      ).join('');
-
-      return `
-        <div class="wpr-gas-fuel-row">${fuelBtns}</div>
-        <div class="wpr-state-grid">
-          <div class="wpr-state-card">
-            <div class="wpr-state-card-label">Lowest</div>
-            <div class="wpr-state-card-value" style="color:var(--down)">${fmt(low)}</div>
-            ${lowCity ? `<div class="wpr-state-card-sub">${lowCity}</div>` : ''}
-          </div>
-          <div class="wpr-state-card">
-            <div class="wpr-state-card-label">${middleLabel}</div>
-            <div class="wpr-state-card-value">${fmt(middleValue)}</div>
-          </div>
-          <div class="wpr-state-card">
-            <div class="wpr-state-card-label">Highest</div>
-            <div class="wpr-state-card-value" style="color:var(--up)">${fmt(high)}</div>
-            ${highCity ? `<div class="wpr-state-card-sub">${highCity}</div>` : ''}
-          </div>
-        </div>
-        <div class="wpr-state-range">
-          <div class="wpr-state-range-bar">
-            <div class="wpr-state-range-fill"></div>
-            <div class="wpr-state-range-marker" style="left:${markerPct}%" title="State Average"></div>
-            ${cityMarkerPct != null ? `<div class="wpr-state-range-marker-city" style="left:${cityMarkerPct}%" title="${selectedCity}: $${cityPrice.toFixed(3)}"></div>` : ''}
-          </div>
-          <div class="wpr-state-range-labels">
-            <span>Low ${low != null ? '$' + low.toFixed(2) : '—'}</span>
-            <span>State Avg ${avg != null ? '$' + avg.toFixed(3) : '—'}</span>
-            <span>High ${high != null ? '$' + high.toFixed(2) : '—'}</span>
-          </div>
-        </div>
-        <div class="wpr-state-city-select-wrap">
-          <div class="wpr-state-city-label">Compare a city</div>
-          <select class="wpr-state-city-select" id="citySelect" aria-label="Compare a city to the state average">
-            <option value="">State Average</option>
-            ${cityOptions}
-          </select>
-        </div>
-      `;
-    }
-
-    // Bar chart with time comparisons
-    const maxPrice = Math.max(...values) * 1.08;
+    // ── Temporal: today vs past (Fuel Insights for Regular, else history) ──
+    const periodVals = periods
+      .map(p => ({ label: p.label, key: p.key, val: statewidePeriodValue(p.key, activeFuel) }))
+      .filter(p => p.val != null);
     const currentVal = sw?.current_avg?.[activeFuel];
-
-    let rows = periods.map(p => {
-      const val = sw?.[p.key]?.[activeFuel];
-      if (val == null) return '';
-      const pct = ((val / maxPrice) * 100).toFixed(1);
-      const changeInfo = p.key !== 'current_avg' && currentVal != null
-        ? delta(currentVal, val)
-        : { text: '', cls: '' };
+    const maxPrice = (periodVals.length ? Math.max(...periodVals.map(p => p.val)) : 1) * 1.08;
+    const compareRows = periodVals.map(p => {
       const isCurrent = p.key === 'current_avg';
-
+      const pct = ((p.val / maxPrice) * 100).toFixed(1);
+      const ch = (!isCurrent && currentVal != null) ? delta(currentVal, p.val) : { text: '', cls: '' };
       return `
         <div class="wpr-gas-compare-row${isCurrent ? ' active-fuel' : ''}">
           <span class="wpr-gas-compare-label">${p.label}</span>
-          <div class="wpr-gas-compare-bar-wrap">
-            <div class="wpr-gas-compare-bar" style="width:${pct}%"></div>
-          </div>
-          <span class="wpr-gas-compare-price">${fmt(val)}</span>
-          <span class="wpr-gas-compare-change ${changeInfo.cls}">${changeInfo.text}</span>
-        </div>
-      `;
+          <div class="wpr-gas-compare-bar-wrap"><div class="wpr-gas-compare-bar" style="width:${pct}%"></div></div>
+          <span class="wpr-gas-compare-price">${fmt(p.val)}</span>
+          <span class="wpr-gas-compare-change ${ch.cls}">${ch.text}</span>
+        </div>`;
     }).join('');
+    const compareSection = periodVals.length > 1
+      ? `<div class="wpr-state-section-label">${fuelLabel(activeFuel)} over time</div>
+         <div class="wpr-gas-compare">${compareRows}</div>`
+      : '';
 
     return `
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
-      <div class="wpr-gas-compare">${rows}</div>
+      <div class="wpr-state-grid">
+        <div class="wpr-state-card">
+          <div class="wpr-state-card-label">Lowest</div>
+          <div class="wpr-state-card-value" style="color:var(--down)">${fmt(low)}</div>
+          ${lowCity ? `<div class="wpr-state-card-sub"><span class="wpr-pin down-color">●</span>${lowCity}</div>` : ''}
+        </div>
+        <div class="wpr-state-card wpr-state-card-feature">
+          <div class="wpr-state-card-label">${middleLabel}</div>
+          <div class="wpr-state-card-value">${fmt(middleValue)}</div>
+          ${middleVs
+            ? `<div class="wpr-state-card-sub ${middleVs.cls}">${middleVs.text} vs state</div>`
+            : '<div class="wpr-state-card-sub">statewide average</div>'}
+        </div>
+        <div class="wpr-state-card">
+          <div class="wpr-state-card-label">Highest</div>
+          <div class="wpr-state-card-value" style="color:var(--up)">${fmt(high)}</div>
+          ${highCity ? `<div class="wpr-state-card-sub"><span class="wpr-pin up-color">●</span>${highCity}</div>` : ''}
+        </div>
+      </div>
+      <div class="wpr-state-range">
+        <div class="wpr-state-range-bar">
+          <div class="wpr-state-range-fill"></div>
+          <div class="wpr-state-range-marker" style="left:${markerPct}%"></div>
+          <span class="wpr-state-range-tag wpr-state-range-tag-state" style="left:${markerPct}%">State $${avg != null ? avg.toFixed(2) : '—'}</span>
+          ${cityMarkerPct != null
+            ? `<div class="wpr-state-range-marker-city" style="left:${cityMarkerPct}%"></div>
+               <span class="wpr-state-range-tag wpr-state-range-tag-city" style="left:${cityMarkerPct}%">${selectedCity} $${cityPrice.toFixed(2)}</span>`
+            : ''}
+        </div>
+        <div class="wpr-state-range-labels">
+          <span>Low $${low != null ? low.toFixed(2) : '—'}</span>
+          <span>High $${high != null ? high.toFixed(2) : '—'}</span>
+        </div>
+      </div>
+      <div class="wpr-state-city-select-wrap">
+        <div class="wpr-state-city-label">Compare a city</div>
+        <select class="wpr-state-city-select" id="citySelect" aria-label="Compare a city to the state average">
+          <option value="">State Average</option>
+          ${cityOptions}
+        </select>
+      </div>
+      ${compareSection}
     `;
   }
 
