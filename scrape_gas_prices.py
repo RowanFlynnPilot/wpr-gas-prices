@@ -539,6 +539,66 @@ def update_history(data: dict, out_dir: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Newsroom summary — a quotable, auto-generated blurb for WPR
+# ---------------------------------------------------------------------------
+
+def _format_long_date(price_date: str) -> str:
+    """'mm/dd/yy' -> 'June 4, 2026' (no leading zero, cross-platform)."""
+    try:
+        dt = datetime.strptime(price_date, "%m/%d/%y")
+    except (ValueError, TypeError):
+        return price_date or ""
+    return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
+
+
+def build_summary(data: dict) -> dict:
+    """A quotable, plain-language summary the WPR newsroom can drop into articles.
+
+    Pure function over the assembled output. Returns {} if there's no usable average.
+    """
+    sw = data.get("statewide", {})
+    cur = sw.get("current_avg", {}).get("regular")
+    if cur is None:
+        return {}
+
+    def cents(d):
+        return f"{abs(round(d * 100))}¢"  # e.g. "12¢"
+
+    comps = []
+    for key, phrase in [("week_ago_avg", "a week ago"),
+                        ("month_ago_avg", "a month ago"),
+                        ("year_ago_avg", "a year ago")]:
+        prev = sw.get(key, {}).get("regular")
+        if prev is not None and abs(cur - prev) >= 0.005:
+            direction = "up" if cur > prev else "down"
+            comps.append(f"{direction} {cents(cur - prev)} from {phrase}")
+
+    # Cheapest / priciest metro (fresh cities only)
+    reg = {
+        name: md["current_avg"]["regular"]
+        for name, md in data.get("metros", {}).items()
+        if not md.get("stale") and "regular" in md.get("current_avg", {})
+    }
+    metro_clause = ""
+    if len(reg) >= 2:
+        low_city = min(reg, key=reg.get)
+        high_city = max(reg, key=reg.get)
+        metro_clause = (f" Among metro areas, {low_city} is cheapest "
+                        f"(${reg[low_city]:.2f}) and {high_city} priciest (${reg[high_city]:.2f}).")
+
+    as_of = _format_long_date(data.get("price_date", ""))
+    comp_clause = (" — " + ", ".join(comps)) if comps else ""
+    blurb = (f"As of {as_of}, regular unleaded in Wisconsin averages "
+             f"${cur:.2f} per gallon{comp_clause}.{metro_clause}")
+
+    return {
+        "as_of": as_of,
+        "headline": f"Wisconsin gas averages ${cur:.2f}/gal",
+        "blurb": blurb,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Data preservation — merge stale cities from previous run
 # ---------------------------------------------------------------------------
 
@@ -659,6 +719,10 @@ def main() -> None:
 
         if fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
             validate_output(data)
+            summary = build_summary(data)
+            if summary:
+                data["summary"] = summary
+                log.info("Summary: %s", summary["blurb"])
             gb_success = True
             with open(args.output, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)

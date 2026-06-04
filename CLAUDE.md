@@ -93,7 +93,12 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
       "stale": true, "stale_from": "mm/dd/yy"   // only present if preserved from a prior run
     }
   },
-  "priority_metros": [ ... ]
+  "priority_metros": [ ... ],
+  "summary": {                                 // auto-generated newsroom blurb
+    "as_of": "June 4, 2026",
+    "headline": "Wisconsin gas averages $3.92/gal",
+    "blurb": "As of June 4, 2026, regular unleaded in Wisconsin averages $3.92 ..."
+  }
 }
 ```
 

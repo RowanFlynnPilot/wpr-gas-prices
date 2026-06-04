@@ -267,6 +267,62 @@ def test_compute_statewide_defaults_weight_when_count_missing():
 
 
 # ---------------------------------------------------------------------------
+# build_summary (newsroom blurb)
+# ---------------------------------------------------------------------------
+
+def test_build_summary_full():
+    data = {
+        "price_date": "06/04/26",
+        "statewide": {"current_avg": {"regular": 3.92},
+                      "week_ago_avg": {"regular": 3.88},
+                      "month_ago_avg": {"regular": 3.80},
+                      "year_ago_avg": {"regular": 3.32}},
+        "metros": {"Madison": _city(3.68), "Wausau": _city(4.41)},
+    }
+    out = s.build_summary(data)
+    assert out["as_of"] == "June 4, 2026"
+    assert out["headline"] == "Wisconsin gas averages $3.92/gal"
+    b = out["blurb"]
+    assert "$3.92 per gallon" in b
+    assert "up 4¢ from a week ago" in b
+    assert "up 60¢ from a year ago" in b
+    assert "Madison is cheapest ($3.68)" in b
+    assert "Wausau priciest ($4.41)" in b
+
+
+def test_build_summary_skips_unchanged_and_missing_comparisons():
+    data = {
+        "price_date": "06/04/26",
+        "statewide": {"current_avg": {"regular": 3.50},
+                      "week_ago_avg": {"regular": 3.50}},  # unchanged -> skipped
+        "metros": {"Madison": _city(3.50)},  # only one metro -> no metro clause
+    }
+    out = s.build_summary(data)
+    assert "from a week ago" not in out["blurb"]
+    assert "Among metro areas" not in out["blurb"]
+    assert out["blurb"].endswith("$3.50 per gallon.")
+
+
+def test_build_summary_empty_without_regular():
+    assert s.build_summary({"statewide": {"current_avg": {}}}) == {}
+
+
+def test_build_summary_excludes_stale_metros():
+    data = {
+        "price_date": "06/04/26",
+        "statewide": {"current_avg": {"regular": 3.92}},
+        "metros": {
+            "Madison": _city(3.68),
+            "Wausau": _city(4.41),
+            "Ghost": {**_city(1.50), "stale": True},  # implausible + stale -> ignored
+        },
+    }
+    b = s.build_summary(data)["blurb"]
+    assert "Ghost" not in b
+    assert "Madison is cheapest ($3.68)" in b
+
+
+# ---------------------------------------------------------------------------
 # main() integration (offline — scrape_gasbuddy / fetch_eia_data stubbed)
 # ---------------------------------------------------------------------------
 
