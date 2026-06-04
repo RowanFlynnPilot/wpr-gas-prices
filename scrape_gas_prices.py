@@ -584,38 +584,48 @@ def build_summary(data: dict) -> dict:
     if cur is None:
         return {}
 
-    def cents(d):
-        return f"{abs(round(d * 100))}¢"  # e.g. "12¢"
+    def money(d):
+        """Format a price difference: '$1.07' at or above a dollar, else '25¢'."""
+        c = round(abs(d) * 100)  # whole cents
+        return f"${c / 100:.2f}" if c >= 100 else f"{c}¢"
 
+    # AAA statewide trend, phrased as natural "X higher/lower than ..." legs.
     aaa = data.get("aaa") or {}
     aaa_cur = aaa.get("current", {}).get("regular")
-    comps = []
+    legs = []
     if aaa_cur is not None:
-        for key, phrase in [("week_ago", "a week ago"),
-                            ("month_ago", "a month ago"),
-                            ("year_ago", "a year ago")]:
+        for key, ago in [("week_ago", "a week ago"),
+                         ("month_ago", "a month ago"),
+                         ("year_ago", "a year ago")]:
             prev = aaa.get(key, {}).get("regular")
             if prev is not None and abs(aaa_cur - prev) >= 0.005:
-                direction = "up" if aaa_cur > prev else "down"
-                comps.append(f"{direction} {cents(aaa_cur - prev)} from {phrase}")
+                hl = "higher" if aaa_cur > prev else "lower"
+                legs.append(f"{money(aaa_cur - prev)} {hl} than {ago}")
+    if not legs:
+        trend = ""
+    elif len(legs) == 1:
+        trend = f" AAA figures put the statewide average {legs[0]}."
+    else:
+        trend = f" AAA figures put the statewide average {', '.join(legs[:-1])}, and {legs[-1]}."
 
-    # Cheapest / priciest metro (fresh cities only)
+    # Cheapest / priciest metro across all shown cities with a plausible price
+    # (includes carried-forward stale ones, which the widget also displays).
     reg = {
         name: md["current_avg"]["regular"]
         for name, md in data.get("metros", {}).items()
-        if not md.get("stale") and "regular" in md.get("current_avg", {})
+        if isinstance(md.get("current_avg", {}).get("regular"), (int, float))
+        and 1.0 < md["current_avg"]["regular"] < 10.0
     }
     metro_clause = ""
     if len(reg) >= 2:
         low_city = min(reg, key=reg.get)
         high_city = max(reg, key=reg.get)
-        metro_clause = (f" Among metro areas, {low_city} is cheapest "
-                        f"(${reg[low_city]:.2f}) and {high_city} priciest (${reg[high_city]:.2f}).")
+        metro_clause = (f" Drivers are finding the lowest metro average in {low_city} "
+                        f"(${reg[low_city]:.2f}) and the highest in {high_city} (${reg[high_city]:.2f}).")
 
     as_of = _format_long_date(data.get("price_date", ""))
-    trend_clause = f" Statewide, prices are {', '.join(comps)}, per AAA." if comps else ""
-    blurb = (f"As of {as_of}, regular unleaded in Wisconsin averages "
-             f"${cur:.2f} per gallon, according to GasBuddy.{trend_clause}{metro_clause}")
+    blurb = (f"Regular gas is averaging ${cur:.2f} a gallon across Wisconsin as of "
+             f"{as_of}, according to GasBuddy.{trend}{metro_clause}")
 
     return {
         "as_of": as_of,
