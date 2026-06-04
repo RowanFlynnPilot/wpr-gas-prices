@@ -25,7 +25,16 @@ import requests
 # ---------------------------------------------------------------------------
 
 CITIES = {
-    "Wausau":      "Wausau, WI",
+    # Central / northern Wisconsin — WPR's core readership area
+    "Wausau":           "Wausau, WI",
+    "Stevens Point":    "Stevens Point, WI",
+    "Wisconsin Rapids": "Wisconsin Rapids, WI",
+    "Marshfield":       "Marshfield, WI",
+    "Rhinelander":      "Rhinelander, WI",
+    "Merrill":          "Merrill, WI",
+    "Mosinee":          "Mosinee, WI",
+    "Antigo":           "Antigo, WI",
+    # Other major Wisconsin metros
     "Eau Claire":  "Eau Claire, WI",
     "Green Bay":   "Green Bay, WI",
     "Appleton":    "Appleton, WI",
@@ -65,6 +74,7 @@ LOCATION_QUERY = (
     "locationBySearchTerm(lat: $lat, lng: $lng, search: $search) { "
     "stations(brandId: $brandId cursor: $cursor fuel: $fuel lat: $lat "
     "lng: $lng maxAge: $maxAge) { results { "
+    "name address { line1 locality } "
     "prices { cash { price } credit { price } fuelProduct } } } "
     "trends { areaName country today todayLow trend } } }"
 )
@@ -141,6 +151,41 @@ def parse_station_results(results: list) -> dict | None:
     return city_data
 
 
+def extract_cheapest_stations(results: list, limit: int = 8) -> list:
+    """Cheapest `limit` named stations by regular price, each with its address and
+    available fuel prices. Pure function (no network) for unit-testing.
+    """
+    stations = []
+    for st in results:
+        name = (st.get("name") or "").strip()
+        if not name:
+            continue
+        prices: dict[str, float] = {}
+        for pn in st.get("prices", []):
+            fuel_key = FUEL_MAP.get(pn.get("fuelProduct"))
+            if not fuel_key:
+                continue
+            raw = (pn.get("credit") or pn.get("cash") or {}).get("price")
+            try:
+                p = float(raw)
+            except (TypeError, ValueError):
+                continue
+            if 1.0 < p < 10.0:
+                prices[fuel_key] = round(p, 3)
+        if "regular" not in prices:
+            continue
+        addr = st.get("address") or {}
+        address = ", ".join(x for x in [(addr.get("line1") or "").strip(),
+                                        (addr.get("locality") or "").strip()] if x)
+        entry = {"name": name, "prices": prices}
+        if address:
+            entry["address"] = address
+        stations.append(entry)
+
+    stations.sort(key=lambda s: s["prices"]["regular"])
+    return stations[:limit]
+
+
 def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict) -> dict | None:
     """Query GasBuddy GraphQL for a single city and return structured price data.
 
@@ -180,6 +225,10 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
     if city_data is None:
         log.warning("  %s: no usable prices found", city_name)
         return None
+
+    stations = extract_cheapest_stations(results)
+    if stations:
+        city_data["stations"] = stations
 
     reg = city_data["current_avg"].get("regular")
     log.info(

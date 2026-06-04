@@ -59,7 +59,8 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 
 ## Key constants (top of `scrape_gas_prices.py`)
 
-- `CITIES` — 15 Wisconsin cities scraped.
+- `CITIES` — 22 Wisconsin cities scraped (central/northern WI listed first for WPR's
+  readership; the rest are the other major metros).
 - `PRIORITY_METROS` — `["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee"]`
   (ordering shown first in the widget).
 - `FUEL_MAP` — GasBuddy `fuelProduct` → internal keys: `regular`, `mid_grade`,
@@ -85,6 +86,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
     "Wausau": {
       "current_avg": { ... }, "low": { ... }, "high": { ... },
       "station_count": { "regular": 12, ... },
+      "stations": [                              // up to 8 cheapest by regular (for the Metro tab)
+        { "name": "Costco", "address": "423 N 17th Ave, Wausau",
+          "prices": { "regular": 3.59, "diesel": 4.49 } }
+      ],
       "stale": true, "stale_from": "mm/dd/yy"   // only present if preserved from a prior run
     }
   },
@@ -98,7 +103,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   (GitHub Actions / Azure) to ~7 requests/min. The scraper runs cities in **batches
   of 7**: 60s wait before batch 1, 90s between batches, 5s between cities, plus a
   429-retry with backoff. Don't "optimize" these delays away — that's what makes the
-  Actions run succeed.
+  Actions run succeed. (22 cities ⇒ 4 batches, ~8–10 min per run.)
+- **Cheapest stations.** `extract_cheapest_stations()` keeps the 8 lowest-priced
+  named stations per city (by regular) with their address + all fuel prices, stored
+  under `metros[city].stations`. The Metro tab makes each city row expandable to show
+  them. Excluded from `gas_prices_history.json` (only `current_avg` is recorded).
 - **Statewide average is station-count weighted.** `compute_statewide()` weights
   each city's average by how many stations it reported, so the figure equals the
   pooled mean of all stations (market-weighted) rather than an equal-per-city mean.
