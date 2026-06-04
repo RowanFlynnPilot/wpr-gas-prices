@@ -277,12 +277,13 @@ def test_build_summary_full():
     assert out["as_of"] == "June 4, 2026"
     assert out["headline"] == "Wisconsin gas averages $3.92/gal"
     b = out["blurb"]
-    assert "$3.92 per gallon, according to GasBuddy" in b
-    assert "down 26¢ from a week ago" in b      # 4.07 vs 4.33 (AAA-internal)
-    assert "up 110¢ from a year ago" in b       # 4.07 vs 2.97
-    assert "per AAA" in b
-    assert "Madison is cheapest ($3.68)" in b
-    assert "Wausau priciest ($4.41)" in b
+    assert "averaging $3.92 a gallon across Wisconsin" in b
+    assert "according to GasBuddy" in b
+    assert "AAA figures put the statewide average" in b
+    assert "26¢ lower than a week ago" in b       # 4.07 vs 4.33 (AAA-internal)
+    assert "$1.10 higher than a year ago" in b    # 4.07 vs 2.97 -> dollars, not "110¢"
+    assert "lowest metro average in Madison ($3.68)" in b
+    assert "highest in Wausau ($4.41)" in b
 
 
 def test_build_summary_no_trend_without_aaa():
@@ -292,8 +293,8 @@ def test_build_summary_no_trend_without_aaa():
         "metros": {"Madison": _city(3.50)},  # one metro -> no metro clause; no aaa -> no trend
     }
     out = s.build_summary(data)
-    assert "per AAA" not in out["blurb"]
-    assert "Among metro areas" not in out["blurb"]
+    assert "AAA figures" not in out["blurb"]
+    assert "metro average" not in out["blurb"]
     assert out["blurb"].endswith("according to GasBuddy.")
 
 
@@ -319,19 +320,21 @@ def test_latest_eia_value_skips_nulls_and_handles_empty():
     assert s.latest_eia_value([]) is None
 
 
-def test_build_summary_excludes_stale_metros():
+def test_build_summary_metro_clause_ranks_plausible_incl_stale():
     data = {
         "price_date": "06/04/26",
         "statewide": {"current_avg": {"regular": 3.92}},
         "metros": {
             "Madison": _city(3.68),
-            "Wausau": _city(4.41),
-            "Ghost": {**_city(1.50), "stale": True},  # implausible + stale -> ignored
+            "Wausau": {**_city(4.41), "stale": True},   # stale but plausible -> still ranked
+            "Ghost": _city(0.50),                       # implausible price -> excluded
+            "NoReg": {"current_avg": {}},               # no regular -> excluded
         },
     }
     b = s.build_summary(data)["blurb"]
-    assert "Ghost" not in b
-    assert "Madison is cheapest ($3.68)" in b
+    assert "Ghost" not in b and "NoReg" not in b
+    assert "lowest metro average in Madison ($3.68)" in b
+    assert "highest in Wausau ($4.41)" in b   # stale city still appears
 
 
 # ---------------------------------------------------------------------------
