@@ -59,6 +59,10 @@
   .wpr-gas-fuel-btn:hover { border-color:var(--accent); color:var(--accent); box-shadow:0 2px 6px rgba(62,132,122,0.15); transform:translateY(-1px); }
   .wpr-gas-fuel-btn.active { background:linear-gradient(135deg, var(--accent-dark), var(--accent)); color:#fff; border-color:var(--accent-dark); box-shadow:0 2px 8px rgba(62,132,122,0.3); }
 
+  .wpr-summary { margin:12px 14px 2px; padding:10px 12px; background:var(--paper-warm); border-left:3px solid var(--accent); border-radius:4px; display:flex; gap:10px; align-items:flex-start; }
+  .wpr-summary-text { font-size:12px; color:var(--ink-mid); line-height:1.5; flex:1; }
+  .wpr-summary-copy { flex-shrink:0; font-family:'DM Sans',sans-serif; font-size:10px; font-weight:600; color:var(--accent); background:#fff; border:1px solid var(--rule); border-radius:4px; padding:4px 9px; cursor:pointer; transition:all 0.12s; }
+  .wpr-summary-copy:hover { border-color:var(--accent); background:var(--accent-pale); }
   .wpr-state-grid { display:grid; grid-template-columns:1fr 1.18fr 1fr; gap:8px; padding:14px 14px 10px; align-items:stretch; }
   .wpr-state-card { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:14px 8px; text-align:center; box-shadow:0 1px 3px rgba(20,50,45,0.05); display:flex; flex-direction:column; justify-content:center; }
   .wpr-state-card-feature { background:linear-gradient(165deg,var(--accent-pale),#ffffff 75%); border-color:var(--accent-light); box-shadow:0 4px 12px rgba(62,132,122,0.18); }
@@ -448,6 +452,15 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       });
     });
+    const copyBtn = widget.querySelector('.wpr-summary-copy');
+    if (copyBtn && data.summary && data.summary.blurb) {
+      copyBtn.addEventListener('click', () => {
+        const done = () => { copyBtn.textContent = 'Copied!'; setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(data.summary.blurb).then(done).catch(() => {});
+        }
+      });
+    }
     postHeight();
   }
 
@@ -516,6 +529,11 @@
       : '';
 
     return `
+      ${data.summary && data.summary.blurb ? `
+        <div class="wpr-summary">
+          <p class="wpr-summary-text">${data.summary.blurb}</p>
+          <button type="button" class="wpr-summary-copy" aria-label="Copy this summary">Copy</button>
+        </div>` : ''}
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
       <div class="wpr-state-grid">
         <div class="wpr-state-card">
