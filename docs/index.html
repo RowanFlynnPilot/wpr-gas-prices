@@ -84,6 +84,12 @@
   .wpr-state-range-tag-city::before { content:''; position:absolute; bottom:100%; left:50%; transform:translateX(-50%); border:3px solid transparent; border-bottom-color:var(--accent); }
   .wpr-state-range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); margin-top:3px; }
   .wpr-state-section-label { font-size:9px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-faint); font-weight:700; text-align:center; padding:2px 14px 0; }
+  .wpr-ctx-strip { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 20px; padding:10px 14px 2px; margin:8px 12px 0; border-top:1px solid var(--rule-light); }
+  .wpr-ctx-item { display:flex; align-items:baseline; gap:6px; }
+  .wpr-ctx-label { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-faint); font-weight:700; }
+  .wpr-ctx-value { font-family:'Playfair Display',Georgia,serif; font-size:15px; font-weight:700; }
+  .wpr-ctx-unit { font-size:9px; color:var(--ink-faint); font-weight:400; }
+  .wpr-ctx-rel { font-size:10px; font-weight:600; }
   .wpr-state-city-select-wrap { padding:4px 14px 14px; }
   .wpr-state-city-select { font-family:'DM Sans',sans-serif; font-size:12px; width:100%; padding:8px 12px; border:1.5px solid var(--rule); border-radius:var(--radius); background:#fff; color:var(--ink); cursor:pointer; appearance:auto; }
   .wpr-state-city-select:hover { border-color:var(--accent); }
@@ -178,6 +184,7 @@
   const DATA_URL = './gas_prices.json';
   const HISTORY_URL = './gas_prices_history.json';
   const EIA_DATA_URL = './eia_weekly.json';
+  const EIA_CONTEXT_URL = './eia_context.json';
   // Cache-bust in 10-min buckets so the GitHub Pages CDN doesn't serve stale JSON.
   const cacheBust = () => '?t=' + Math.floor(Date.now() / 600000);
 
@@ -185,6 +192,7 @@
 
   let data = null;
   let historyData = null;
+  let contextData = null;
   let activeFuel = 'regular';
   let activeTab = 'statewide';
   let selectedCity = '';
@@ -464,6 +472,26 @@
     postHeight();
   }
 
+  // National benchmark + crude context (EIA). WI-vs-US shows for Regular only
+  // (the national series is regular gasoline); WTI crude is fuel-agnostic.
+  function renderContextStrip() {
+    if (!contextData) return '';
+    const items = [];
+    const wi = data.statewide?.current_avg?.regular;
+    const nat = contextData.national_regular;
+    if (activeFuel === 'regular' && wi != null && nat != null) {
+      const diff = wi - nat;
+      const cents = Math.round(Math.abs(diff) * 100);
+      const rel = diff < -0.005 ? `${cents}¢ below` : diff > 0.005 ? `${cents}¢ above` : 'even with';
+      const cls = diff < -0.005 ? 'down-color' : diff > 0.005 ? 'up-color' : 'flat-color';
+      items.push(`<span class="wpr-ctx-item"><span class="wpr-ctx-label">U.S. avg</span><span class="wpr-ctx-value">${fmt(nat)}</span><span class="wpr-ctx-rel ${cls}">WI ${rel}</span></span>`);
+    }
+    if (contextData.wti != null) {
+      items.push(`<span class="wpr-ctx-item"><span class="wpr-ctx-label">WTI crude</span><span class="wpr-ctx-value">$${contextData.wti.toFixed(2)}<span class="wpr-ctx-unit">/bbl</span></span></span>`);
+    }
+    return items.length ? `<div class="wpr-ctx-strip" title="Source: U.S. EIA">${items.join('')}</div>` : '';
+  }
+
   // ── Statewide Tab ──
   function renderStatewide() {
     const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
@@ -577,6 +605,7 @@
         </select>
       </div>
       ${compareSection}
+      ${renderContextStrip()}
     `;
   }
 
@@ -852,12 +881,14 @@
   // ── Init ──
   async function init() {
     try {
-      const [dataResp, histResp] = await Promise.all([
+      const [dataResp, histResp, ctxResp] = await Promise.all([
         fetch(DATA_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(HISTORY_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(EIA_CONTEXT_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       data = dataResp;
       historyData = histResp;
+      contextData = ctxResp;
     } catch (err) {
       data = null;
     }

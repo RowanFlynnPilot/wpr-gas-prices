@@ -307,6 +307,24 @@ def test_build_summary_empty_without_regular():
     assert s.build_summary({"statewide": {"current_avg": {}}}) == {}
 
 
+# ---------------------------------------------------------------------------
+# latest_eia_value
+# ---------------------------------------------------------------------------
+
+def test_latest_eia_value_picks_most_recent():
+    rows = [
+        {"period": "2026-05-18", "value": "4.05"},
+        {"period": "2026-06-01", "value": "4.10"},
+        {"period": "2026-05-25", "value": "4.08"},
+    ]
+    assert s.latest_eia_value(rows) == ("2026-06-01", 4.10)
+
+
+def test_latest_eia_value_skips_nulls_and_handles_empty():
+    assert s.latest_eia_value([{"period": "2026-06-01", "value": None}]) is None
+    assert s.latest_eia_value([]) is None
+
+
 def test_build_summary_excludes_stale_metros():
     data = {
         "price_date": "06/04/26",
@@ -343,6 +361,7 @@ def test_main_writes_status_and_strips_run_health(tmp_path, monkeypatch):
 
     monkeypatch.setattr(s, "scrape_gasbuddy", fake_scrape)
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
+    monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
@@ -365,6 +384,7 @@ def test_main_reports_failure_when_scrape_raises(tmp_path, monkeypatch):
 
     monkeypatch.setattr(s, "scrape_gasbuddy", boom)
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
+    monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
