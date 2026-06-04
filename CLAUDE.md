@@ -173,9 +173,9 @@ cd docs && python -m http.server 8000   # then open http://localhost:8000
 
 - [x] Rewrite `README.md` to match the GasBuddy/curl_cffi reality.
 - [x] Add a `.gitignore`.
-- [ ] **Port enhancements to `docs/index-compact.html`.** The compact variant is
-  currently behind `index.html`: it lacks the honest error state, relative-time
-  freshness label, auto-resize `postMessage`, non-blocking fonts, cache-busting,
-  and the ARIA pass. Keep the two in sync or formally retire the compact one.
-- [ ] Harden the Fuel Insights price regex: `[\d.]+` will swallow a trailing
-  period (e.g. `$3.45.`). Real markup doesn't trigger it today, but it's fragile.
+- [x] **Port enhancements to `docs/index-compact.html`.** Now at parity: honest
+  error state, relative-time freshness label, auto-resize `postMessage`,
+  non-blocking fonts, cache-busting, ARIA, no-JS fallback. Also fixed its stale
+  "Data via AAA" footer credit → GasBuddy. (It has no tabs/trends/sparklines by
+  design.) Keep the two in sync going forward.
+- [x] Harden the Fuel Insights price regex (`\d+\.\d+` instead of `[\d.]+`).
