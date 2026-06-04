@@ -320,6 +320,19 @@ def test_latest_eia_value_skips_nulls_and_handles_empty():
     assert s.latest_eia_value([]) is None
 
 
+# ---------------------------------------------------------------------------
+# is_degraded
+# ---------------------------------------------------------------------------
+
+def test_is_degraded_thresholds():
+    assert s.is_degraded({"cities_total": 22, "cities_fresh": 1}) is True
+    assert s.is_degraded({"cities_total": 22, "cities_fresh": 10}) is True   # < half
+    assert s.is_degraded({"cities_total": 22, "cities_fresh": 11}) is False  # exactly half
+    assert s.is_degraded({"cities_total": 22, "cities_fresh": 20}) is False
+    assert s.is_degraded(None) is False
+    assert s.is_degraded({}) is False
+
+
 def test_build_summary_metro_clause_ranks_plausible_incl_stale():
     data = {
         "price_date": "06/04/26",
