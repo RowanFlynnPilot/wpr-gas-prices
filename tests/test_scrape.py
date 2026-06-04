@@ -193,6 +193,33 @@ def test_validate_output_rejects_bad_data(mutate):
 
 
 # ---------------------------------------------------------------------------
+# compute_statewide (station-count weighted)
+# ---------------------------------------------------------------------------
+
+def test_compute_statewide_weights_by_station_count():
+    metros = {
+        "Big":   {"current_avg": {"regular": 4.00}, "low": {"regular": 3.9},
+                  "high": {"regular": 4.1}, "station_count": {"regular": 30}},
+        "Small": {"current_avg": {"regular": 3.00}, "low": {"regular": 2.9},
+                  "high": {"regular": 3.1}, "station_count": {"regular": 10}},
+    }
+    sw = s.compute_statewide(metros)
+    # weighted: (4.00*30 + 3.00*10) / 40 = 3.75  (unweighted would be 3.50)
+    assert sw["current_avg"]["regular"] == 3.75
+    assert sw["low"]["regular"] == 2.9   # absolute min across cities
+    assert sw["high"]["regular"] == 4.1  # absolute max across cities
+
+
+def test_compute_statewide_defaults_weight_when_count_missing():
+    metros = {
+        "A": _city(4.0),  # no station_count -> weight defaults to 1
+        "B": _city(3.0),
+    }
+    sw = s.compute_statewide(metros)
+    assert sw["current_avg"]["regular"] == 3.5
+
+
+# ---------------------------------------------------------------------------
 # main() integration (offline — scrape_gasbuddy / fetch_eia_data stubbed)
 # ---------------------------------------------------------------------------
 

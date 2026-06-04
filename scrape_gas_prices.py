@@ -266,6 +266,39 @@ def parse_fuel_insights(text: str) -> dict:
 # Main GasBuddy scrape
 # ---------------------------------------------------------------------------
 
+def compute_statewide(metros: dict) -> dict:
+    """Statewide current_avg / low / high across metros.
+
+    current_avg is weighted by station count, so a city's influence scales with how
+    many stations it contributes — this equals the pooled mean of every station's
+    price (a market-weighted figure), rather than treating each city equally.
+    low/high stay as the absolute min/max across cities.
+    """
+    sw: dict = {"current_avg": {}, "low": {}, "high": {}}
+    for fuel_key in ["regular", "mid_grade", "premium", "diesel"]:
+        weighted_sum = 0.0
+        weight = 0
+        lows, highs = [], []
+        for m in metros.values():
+            avg = m.get("current_avg", {}).get(fuel_key)
+            if avg is None:
+                continue
+            count = m.get("station_count", {}).get(fuel_key) or 1
+            weighted_sum += avg * count
+            weight += count
+            if fuel_key in m.get("low", {}):
+                lows.append(m["low"][fuel_key])
+            if fuel_key in m.get("high", {}):
+                highs.append(m["high"][fuel_key])
+        if weight:
+            sw["current_avg"][fuel_key] = round(weighted_sum / weight, 3)
+            if lows:
+                sw["low"][fuel_key] = round(min(lows), 3)
+            if highs:
+                sw["high"][fuel_key] = round(max(highs), 3)
+    return sw
+
+
 def scrape_gasbuddy() -> dict:
     """Scrape all Wisconsin cities from GasBuddy via GraphQL (no proxy needed)."""
     try:
@@ -316,16 +349,8 @@ def scrape_gasbuddy() -> dict:
             if i < len(batch) - 1:
                 time.sleep(5)
 
-    # Compute statewide averages across all scraped cities
-    statewide: dict = {"current_avg": {}, "low": {}, "high": {}}
-    for fuel_key in ["regular", "mid_grade", "premium", "diesel"]:
-        avgs  = [m["current_avg"][fuel_key] for m in metros.values() if fuel_key in m.get("current_avg", {})]
-        lows  = [m["low"][fuel_key]         for m in metros.values() if fuel_key in m.get("low", {})]
-        highs = [m["high"][fuel_key]        for m in metros.values() if fuel_key in m.get("high", {})]
-        if avgs:
-            statewide["current_avg"][fuel_key] = round(statistics.mean(avgs), 3)
-            statewide["low"][fuel_key]         = round(min(lows), 3)
-            statewide["high"][fuel_key]        = round(max(highs), 3)
+    # Compute statewide averages (station-count weighted) across all scraped cities
+    statewide = compute_statewide(metros)
 
     # Merge Fuel Insights historical data (cache on success, load cache on failure)
     insights_cache_path = os.path.join(
@@ -469,17 +494,15 @@ def update_history(data: dict, out_dir: str) -> None:
 # ---------------------------------------------------------------------------
 
 def recalculate_statewide(data: dict) -> None:
-    """Recompute statewide averages from all metros (fresh + preserved stale)."""
-    metros = data.get("metros", {})
+    """Recompute statewide avg/low/high from all metros (fresh + preserved stale).
+
+    Preserves any Fuel Insights comparison periods already on data["statewide"].
+    """
+    recomputed = compute_statewide(data.get("metros", {}))
     sw = data.get("statewide", {})
-    for fuel_key in ["regular", "mid_grade", "premium", "diesel"]:
-        avgs  = [m["current_avg"][fuel_key] for m in metros.values() if fuel_key in m.get("current_avg", {})]
-        lows  = [m["low"][fuel_key]         for m in metros.values() if fuel_key in m.get("low", {})]
-        highs = [m["high"][fuel_key]        for m in metros.values() if fuel_key in m.get("high", {})]
-        if avgs:
-            sw.setdefault("current_avg", {})[fuel_key] = round(statistics.mean(avgs), 3)
-            sw.setdefault("low", {})[fuel_key]         = round(min(lows), 3)
-            sw.setdefault("high", {})[fuel_key]        = round(max(highs), 3)
+    sw["current_avg"] = recomputed["current_avg"]
+    sw["low"]         = recomputed["low"]
+    sw["high"]        = recomputed["high"]
     data["statewide"] = sw
 
 

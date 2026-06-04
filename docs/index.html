@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wisconsin Gas Prices — Wausau Pilot &amp; Review</title>
+<meta name="description" content="Current Wisconsin gas prices by metro area — regular, mid-grade, premium, and diesel — with statewide averages and price trends, from Wausau Pilot &amp; Review.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Wisconsin Gas Prices — Wausau Pilot &amp; Review">
+<meta property="og:description" content="Current Wisconsin gas prices by metro area, statewide averages, and price trends.">
+<meta property="og:url" content="https://rowanflynnpilot.github.io/wpr-gas-prices/">
+<meta name="twitter:card" content="summary">
 <!-- Non-blocking font load: preconnect + swap-in so first paint isn't gated on fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,6 +86,7 @@
   .wpr-metro-price { font-family:'Playfair Display',Georgia,serif; font-size:22px; font-weight:700; }
   .wpr-metro-range { font-size:10px; color:var(--ink-faint); }
   .wpr-metro-delta { font-size:11px; font-weight:600; min-width:55px; text-align:right; }
+  .wpr-metro-spark { flex-shrink:0; opacity:0.85; }
   .up-color { color:var(--up); } .down-color { color:var(--down); } .flat-color { color:var(--neutral); }
 
   /* Statewide comparison bars */
@@ -118,6 +125,7 @@
     .wpr-gas-hero-value { font-size:30px; }
     .wpr-state-grid { grid-template-columns:1fr; }
     .wpr-metro-price { font-size:18px; }
+    .wpr-metro-spark { display:none; }
     .wpr-trends-stats { flex-direction:column; }
   }
 </style>
@@ -126,6 +134,13 @@
 <div class="wpr-gas" id="gasWidget">
   <div style="text-align:center;padding:40px;color:var(--ink-faint)">Loading gas prices…</div>
 </div>
+<noscript>
+  <div class="wpr-gas" style="text-align:center;padding:40px;color:var(--ink-light);font-family:'DM Sans',sans-serif;">
+    This interactive gas-price widget needs JavaScript.<br>
+    See current Wisconsin prices at
+    <a href="https://www.gasbuddy.com/gasprices/wisconsin" style="color:var(--accent)">GasBuddy</a>.
+  </div>
+</noscript>
 <script>
 (function() {
   'use strict';
@@ -234,6 +249,31 @@
       const h = Math.ceil(document.documentElement.getBoundingClientRect().height);
       window.parent.postMessage({ type: 'wpr-gas-height', height: h }, '*');
     });
+  }
+
+  // Tiny inline trend line for a metro row, from recent history (F5).
+  function metroSparkline(name, fuel) {
+    if (!historyData) return '';
+    const keys = Object.keys(historyData).sort();
+    const vals = [];
+    for (const k of keys) {
+      const v = historyData[k]?.[name]?.[fuel];
+      if (typeof v === 'number') vals.push(v);
+    }
+    const pts = vals.slice(-14);
+    if (pts.length < 3) return '';
+    const w = 60, h = 20, pad = 2;
+    const min = Math.min(...pts), max = Math.max(...pts);
+    const range = max - min || 1;
+    const stepX = (w - pad * 2) / (pts.length - 1);
+    const coords = pts.map((p, i) => {
+      const x = pad + i * stepX;
+      const y = pad + (h - pad * 2) * (1 - (p - min) / range);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const trend = pts[pts.length - 1] - pts[0];
+    const color = trend > 0.001 ? 'var(--up)' : trend < -0.001 ? 'var(--down)' : 'var(--neutral)';
+    return `<svg class="wpr-metro-spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${fuelLabel(fuel)} ${pts.length}-point trend for ${name}"><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
   }
 
   // Relative "updated N ago" label; flips to amber (stale) past ~26h.
@@ -495,6 +535,7 @@
             <div class="wpr-metro-range">${rangeText}</div>
           </div>
           <div class="wpr-metro-right">
+            ${metroSparkline(name, activeFuel)}
             <div class="wpr-metro-price">${fmt(price)}</div>
             <div class="wpr-metro-delta ${d.cls}">${yest != null ? d.text : ''}</div>
           </div>

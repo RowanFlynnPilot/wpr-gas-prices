@@ -99,6 +99,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   of 7**: 60s wait before batch 1, 90s between batches, 5s between cities, plus a
   429-retry with backoff. Don't "optimize" these delays away — that's what makes the
   Actions run succeed.
+- **Statewide average is station-count weighted.** `compute_statewide()` weights
+  each city's average by how many stations it reported, so the figure equals the
+  pooled mean of all stations (market-weighted) rather than an equal-per-city mean.
+  `low`/`high` remain the absolute min/max across cities. Both `scrape_gasbuddy()`
+  and `recalculate_statewide()` go through this one helper.
 - **Stale-city preservation.** If a city fails this run, `merge_with_previous()`
   carries forward the previous value, tags it `stale` + `stale_from`, and
   `recalculate_statewide()` recomputes averages. Stale entries are excluded from
