@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pages: write
+  issues: write
 
 jobs:
   scrape:
@@ -44,4 +45,43 @@ jobs:
           else
             git commit -m "Update gas prices — $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push
+          fi
+
+      - name: Alert on scrape failure
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="⚠️ Gas scraper: GasBuddy update failed"
+          if [ -f docs/scrape_status.json ]; then
+            OK=$(python -c "import json;print(str(json.load(open('docs/scrape_status.json')).get('gasbuddy_success', False)).lower())")
+          else
+            echo "No scrape_status.json — scraper crashed before writing status."
+            OK=false
+          fi
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+
+          if [ "$OK" = "true" ]; then
+            echo "GasBuddy scrape succeeded."
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "✅ Recovered — a later run succeeded ($RUN_URL). Auto-closing."
+              gh issue close "$EXISTING"
+            fi
+            exit 0
+          fi
+
+          echo "GasBuddy scrape failed — alerting."
+          BODY=$(printf '%s\n' \
+            "The scheduled gas-price update did not produce fresh GasBuddy data." \
+            "" \
+            "The previous prices have been preserved, so the widget still shows last-known values." \
+            "" \
+            "Failing run: $RUN_URL" \
+            "" \
+            "Common cause: GasBuddy changed its homepage and the CSRF-token scrape broke (see scrape_gas_prices.py). This issue will close itself automatically once a run succeeds.")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Still failing as of $(date -u +'%Y-%m-%d %H:%M UTC'). Run: $RUN_URL"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
           fi

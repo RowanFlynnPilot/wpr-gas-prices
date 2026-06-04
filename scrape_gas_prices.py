@@ -104,6 +104,43 @@ def make_graphql_headers(token: str) -> dict:
     }
 
 
+def parse_station_results(results: list) -> dict | None:
+    """Aggregate GasBuddy station price nodes into avg/low/high/count per fuel.
+
+    Pure function (no network) so it can be unit-tested against fixtures.
+    Returns None if there are no stations or no usable regular-grade prices.
+    """
+    if not results:
+        return None
+
+    fuel_prices: dict[str, list[float]] = {}
+    for station in results:
+        for price_node in station.get("prices", []):
+            fp = price_node.get("fuelProduct")
+            fuel_key = FUEL_MAP.get(fp)
+            if not fuel_key:
+                continue
+            raw = (price_node.get("credit") or price_node.get("cash") or {}).get("price")
+            if raw is not None:
+                try:
+                    p = float(raw)
+                    if 1.0 < p < 10.0:
+                        fuel_prices.setdefault(fuel_key, []).append(p)
+                except (ValueError, TypeError):
+                    pass
+
+    if not fuel_prices.get("regular"):
+        return None
+
+    city_data: dict = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
+    for fuel_key, prices in fuel_prices.items():
+        city_data["current_avg"][fuel_key]   = round(statistics.mean(prices), 3)
+        city_data["low"][fuel_key]           = round(min(prices), 3)
+        city_data["high"][fuel_key]          = round(max(prices), 3)
+        city_data["station_count"][fuel_key] = len(prices)
+    return city_data
+
+
 def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict) -> dict | None:
     """Query GasBuddy GraphQL for a single city and return structured price data.
 
@@ -139,37 +176,10 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
         log.warning("  %s: unexpected response shape", city_name)
         return None
 
-    if not results:
-        log.warning("  %s: no stations returned", city_name)
+    city_data = parse_station_results(results)
+    if city_data is None:
+        log.warning("  %s: no usable prices found", city_name)
         return None
-
-    # Collect prices by fuel type
-    fuel_prices: dict[str, list[float]] = {}
-    for station in results:
-        for price_node in station.get("prices", []):
-            fp = price_node.get("fuelProduct")
-            fuel_key = FUEL_MAP.get(fp)
-            if not fuel_key:
-                continue
-            raw = (price_node.get("credit") or price_node.get("cash") or {}).get("price")
-            if raw is not None:
-                try:
-                    p = float(raw)
-                    if 1.0 < p < 10.0:
-                        fuel_prices.setdefault(fuel_key, []).append(p)
-                except (ValueError, TypeError):
-                    pass
-
-    if not fuel_prices.get("regular"):
-        log.warning("  %s: no regular prices found", city_name)
-        return None
-
-    city_data: dict = {"current_avg": {}, "low": {}, "high": {}, "station_count": {}}
-    for fuel_key, prices in fuel_prices.items():
-        city_data["current_avg"][fuel_key] = round(statistics.mean(prices), 3)
-        city_data["low"][fuel_key]         = round(min(prices), 3)
-        city_data["high"][fuel_key]        = round(max(prices), 3)
-        city_data["station_count"][fuel_key] = len(prices)
 
     reg = city_data["current_avg"].get("regular")
     log.info(
@@ -188,7 +198,7 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
 # ---------------------------------------------------------------------------
 
 def scrape_fuel_insights(session) -> dict:
-    """Scrape statewide historical comparisons from GasBuddy Fuel Insights."""
+    """Fetch the Fuel Insights page and parse statewide historical comparisons."""
     log.info("  Scraping Fuel Insights for Wisconsin historical data...")
     try:
         resp = session.get(FUEL_INSIGHTS_URL, timeout=20)
@@ -196,7 +206,15 @@ def scrape_fuel_insights(session) -> dict:
     except Exception as e:
         log.warning("  Fuel Insights fetch failed: %s", e)
         return {}
+    return parse_fuel_insights(text)
 
+
+def parse_fuel_insights(text: str) -> dict:
+    """Extract statewide historical comparisons from Fuel Insights HTML.
+
+    Pure function (no network) so the brittle regexes can be unit-tested.
+    Returns {} if the page doesn't contain the expected markers.
+    """
     if "Yesterday" not in text:
         log.warning("  Fuel Insights: 'Yesterday' not found in response (%d chars)", len(text))
         return {}
@@ -313,6 +331,7 @@ def scrape_gasbuddy() -> dict:
     insights_cache_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "docs", "fuel_insights_cache.json"
     )
+    insights_from_cache = False
     if insights and insights.get("yesterday_avg"):
         try:
             with open(insights_cache_path, "w", encoding="utf-8") as f:
@@ -324,6 +343,7 @@ def scrape_gasbuddy() -> dict:
         try:
             with open(insights_cache_path, "r", encoding="utf-8") as f:
                 insights = json.load(f)
+            insights_from_cache = True
             log.info("Loaded Fuel Insights from cache (fallback)")
         except (json.JSONDecodeError, OSError):
             pass
@@ -346,6 +366,14 @@ def scrape_gasbuddy() -> dict:
         "statewide":   statewide,
         "metros":      metros,
         "priority_metros": PRIORITY_METROS,
+        # Transient run health — popped before gas_prices.json is written, then
+        # finalized into docs/scrape_status.json by main().
+        "run_health": {
+            "cities_total":        len(CITIES),
+            "cities_fresh":        len(metros),
+            "failed_cities":       sorted(c for c in CITIES if c not in metros),
+            "insights_from_cache": insights_from_cache,
+        },
     }
 
 
@@ -353,12 +381,13 @@ def scrape_gasbuddy() -> dict:
 # EIA trend data
 # ---------------------------------------------------------------------------
 
-def fetch_eia_data(out_dir: str) -> None:
+def fetch_eia_data(out_dir: str) -> bool:
+    """Fetch EIA weekly trend data. Returns True if eia_weekly.json was written."""
     eia_path = os.path.join(out_dir, "eia_weekly.json")
     api_key = os.environ.get("EIA_API_KEY", "")
     if not api_key:
         log.warning("EIA_API_KEY not set, skipping.")
-        return
+        return False
 
     log.info("Fetching EIA weekly data (Midwest/PADD 2)...")
     products = {"regular": "EPMR", "mid_grade": "EPMM", "premium": "EPMP", "diesel": "EPD2D"}
@@ -392,6 +421,8 @@ def fetch_eia_data(out_dir: str) -> None:
         with open(eia_path, "w", encoding="utf-8") as f:
             json.dump(result, f, separators=(",", ":"), ensure_ascii=False)
         log.info("Wrote EIA data to %s", eia_path)
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +507,50 @@ def merge_with_previous(data: dict, previous_data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Output validation + run-status heartbeat
+# ---------------------------------------------------------------------------
+
+def validate_output(data: dict) -> None:
+    """Raise ValueError if `data` is unsafe to write as the live gas_prices.json.
+
+    Guards the live file from being clobbered by a malformed scrape.
+    """
+    for key in ("source", "price_date", "scraped_at", "statewide", "metros"):
+        if key not in data:
+            raise ValueError(f"missing required key: {key}")
+    if not data["metros"]:
+        raise ValueError("no metros in output")
+    reg = data.get("statewide", {}).get("current_avg", {}).get("regular")
+    if not isinstance(reg, (int, float)) or not (1.0 < reg < 10.0):
+        raise ValueError(f"statewide regular avg out of plausible range: {reg!r}")
+
+
+def write_status(out_dir: str, *, gasbuddy_success: bool,
+                 run_health: dict | None, eia_updated: bool) -> None:
+    """Always-written per-run heartbeat consumed by the failure-alert workflow step.
+
+    Not committed (gitignored) — it is read in-job, after the scraper, to decide
+    whether to open a GitHub issue.
+    """
+    status = {
+        "last_run":         datetime.now(timezone.utc).isoformat(),
+        "gasbuddy_success": gasbuddy_success,
+        "eia_updated":      eia_updated,
+    }
+    if run_health:
+        status.update(run_health)
+    path = os.path.join(out_dir, "scrape_status.json")
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(status, f, indent=2, ensure_ascii=False)
+        log.info("Wrote run status to %s (gasbuddy_success=%s, fresh=%s/%s)",
+                 path, gasbuddy_success,
+                 status.get("cities_fresh", "?"), status.get("cities_total", "?"))
+    except OSError as e:
+        log.warning("Failed to write run status: %s", e)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -496,17 +571,22 @@ def main() -> None:
             previous_data = {}
 
     gb_success = False
+    run_health: dict | None = None
     try:
         data = scrape_gasbuddy()
+        run_health = data.pop("run_health", None)  # transient — not persisted in gas_prices.json
 
         fresh_count = len(data.get("metros", {}))
         merge_with_previous(data, previous_data)
         total_count = len(data.get("metros", {}))
+        if run_health is not None:
+            run_health["cities_stale_preserved"] = total_count - fresh_count
 
         log.info("Cities: %d fresh, %d stale preserved, %d total",
                  fresh_count, total_count - fresh_count, total_count)
 
         if fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
+            validate_output(data)
             gb_success = True
             with open(args.output, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
@@ -518,7 +598,10 @@ def main() -> None:
     except Exception:
         log.exception("GasBuddy scrape failed — will still update EIA data")
 
-    fetch_eia_data(out_dir)
+    eia_updated = fetch_eia_data(out_dir)
+
+    write_status(out_dir, gasbuddy_success=gb_success,
+                 run_health=run_health, eia_updated=eia_updated)
 
     if not gb_success:
         log.warning("GasBuddy scrape failed but EIA data was updated.")

@@ -44,14 +44,18 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | Path | Purpose | Edit? |
 |------|---------|-------|
 | `scrape_gas_prices.py` | The scraper — all logic lives here | Yes |
-| `requirements.txt` | `requests`, `curl_cffi` | Rarely |
-| `.github/workflows/update-gas-prices.yml` | Cron schedule (fixed UTC 12:00 & 17:00 — see note) | To change timing |
+| `requirements.txt` | `requests`, `curl_cffi` (pinned) | Rarely |
+| `requirements-dev.txt` | Adds `pytest` for the test suite | Rarely |
+| `tests/test_scrape.py` | Unit tests for the pure (no-network) scraper logic | Yes — when changing logic |
+| `.github/workflows/update-gas-prices.yml` | Cron schedule (fixed UTC 12:00 & 17:00 — see note) + failure alerting | To change timing |
+| `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/gas_prices.json` | Main output | **Never by hand** — scraper owns it |
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly series | **Never by hand** |
 | `docs/fuel_insights_cache.json` | Fuel Insights cache/fallback | **Never by hand** |
+| `docs/scrape_status.json` | Per-run heartbeat (gitignored) — read in-job for failure alerting | **Never** — scraper owns it |
 
 ## Key constants (top of `scrape_gas_prices.py`)
 
@@ -105,6 +109,20 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Cron is fixed UTC, not Central.** The workflow runs at `12:00` and `17:00` UTC.
   GitHub Actions cron ignores DST, so local times drift: 7 AM / 12 PM during CDT,
   6 AM / 11 AM during CST. Don't describe the schedule as a fixed Central time.
+- **Output is validated before write.** `validate_output()` raises if the assembled
+  data is missing keys or has an implausible statewide regular avg; the live file is
+  preserved on failure (caught like any scrape error).
+- **Run heartbeat + alerting.** `main()` always writes `docs/scrape_status.json`
+  (gitignored) with `gasbuddy_success`, fresh/stale counts, and failed cities. The
+  workflow's "Alert on scrape failure" step reads it and opens (or auto-closes) a
+  GitHub issue. `run_health` is assembled in `scrape_gasbuddy()` and popped from the
+  dict before `gas_prices.json` is written — it never lands in the live file.
+- **Parsing is extracted for testability.** `parse_station_results()` and
+  `parse_fuel_insights()` are pure functions covered by `tests/test_scrape.py`;
+  run `pytest -q` after touching scraper logic.
+- **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows
+  a quiet "temporarily unavailable" state (no stale baked-in snapshot). The header
+  shows a relative "Updated Nh ago" that turns amber past ~26h.
 
 ## Commands
 

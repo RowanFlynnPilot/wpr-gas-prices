@@ -5,3 +5,11 @@ __pycache__/
 
 # Claude Code local settings (contains the EIA key — never commit)
 .claude/settings.local.json
+# Local preview config (machine-specific absolute path)
+.claude/launch.json
+
+# Per-run scrape heartbeat — read in-job for failure alerting, not committed
+docs/scrape_status.json
+
+# pytest
+.pytest_cache/
