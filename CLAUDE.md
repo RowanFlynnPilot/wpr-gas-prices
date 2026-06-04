@@ -44,13 +44,18 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | Path | Purpose | Edit? |
 |------|---------|-------|
 | `scrape_gas_prices.py` | The scraper — all logic lives here | Yes |
-| `requirements.txt` | `requests`, `curl_cffi` | Rarely |
-| `.github/workflows/update-gas-prices.yml` | Cron schedule (7 AM & 12 PM CT) | To change timing |
-| `docs/index.html` | The widget UI (reads the JSON) | Yes — design/colors |
+| `requirements.txt` | `requests`, `curl_cffi` (pinned) | Rarely |
+| `requirements-dev.txt` | Adds `pytest` for the test suite | Rarely |
+| `tests/test_scrape.py` | Unit tests for the pure (no-network) scraper logic | Yes — when changing logic |
+| `.github/workflows/update-gas-prices.yml` | Cron schedule (fixed UTC 12:00 & 17:00 — see note) + failure alerting | To change timing |
+| `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
+| `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
+| `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/gas_prices.json` | Main output | **Never by hand** — scraper owns it |
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly series | **Never by hand** |
 | `docs/fuel_insights_cache.json` | Fuel Insights cache/fallback | **Never by hand** |
+| `docs/scrape_status.json` | Per-run heartbeat (gitignored) — read in-job for failure alerting | **Never** — scraper owns it |
 
 ## Key constants (top of `scrape_gas_prices.py`)
 
@@ -94,6 +99,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   of 7**: 60s wait before batch 1, 90s between batches, 5s between cities, plus a
   429-retry with backoff. Don't "optimize" these delays away — that's what makes the
   Actions run succeed.
+- **Statewide average is station-count weighted.** `compute_statewide()` weights
+  each city's average by how many stations it reported, so the figure equals the
+  pooled mean of all stations (market-weighted) rather than an equal-per-city mean.
+  `low`/`high` remain the absolute min/max across cities. Both `scrape_gasbuddy()`
+  and `recalculate_statewide()` go through this one helper.
 - **Stale-city preservation.** If a city fails this run, `merge_with_previous()`
   carries forward the previous value, tags it `stale` + `stale_from`, and
   `recalculate_statewide()` recomputes averages. Stale entries are excluded from
@@ -101,6 +111,27 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Fail-soft on GasBuddy, continue to EIA.** If the GasBuddy scrape throws, the
   previous `gas_prices.json` is left untouched and EIA still updates.
 - **History cap.** `gas_prices_history.json` is trimmed to the most recent 400 days.
+- **Cron is fixed UTC, not Central.** The workflow runs at `12:00` and `17:00` UTC.
+  GitHub Actions cron ignores DST, so local times drift: 7 AM / 12 PM during CDT,
+  6 AM / 11 AM during CST. Don't describe the schedule as a fixed Central time.
+- **Output is validated before write.** `validate_output()` raises if the assembled
+  data is missing keys or has an implausible statewide regular avg; the live file is
+  preserved on failure (caught like any scrape error).
+- **Run heartbeat + alerting.** `main()` always writes `docs/scrape_status.json`
+  (gitignored) with `gasbuddy_success`, fresh/stale counts, and failed cities. The
+  workflow's "Alert on scrape failure" step reads it and opens (or auto-closes) a
+  GitHub issue. `run_health` is assembled in `scrape_gasbuddy()` and popped from the
+  dict before `gas_prices.json` is written — it never lands in the live file.
+- **Parsing is extracted for testability.** `parse_station_results()` and
+  `parse_fuel_insights()` are pure functions covered by `tests/test_scrape.py`;
+  run `pytest -q` after touching scraper logic.
+- **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows
+  a quiet "temporarily unavailable" state (no stale baked-in snapshot). The header
+  shows a relative "Updated Nh ago" that turns amber past ~26h.
+- **Iframe auto-resize contract.** The widget posts `{type:'wpr-gas-height',height}`
+  to `window.parent` on every render/resize; the WordPress embed snippet (in the
+  README) listens and resizes the iframe. JSON fetches are cache-busted in 10-min
+  buckets, and fonts load non-blocking — keep these when editing `index.html`.
 
 ## Commands
 
@@ -140,5 +171,11 @@ cd docs && python -m http.server 8000   # then open http://localhost:8000
 
 ## Known follow-ups
 
-- [ ] Rewrite `README.md` to match the GasBuddy/curl_cffi reality (currently describes AAA).
-- [ ] Add a `.gitignore` (`.venv/`, `__pycache__/`, `*.pyc`).
+- [x] Rewrite `README.md` to match the GasBuddy/curl_cffi reality.
+- [x] Add a `.gitignore`.
+- [ ] **Port enhancements to `docs/index-compact.html`.** The compact variant is
+  currently behind `index.html`: it lacks the honest error state, relative-time
+  freshness label, auto-resize `postMessage`, non-blocking fonts, cache-busting,
+  and the ARIA pass. Keep the two in sync or formally retire the compact one.
+- [ ] Harden the Fuel Insights price regex: `[\d.]+` will swallow a trailing
+  period (e.g. `$3.45.`). Real markup doesn't trigger it today, but it's fragile.

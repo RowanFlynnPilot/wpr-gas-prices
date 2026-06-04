@@ -86,24 +86,48 @@ scraper paces itself to respect GasBuddy's rate limits). A green check means
 In WordPress, add a **Custom HTML** block where the widget should appear:
 
 ```html
-<div style="max-width:680px;margin:0 auto;">
+<div style="max-width:720px;margin:0 auto;">
   <iframe
+    id="wpr-gas-iframe"
     src="https://rowanflynnpilot.github.io/wpr-gas-prices/"
     width="100%"
-    height="520"
+    height="560"
     frameborder="0"
-    style="border:none;border-radius:6px;overflow:hidden;"
+    style="border:none;border-radius:6px;overflow:hidden;width:100%;"
     title="Wisconsin Gas Prices"
     loading="lazy"
   ></iframe>
 </div>
+<script>
+  // Auto-resize the iframe to fit the widget (height varies by tab).
+  window.addEventListener('message', function (e) {
+    if (e.origin !== 'https://rowanflynnpilot.github.io') return;
+    if (e.data && e.data.type === 'wpr-gas-height' && e.data.height) {
+      var f = document.getElementById('wpr-gas-iframe');
+      if (f) f.style.height = e.data.height + 'px';
+    }
+  });
+</script>
 ```
+
+> The `height="560"` is just an initial value; the `<script>` resizes the iframe to
+> the exact widget height as the reader switches tabs. If your WordPress setup strips
+> `<script>` from Custom HTML blocks, the widget still works — it just keeps the fixed
+> height (set it tall enough for the Price Trends tab, ~600px).
 
 ---
 
 ## Schedule
 
-The scraper runs automatically at **7:00 AM** and **12:00 PM** Central Time daily.
+The scraper runs automatically twice daily on a **fixed UTC schedule** (12:00 and
+17:00 UTC). GitHub Actions cron does not observe daylight saving, so the Central
+local times shift with the season:
+
+| | Central Daylight (Mar–Nov) | Central Standard (Nov–Mar) |
+| --- | --- | --- |
+| First run | 7:00 AM CDT | 6:00 AM CST |
+| Second run | 12:00 PM CDT | 11:00 AM CST |
+
 You can also trigger it anytime from the **Actions** tab. To change the timing, edit
 the cron expressions in `.github/workflows/update-gas-prices.yml`
 ([crontab.guru](https://crontab.guru/) helps).
