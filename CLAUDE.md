@@ -26,18 +26,19 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 
 ## Data sources
 
-1. **GasBuddy GraphQL** (`/graphql`) — per-city station prices. Uses `curl_cffi`
-   with `impersonate="chrome"` to clear Cloudflare; **no proxy needed**.
+1. **GasBuddy GraphQL** (`/graphql`) — per-city station prices and names. Uses
+   `curl_cffi` with `impersonate="chrome"` to clear Cloudflare; **no proxy needed**.
    - Requires a CSRF token scraped from `https://www.gasbuddy.com/home`
      (`window.gbcsrf = "..."`). If that token can't be found, the scrape aborts.
-   - Query: `LocationBySearchTerm` → `stations.results[].prices[]`.
-2. **GasBuddy Fuel Insights** (`fuelinsights.gasbuddy.com/Home/US/Wisconsin`) —
-   statewide historical comparisons (yesterday / last week / last month / last year).
-   Best-effort, regex-scraped; cached to `docs/fuel_insights_cache.json` and reloaded
-   from cache if a run fails to parse it.
-3. **EIA API** (`api.eia.gov/v2/petroleum/pri/gnd`) — weekly Midwest (PADD 2,
-   `duoarea=R20`) trend series. Requires `EIA_API_KEY` env var; **skipped silently
-   if unset**.
+   - Query: `LocationBySearchTerm` → `stations.results[]` (name, address, prices).
+2. **Our own daily history** (`docs/gas_prices_history.json`) — the source for all
+   statewide time comparisons (vs yesterday / week / month / year). We compute these
+   ourselves because **GasBuddy Fuel Insights is defunct** — the page stopped serving
+   server-rendered data (now a JS shell), so it was removed entirely. Year-ago
+   comparisons reappear automatically once history reaches 12 months.
+3. **EIA API** (`api.eia.gov/v2`) — weekly Midwest (PADD 2, `duoarea=R20`) trend
+   series for the chart, plus national reg-gas avg (`duoarea=NUS`) and WTI crude
+   (`RWTC`) for the context strip. Requires `EIA_API_KEY`; **skipped silently if unset**.
 
 ## File map
 
@@ -55,7 +56,6 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly Midwest series (trends chart) | **Never by hand** |
 | `docs/eia_context.json` | EIA national reg-gas avg + WTI crude (context strip) | **Never by hand** |
-| `docs/fuel_insights_cache.json` | Fuel Insights cache/fallback | **Never by hand** |
 | `docs/scrape_status.json` | Per-run heartbeat (gitignored) — read in-job for failure alerting | **Never** — scraper owns it |
 
 ## Key constants (top of `scrape_gas_prices.py`)
@@ -78,10 +78,9 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   "scraped_at": "<ISO 8601 UTC>",
   "statewide": {
     "current_avg": { "regular": 0.0, "mid_grade": 0.0, "premium": 0.0, "diesel": 0.0 },
-    "low": { ... }, "high": { ... },
-    "yesterday_avg": { "regular": 0.0 },   // from Fuel Insights, may be absent
-    "week_ago_avg": { ... }, "month_ago_avg": { ... },
-    "year_ago_avg": { ... }, "gasbuddy_live_avg": { ... }
+    "low": { ... }, "high": { ... }
+    // Time comparisons are NOT stored here — the widget derives them from
+    // gas_prices_history.json at render time.
   },
   "metros": {
     "Wausau": {
@@ -144,8 +143,9 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   workflow's "Alert on scrape failure" step reads it and opens (or auto-closes) a
   GitHub issue. `run_health` is assembled in `scrape_gasbuddy()` and popped from the
   dict before `gas_prices.json` is written — it never lands in the live file.
-- **Parsing is extracted for testability.** `parse_station_results()` and
-  `parse_fuel_insights()` are pure functions covered by `tests/test_scrape.py`;
+- **Parsing is extracted for testability.** `parse_station_results()`,
+  `extract_cheapest_stations()`, `build_summary()`, `statewide_from_history()`, and
+  `latest_eia_value()` are pure functions covered by `tests/test_scrape.py`;
   run `pytest -q` after touching scraper logic.
 - **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows
   a quiet "temporarily unavailable" state (no stale baked-in snapshot). The header
@@ -200,4 +200,6 @@ cd docs && python -m http.server 8000   # then open http://localhost:8000
   non-blocking fonts, cache-busting, ARIA, no-JS fallback. Also fixed its stale
   "Data via AAA" footer credit → GasBuddy. (It has no tabs/trends/sparklines by
   design.) Keep the two in sync going forward.
-- [x] Harden the Fuel Insights price regex (`\d+\.\d+` instead of `[\d.]+`).
+- [x] ~~Harden the Fuel Insights price regex.~~ Superseded: Fuel Insights is defunct
+  (page no longer serves data) and was removed entirely; statewide comparisons now
+  come from our own history.

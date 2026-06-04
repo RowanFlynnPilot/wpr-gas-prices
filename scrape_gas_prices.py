@@ -16,7 +16,7 @@ import re
 import statistics
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -64,7 +64,6 @@ DEFAULT_OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs"
 
 GASBUDDY_HOME    = "https://www.gasbuddy.com/home"
 GASBUDDY_GRAPHQL = "https://www.gasbuddy.com/graphql"
-FUEL_INSIGHTS_URL = "https://fuelinsights.gasbuddy.com/Home/US/Wisconsin"
 
 # GraphQL query: stations with prices + statewide trend data
 LOCATION_QUERY = (
@@ -243,75 +242,6 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
 
 
 # ---------------------------------------------------------------------------
-# Fuel Insights (historical statewide comparisons — best-effort)
-# ---------------------------------------------------------------------------
-
-def scrape_fuel_insights(session) -> dict:
-    """Fetch the Fuel Insights page and parse statewide historical comparisons."""
-    log.info("  Scraping Fuel Insights for Wisconsin historical data...")
-    try:
-        resp = session.get(FUEL_INSIGHTS_URL, timeout=20)
-        text = resp.text
-    except Exception as e:
-        log.warning("  Fuel Insights fetch failed: %s", e)
-        return {}
-    return parse_fuel_insights(text)
-
-
-def parse_fuel_insights(text: str) -> dict:
-    """Extract statewide historical comparisons from Fuel Insights HTML.
-
-    Pure function (no network) so the brittle regexes can be unit-tested.
-    Returns {} if the page doesn't contain the expected markers.
-    """
-    if "Yesterday" not in text:
-        log.warning("  Fuel Insights: 'Yesterday' not found in response (%d chars)", len(text))
-        return {}
-
-    result = {}
-    for key, patterns in [
-        ("yesterday_avg", [
-            r"Yesterday'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
-            r"Yesterday'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
-            r"from\s+Yesterday[^$]*\$(\d+\.\d+)",
-        ]),
-        ("week_ago_avg", [
-            r"Last\s+Week'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
-            r"Last\s+Week'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
-            r"from\s+Last\s+Week[^$]*\$(\d+\.\d+)",
-        ]),
-        ("month_ago_avg", [
-            r"Last\s+Month'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
-            r"Last\s+Month'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
-            r"from\s+Last\s+Month[^$]*\$(\d+\.\d+)",
-        ]),
-        ("year_ago_avg", [
-            r"Last\s+Year'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
-            r"Last\s+Year'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
-            r"from\s+Last\s+Year[^$]*\$(\d+\.\d+)",
-        ]),
-    ]:
-        for pat in patterns:
-            m = re.search(pat, text, re.IGNORECASE | re.DOTALL)
-            if m:
-                result[key] = {"regular": float(m.group(1))}
-                break
-
-    live = re.search(r"\$(\d+\.\d+)\s*/gal", text)
-    if live:
-        result["gasbuddy_live_avg"] = {"regular": float(live.group(1))}
-
-    log.info(
-        "  Fuel Insights: yest=$%s, week=$%s, month=$%s, year=$%s",
-        result.get("yesterday_avg", {}).get("regular", "—"),
-        result.get("week_ago_avg",  {}).get("regular", "—"),
-        result.get("month_ago_avg", {}).get("regular", "—"),
-        result.get("year_ago_avg",  {}).get("regular", "—"),
-    )
-    return result
-
-
-# ---------------------------------------------------------------------------
 # Main GasBuddy scrape
 # ---------------------------------------------------------------------------
 
@@ -369,9 +299,6 @@ def scrape_gasbuddy() -> dict:
 
     headers = make_graphql_headers(token)
 
-    # Scrape Fuel Insights for historical comparisons
-    insights = scrape_fuel_insights(session)
-
     # Scrape all cities in two batches with a mid-run pause.
     # GasBuddy rate-limits datacenter IPs (GitHub Actions / Azure) to ~7 requests
     # per minute. We scrape batch 1, wait 90s for the window to reset, then batch 2.
@@ -401,31 +328,6 @@ def scrape_gasbuddy() -> dict:
     # Compute statewide averages (station-count weighted) across all scraped cities
     statewide = compute_statewide(metros)
 
-    # Merge Fuel Insights historical data (cache on success, load cache on failure)
-    insights_cache_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "docs", "fuel_insights_cache.json"
-    )
-    insights_from_cache = False
-    if insights and insights.get("yesterday_avg"):
-        try:
-            with open(insights_cache_path, "w", encoding="utf-8") as f:
-                json.dump(insights, f, separators=(",", ":"), ensure_ascii=False)
-            log.info("Saved Fuel Insights to cache")
-        except Exception:
-            pass
-    elif os.path.exists(insights_cache_path):
-        try:
-            with open(insights_cache_path, "r", encoding="utf-8") as f:
-                insights = json.load(f)
-            insights_from_cache = True
-            log.info("Loaded Fuel Insights from cache (fallback)")
-        except (json.JSONDecodeError, OSError):
-            pass
-
-    for period in ["yesterday_avg", "week_ago_avg", "month_ago_avg", "year_ago_avg", "gasbuddy_live_avg"]:
-        if period in insights:
-            statewide[period] = insights[period]
-
     reg = statewide["current_avg"].get("regular")
     log.info("Statewide avg: reg=$%s (%d/%d cities scraped)",
              f"{reg:.3f}" if reg else "—", len(metros), len(CITIES))
@@ -443,10 +345,9 @@ def scrape_gasbuddy() -> dict:
         # Transient run health — popped before gas_prices.json is written, then
         # finalized into docs/scrape_status.json by main().
         "run_health": {
-            "cities_total":        len(CITIES),
-            "cities_fresh":        len(metros),
-            "failed_cities":       sorted(c for c in CITIES if c not in metros),
-            "insights_from_cache": insights_from_cache,
+            "cities_total":  len(CITIES),
+            "cities_fresh":  len(metros),
+            "failed_cities": sorted(c for c in CITIES if c not in metros),
         },
     }
 
@@ -613,10 +514,37 @@ def _format_long_date(price_date: str) -> str:
     return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
 
 
-def build_summary(data: dict) -> dict:
+def statewide_from_history(history: dict, today_key: str, days_ago: int, tol: int) -> float | None:
+    """Statewide regular avg ~`days_ago` back, from our own daily history.
+
+    Returns the nearest entry within `tol` days, or None. We use this instead of the
+    (now defunct) GasBuddy Fuel Insights page, which stopped serving server-rendered
+    comparison data — our history is the trustworthy source.
+    """
+    try:
+        target = datetime.strptime(today_key, "%m/%d/%y") - timedelta(days=days_ago)
+    except (ValueError, TypeError):
+        return None
+    best, best_diff = None, None
+    for k, entry in history.items():
+        try:
+            dt = datetime.strptime(k, "%m/%d/%y")
+        except (ValueError, TypeError):
+            continue
+        val = entry.get("statewide", {}).get("regular")
+        if not isinstance(val, (int, float)):
+            continue
+        diff = abs((dt - target).days)
+        if best_diff is None or diff < best_diff:
+            best, best_diff = val, diff
+    return best if (best is not None and best_diff <= tol) else None
+
+
+def build_summary(data: dict, history: dict) -> dict:
     """A quotable, plain-language summary the WPR newsroom can drop into articles.
 
-    Pure function over the assembled output. Returns {} if there's no usable average.
+    Pure function. Comparison baselines come from our own `history` (not Fuel
+    Insights). Returns {} if there's no usable average.
     """
     sw = data.get("statewide", {})
     cur = sw.get("current_avg", {}).get("regular")
@@ -626,11 +554,12 @@ def build_summary(data: dict) -> dict:
     def cents(d):
         return f"{abs(round(d * 100))}¢"  # e.g. "12¢"
 
+    today_key = data.get("price_date", "")
     comps = []
-    for key, phrase in [("week_ago_avg", "a week ago"),
-                        ("month_ago_avg", "a month ago"),
-                        ("year_ago_avg", "a year ago")]:
-        prev = sw.get(key, {}).get("regular")
+    for days, tol, phrase in [(7, 4, "a week ago"),
+                              (30, 10, "a month ago"),
+                              (365, 45, "a year ago")]:
+        prev = statewide_from_history(history, today_key, days, tol)
         if prev is not None and abs(cur - prev) >= 0.005:
             direction = "up" if cur > prev else "down"
             comps.append(f"{direction} {cents(cur - prev)} from {phrase}")
@@ -665,10 +594,7 @@ def build_summary(data: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def recalculate_statewide(data: dict) -> None:
-    """Recompute statewide avg/low/high from all metros (fresh + preserved stale).
-
-    Preserves any Fuel Insights comparison periods already on data["statewide"].
-    """
+    """Recompute statewide avg/low/high from all metros (fresh + preserved stale)."""
     recomputed = compute_statewide(data.get("metros", {}))
     sw = data.get("statewide", {})
     sw["current_avg"] = recomputed["current_avg"]
@@ -781,7 +707,16 @@ def main() -> None:
 
         if fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
             validate_output(data)
-            summary = build_summary(data)
+            # Existing history (pre-today) supplies the blurb's comparison baselines.
+            history = {}
+            history_path = os.path.join(out_dir, "gas_prices_history.json")
+            if os.path.exists(history_path):
+                try:
+                    with open(history_path, "r", encoding="utf-8") as f:
+                        history = json.load(f)
+                except (json.JSONDecodeError, OSError):
+                    history = {}
+            summary = build_summary(data, history)
             if summary:
                 data["summary"] = summary
                 log.info("Summary: %s", summary["blurb"])

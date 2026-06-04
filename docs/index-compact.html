@@ -245,6 +245,7 @@
   'use strict';
 
   const DATA_URL = 'https://rowanflynnpilot.github.io/wpr-gas-prices/gas_prices.json';
+  const HISTORY_URL = 'https://rowanflynnpilot.github.io/wpr-gas-prices/gas_prices_history.json';
   const FULL_PAGE_URL = 'https://wausaupilotandreview.com/wausau-gas-price-tracker/';
   // Cache-bust in 10-min buckets so the GitHub Pages CDN doesn't serve stale JSON.
   const cacheBust = () => '?t=' + Math.floor(Date.now() / 600000);
@@ -254,6 +255,7 @@
   const PRIORITY_METROS = ['Wausau', 'Eau Claire', 'Green Bay', 'Appleton', 'Madison', 'Milwaukee-Waukesha'];
 
   let data = null;
+  let historyData = null;
   let activeFuel = 'regular';
   const widget = document.getElementById('gasWidget');
 
@@ -271,6 +273,17 @@
   }
   function fuelLabel(k) {
     return { regular: 'Regular', mid_grade: 'Mid-Grade', premium: 'Premium', diesel: 'Diesel' }[k] || k;
+  }
+
+  // Most recent prior-day price from our history (Fuel Insights is defunct).
+  function getYesterdayPrice(key, fuel) {
+    if (!historyData) return null;
+    const keys = Object.keys(historyData).sort();
+    const todayKey = data && data.price_date;
+    for (let i = keys.length - 1; i >= 0; i--) {
+      if (keys[i] !== todayKey) return historyData[keys[i]]?.[key]?.[fuel] ?? null;
+    }
+    return null;
   }
 
   function postHeight() {
@@ -318,7 +331,7 @@
     const fresh = freshnessLabel();
     const sw = data.statewide;
     const price = sw.current_avg?.[activeFuel];
-    const yest = sw.yesterday_avg?.[activeFuel];
+    const yest = getYesterdayPrice('statewide', activeFuel);
     const d = delta(price, yest);
     const metros = data.metros || {};
     const priority = data.priority_metros || PRIORITY_METROS;
@@ -333,7 +346,7 @@
     let metroRows = sorted.map(name => {
       const m = metros[name];
       const mp = m.current_avg?.[activeFuel];
-      const my = m.yesterday_avg?.[activeFuel];
+      const my = getYesterdayPrice(name, activeFuel);
       const md = delta(mp, my);
       const isWausau = name === 'Wausau';
       return `
@@ -375,9 +388,13 @@
 
   async function init() {
     try {
-      const resp = await fetch(DATA_URL + cacheBust());
+      const [resp, hist] = await Promise.all([
+        fetch(DATA_URL + cacheBust()),
+        fetch(HISTORY_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       data = await resp.json();
+      historyData = hist;
     } catch (err) {
       console.warn('Gas price data unavailable:', err.message);
       data = null;

@@ -289,13 +289,11 @@
   const PERIOD_DAYS = { yesterday_avg: 1, week_ago_avg: 7, month_ago_avg: 30, year_ago_avg: 365 };
   const PERIOD_TOL  = { yesterday_avg: 3, week_ago_avg: 4, month_ago_avg: 10, year_ago_avg: 45 };
 
-  // A period's statewide value: prefer Fuel Insights (accurate, Regular only),
-  // else derive from stored history (works for all fuels).
+  // A period's statewide value, derived from our own daily history (the GasBuddy
+  // Fuel Insights page no longer serves comparison data, so history is the source).
   function statewidePeriodValue(periodKey, fuel) {
     const sw = data?.statewide;
     if (periodKey === 'current_avg') return sw?.current_avg?.[fuel];
-    const fromInsights = sw?.[periodKey]?.[fuel];
-    if (fromInsights != null) return fromInsights;
     return historyStatewideAt(PERIOD_DAYS[periodKey], fuel, PERIOD_TOL[periodKey]);
   }
 
@@ -392,8 +390,7 @@
     const fresh = freshnessLabel();
     const sw = data.statewide;
     const currentPrice = sw?.current_avg?.[activeFuel];
-    // Use Fuel Insights yesterday if available, fall back to history
-    const yesterdayPrice = sw?.yesterday_avg?.[activeFuel] ?? getYesterdayPrice('statewide', activeFuel);
+    const yesterdayPrice = getYesterdayPrice('statewide', activeFuel);
     const d = delta(currentPrice, yesterdayPrice);
     const heroFuelName = fuelLabel(activeFuel);
     const hasYesterday = yesterdayPrice != null;
@@ -501,7 +498,7 @@
       `<button type="button" aria-pressed="${activeFuel === f}" class="wpr-gas-fuel-btn ${activeFuel === f ? 'active' : ''}" data-fuel="${f}">${fuelLabel(f)}</button>`
     ).join('');
 
-    // Time comparison periods — use Fuel Insights for Regular, history for others
+    // Time comparison periods — all derived from our own daily history
     const periods = [
       { key: 'current_avg', label: 'Today' },
       { key: 'yesterday_avg', label: 'Yesterday' },
@@ -533,7 +530,7 @@
       `<option value="${n}" ${selectedCity === n ? 'selected' : ''}>${n}</option>`
     ).join('');
 
-    // ── Temporal: today vs past (Fuel Insights for Regular, else history) ──
+    // ── Temporal: today vs past (from our own daily history) ──
     const periodVals = periods
       .map(p => ({ label: p.label, key: p.key, val: statewidePeriodValue(p.key, activeFuel) }))
       .filter(p => p.val != null);
