@@ -31,14 +31,21 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
    - Requires a CSRF token scraped from `https://www.gasbuddy.com/home`
      (`window.gbcsrf = "..."`). If that token can't be found, the scrape aborts.
    - Query: `LocationBySearchTerm` → `stations.results[]` (name, address, prices).
-2. **Our own daily history** (`docs/gas_prices_history.json`) — the source for all
-   statewide time comparisons (vs yesterday / week / month / year). We compute these
-   ourselves because **GasBuddy Fuel Insights is defunct** — the page stopped serving
-   server-rendered data (now a JS shell), so it was removed entirely. Year-ago
-   comparisons reappear automatically once history reaches 12 months.
+2. **AAA** (`gasprices.aaa.com/?state=WI`) — the **statewide trend** source
+   (today / yesterday / week / month / year, all four fuels). Server-rendered table,
+   parsed with `parse_aaa()` (column order Regular, Mid-Grade, Premium, Diesel).
+   Computed AAA-internally and attributed to AAA; carried forward by
+   `merge_with_previous()` if a run fails. (Replaced **GasBuddy Fuel Insights**, which
+   went defunct — now a JS shell with no server-rendered data.)
+   - Our own `gas_prices_history.json` still backs the GasBuddy "vs yesterday" deltas
+     on the hero and per-metro rows (same-source, clean).
 3. **EIA API** (`api.eia.gov/v2`) — weekly Midwest (PADD 2, `duoarea=R20`) trend
    series for the chart, plus national reg-gas avg (`duoarea=NUS`) and WTI crude
    (`RWTC`) for the context strip. Requires `EIA_API_KEY`; **skipped silently if unset**.
+
+> **Source split:** GasBuddy = live station/metro/cheapest data + the hero average;
+> AAA = the statewide historical trend. Both are labeled in the UI. The two current
+> averages differ slightly by methodology — that's expected, not a bug.
 
 ## File map
 
@@ -79,8 +86,12 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   "statewide": {
     "current_avg": { "regular": 0.0, "mid_grade": 0.0, "premium": 0.0, "diesel": 0.0 },
     "low": { ... }, "high": { ... }
-    // Time comparisons are NOT stored here — the widget derives them from
-    // gas_prices_history.json at render time.
+    // No time comparisons here — the statewide trend lives in "aaa" below.
+  },
+  "aaa": {                                      // AAA statewide trend (or {} / carried-forward)
+    "as_of": "mm/dd/yy",
+    "current":   { "regular": 0.0, "mid_grade": 0.0, "premium": 0.0, "diesel": 0.0 },
+    "yesterday": { ... }, "week_ago": { ... }, "month_ago": { ... }, "year_ago": { ... }
   },
   "metros": {
     "Wausau": {
@@ -119,7 +130,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   widget shows a "U.S. avg / WTI crude" strip on the Statewide tab (WI-vs-US only for
   Regular, since the national series is regular gasoline).
 - **Newsroom blurb.** `build_summary()` writes a quotable `summary` blurb into
-  `gas_prices.json` each run; the Statewide tab shows it with a Copy button.
+  `gas_prices.json` each run; the Statewide tab shows it with a Copy button. Headline
+  average is GasBuddy; the trend ("down 26¢ from a week ago … per AAA") is AAA-internal.
+- **Statewide trend = AAA.** `parse_aaa()`/`scrape_aaa()` populate `data["aaa"]`; the
+  Statewide "over time" bars and the blurb's trend both read it. The hero "vs
+  yesterday" stays GasBuddy-history (same source as the hero number).
 - **Statewide average is station-count weighted.** `compute_statewide()` weights
   each city's average by how many stations it reported, so the figure equals the
   pooled mean of all stations (market-weighted) rather than an equal-per-city mean.
@@ -144,7 +159,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   GitHub issue. `run_health` is assembled in `scrape_gasbuddy()` and popped from the
   dict before `gas_prices.json` is written — it never lands in the live file.
 - **Parsing is extracted for testability.** `parse_station_results()`,
-  `extract_cheapest_stations()`, `build_summary()`, `statewide_from_history()`, and
+  `extract_cheapest_stations()`, `parse_aaa()`, `build_summary()`, and
   `latest_eia_value()` are pure functions covered by `tests/test_scrape.py`;
   run `pytest -q` after touching scraper logic.
 - **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows

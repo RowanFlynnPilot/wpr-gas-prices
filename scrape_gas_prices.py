@@ -16,7 +16,7 @@ import re
 import statistics
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import requests
 
@@ -64,6 +64,10 @@ DEFAULT_OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs"
 
 GASBUDDY_HOME    = "https://www.gasbuddy.com/home"
 GASBUDDY_GRAPHQL = "https://www.gasbuddy.com/graphql"
+AAA_URL          = "https://gasprices.aaa.com/?state=WI"
+
+# AAA's state table column order (Regular | Mid | Premium | Diesel)
+AAA_FUELS = ["regular", "mid_grade", "premium", "diesel"]
 
 # GraphQL query: stations with prices + statewide trend data
 LOCATION_QUERY = (
@@ -242,6 +246,53 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
 
 
 # ---------------------------------------------------------------------------
+# AAA — statewide historical comparisons (today / yesterday / week / month / year)
+# ---------------------------------------------------------------------------
+
+def parse_aaa(html: str) -> dict:
+    """Parse AAA's Wisconsin state table into per-period, per-fuel averages.
+
+    AAA serves a server-rendered table whose first rows are the statewide averages:
+    each period ("Current/Yesterday/Week Ago/Month Ago/Year Ago Avg.") is followed by
+    four prices in column order Regular, Mid-Grade, Premium, Diesel. Pure/testable.
+    Returns {} if the statewide regular figure can't be found.
+    """
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text)
+
+    result: dict = {}
+    for label, key in [("Current Avg", "current"), ("Yesterday Avg", "yesterday"),
+                       ("Week Ago Avg", "week_ago"), ("Month Ago Avg", "month_ago"),
+                       ("Year Ago Avg", "year_ago")]:
+        m = re.search(rf"{label}\.?\s*\$(\d+\.\d+)\s*\$(\d+\.\d+)\s*\$(\d+\.\d+)\s*\$(\d+\.\d+)", text)
+        if not m:
+            continue
+        prices = {fuel: float(g) for fuel, g in zip(AAA_FUELS, m.groups()) if 1.0 < float(g) < 10.0}
+        if prices:
+            result[key] = prices
+
+    return result if result.get("current", {}).get("regular") else {}
+
+
+def scrape_aaa(session) -> dict:
+    """Fetch AAA's Wisconsin page and parse the statewide comparison table."""
+    log.info("  Scraping AAA for Wisconsin statewide trend...")
+    try:
+        html = session.get(AAA_URL, timeout=20).text
+    except Exception as e:
+        log.warning("  AAA fetch failed: %s", e)
+        return {}
+    aaa = parse_aaa(html)
+    if aaa:
+        cur = aaa.get("current", {}).get("regular")
+        yr = aaa.get("year_ago", {}).get("regular")
+        log.info("  AAA: reg now=$%s, year ago=$%s", cur, yr)
+    else:
+        log.warning("  AAA: could not parse statewide table")
+    return aaa
+
+
+# ---------------------------------------------------------------------------
 # Main GasBuddy scrape
 # ---------------------------------------------------------------------------
 
@@ -333,6 +384,13 @@ def scrape_gasbuddy() -> dict:
              f"{reg:.3f}" if reg else "—", len(metros), len(CITIES))
 
     today = datetime.now(timezone.utc).strftime("%m/%d/%y")
+
+    # AAA statewide trend (today/yesterday/week/month/year). Best-effort; carried
+    # forward from the previous run by merge_with_previous() if it fails.
+    aaa = scrape_aaa(session)
+    if aaa:
+        aaa["as_of"] = today
+
     return {
         "source":      "GasBuddy",
         "source_url":  "https://www.gasbuddy.com/gasprices/wisconsin",
@@ -341,6 +399,7 @@ def scrape_gasbuddy() -> dict:
         "scraped_at":  datetime.now(timezone.utc).isoformat(),
         "statewide":   statewide,
         "metros":      metros,
+        "aaa":         aaa,
         "priority_metros": PRIORITY_METROS,
         # Transient run health — popped before gas_prices.json is written, then
         # finalized into docs/scrape_status.json by main().
@@ -514,55 +573,31 @@ def _format_long_date(price_date: str) -> str:
     return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
 
 
-def statewide_from_history(history: dict, today_key: str, days_ago: int, tol: int) -> float | None:
-    """Statewide regular avg ~`days_ago` back, from our own daily history.
-
-    Returns the nearest entry within `tol` days, or None. We use this instead of the
-    (now defunct) GasBuddy Fuel Insights page, which stopped serving server-rendered
-    comparison data — our history is the trustworthy source.
-    """
-    try:
-        target = datetime.strptime(today_key, "%m/%d/%y") - timedelta(days=days_ago)
-    except (ValueError, TypeError):
-        return None
-    best, best_diff = None, None
-    for k, entry in history.items():
-        try:
-            dt = datetime.strptime(k, "%m/%d/%y")
-        except (ValueError, TypeError):
-            continue
-        val = entry.get("statewide", {}).get("regular")
-        if not isinstance(val, (int, float)):
-            continue
-        diff = abs((dt - target).days)
-        if best_diff is None or diff < best_diff:
-            best, best_diff = val, diff
-    return best if (best is not None and best_diff <= tol) else None
-
-
-def build_summary(data: dict, history: dict) -> dict:
+def build_summary(data: dict) -> dict:
     """A quotable, plain-language summary the WPR newsroom can drop into articles.
 
-    Pure function. Comparison baselines come from our own `history` (not Fuel
-    Insights). Returns {} if there's no usable average.
+    Headline average is GasBuddy (our station-derived figure); the price-trend
+    comparisons are AAA's, computed AAA-internally (AAA current vs AAA past) and
+    attributed to AAA. Pure. Returns {} if there's no usable average.
     """
-    sw = data.get("statewide", {})
-    cur = sw.get("current_avg", {}).get("regular")
+    cur = data.get("statewide", {}).get("current_avg", {}).get("regular")
     if cur is None:
         return {}
 
     def cents(d):
         return f"{abs(round(d * 100))}¢"  # e.g. "12¢"
 
-    today_key = data.get("price_date", "")
+    aaa = data.get("aaa") or {}
+    aaa_cur = aaa.get("current", {}).get("regular")
     comps = []
-    for days, tol, phrase in [(7, 4, "a week ago"),
-                              (30, 10, "a month ago"),
-                              (365, 45, "a year ago")]:
-        prev = statewide_from_history(history, today_key, days, tol)
-        if prev is not None and abs(cur - prev) >= 0.005:
-            direction = "up" if cur > prev else "down"
-            comps.append(f"{direction} {cents(cur - prev)} from {phrase}")
+    if aaa_cur is not None:
+        for key, phrase in [("week_ago", "a week ago"),
+                            ("month_ago", "a month ago"),
+                            ("year_ago", "a year ago")]:
+            prev = aaa.get(key, {}).get("regular")
+            if prev is not None and abs(aaa_cur - prev) >= 0.005:
+                direction = "up" if aaa_cur > prev else "down"
+                comps.append(f"{direction} {cents(aaa_cur - prev)} from {phrase}")
 
     # Cheapest / priciest metro (fresh cities only)
     reg = {
@@ -578,9 +613,9 @@ def build_summary(data: dict, history: dict) -> dict:
                         f"(${reg[low_city]:.2f}) and {high_city} priciest (${reg[high_city]:.2f}).")
 
     as_of = _format_long_date(data.get("price_date", ""))
-    comp_clause = (" — " + ", ".join(comps)) if comps else ""
+    trend_clause = f" Statewide, prices are {', '.join(comps)}, per AAA." if comps else ""
     blurb = (f"As of {as_of}, regular unleaded in Wisconsin averages "
-             f"${cur:.2f} per gallon{comp_clause}.{metro_clause}")
+             f"${cur:.2f} per gallon, according to GasBuddy.{trend_clause}{metro_clause}")
 
     return {
         "as_of": as_of,
@@ -604,8 +639,16 @@ def recalculate_statewide(data: dict) -> None:
 
 
 def merge_with_previous(data: dict, previous_data: dict) -> None:
-    """Preserve city data from the previous run for any cities that failed today."""
-    if not previous_data or "metros" not in previous_data:
+    """Preserve data from the previous run for anything that failed today."""
+    if not previous_data:
+        return
+
+    # Carry forward AAA's statewide trend if this run couldn't fetch it (its `as_of`
+    # date stays from the previous run, so staleness is visible).
+    if not data.get("aaa") and previous_data.get("aaa"):
+        data["aaa"] = previous_data["aaa"]
+
+    if "metros" not in previous_data:
         return
 
     prev_metros = previous_data["metros"]
@@ -707,16 +750,7 @@ def main() -> None:
 
         if fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
             validate_output(data)
-            # Existing history (pre-today) supplies the blurb's comparison baselines.
-            history = {}
-            history_path = os.path.join(out_dir, "gas_prices_history.json")
-            if os.path.exists(history_path):
-                try:
-                    with open(history_path, "r", encoding="utf-8") as f:
-                        history = json.load(f)
-                except (json.JSONDecodeError, OSError):
-                    history = {}
-            summary = build_summary(data, history)
+            summary = build_summary(data)
             if summary:
                 data["summary"] = summary
                 log.info("Summary: %s", summary["blurb"])

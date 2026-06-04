@@ -263,38 +263,10 @@
     return null;
   }
 
-  // Parse a "mm/dd/yy" history key to a Date (local midnight).
-  function parseHistKey(k) {
-    const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(k || '');
-    return m ? new Date(2000 + (+m[3]), (+m[1]) - 1, +m[2]) : null;
-  }
-
-  // Statewide value for `fuel` ~`daysAgo` days back, from history (nearest entry
-  // within `tol` days). Lets every fuel show temporal comparisons, not just Regular.
-  function historyStatewideAt(daysAgo, fuel, tol) {
-    if (!historyData) return null;
-    const today = parseHistKey(data?.price_date) || new Date();
-    const target = today.getTime() - daysAgo * 86400000;
-    let best = null, bestDiff = Infinity;
-    for (const k of Object.keys(historyData)) {
-      const dt = parseHistKey(k);
-      const v = historyData[k]?.statewide?.[fuel];
-      if (!dt || typeof v !== 'number') continue;
-      const diff = Math.abs(dt.getTime() - target) / 86400000;
-      if (diff < bestDiff) { bestDiff = diff; best = v; }
-    }
-    return (best != null && bestDiff <= tol) ? best : null;
-  }
-
-  const PERIOD_DAYS = { yesterday_avg: 1, week_ago_avg: 7, month_ago_avg: 30, year_ago_avg: 365 };
-  const PERIOD_TOL  = { yesterday_avg: 3, week_ago_avg: 4, month_ago_avg: 10, year_ago_avg: 45 };
-
-  // A period's statewide value, derived from our own daily history (the GasBuddy
-  // Fuel Insights page no longer serves comparison data, so history is the source).
-  function statewidePeriodValue(periodKey, fuel) {
-    const sw = data?.statewide;
-    if (periodKey === 'current_avg') return sw?.current_avg?.[fuel];
-    return historyStatewideAt(PERIOD_DAYS[periodKey], fuel, PERIOD_TOL[periodKey]);
+  // A period's statewide value from AAA's table (today/yesterday/week/month/year).
+  // AAA is the statewide-trend source; GasBuddy stays the live station/metro source.
+  function aaaPeriodValue(periodKey, fuel) {
+    return data?.aaa?.[periodKey]?.[fuel] ?? null;
   }
 
   function findExtremeCities(fuel) {
@@ -498,13 +470,13 @@
       `<button type="button" aria-pressed="${activeFuel === f}" class="wpr-gas-fuel-btn ${activeFuel === f ? 'active' : ''}" data-fuel="${f}">${fuelLabel(f)}</button>`
     ).join('');
 
-    // Time comparison periods — all derived from our own daily history
+    // Time comparison periods — AAA's statewide table (keys match data.aaa)
     const periods = [
-      { key: 'current_avg', label: 'Today' },
-      { key: 'yesterday_avg', label: 'Yesterday' },
-      { key: 'week_ago_avg', label: 'Week Ago' },
-      { key: 'month_ago_avg', label: 'Month Ago' },
-      { key: 'year_ago_avg', label: 'Year Ago' },
+      { key: 'current', label: 'Today' },
+      { key: 'yesterday', label: 'Yesterday' },
+      { key: 'week_ago', label: 'Week Ago' },
+      { key: 'month_ago', label: 'Month Ago' },
+      { key: 'year_ago', label: 'Year Ago' },
     ];
 
     // ── Spatial snapshot: lowest / average / highest + range ──
@@ -530,16 +502,16 @@
       `<option value="${n}" ${selectedCity === n ? 'selected' : ''}>${n}</option>`
     ).join('');
 
-    // ── Temporal: today vs past (from our own daily history) ──
+    // ── Temporal: today vs past — AAA's statewide table (internally consistent) ──
     const periodVals = periods
-      .map(p => ({ label: p.label, key: p.key, val: statewidePeriodValue(p.key, activeFuel) }))
+      .map(p => ({ label: p.label, key: p.key, val: aaaPeriodValue(p.key, activeFuel) }))
       .filter(p => p.val != null);
-    const currentVal = sw?.current_avg?.[activeFuel];
+    const aaaCurrent = aaaPeriodValue('current', activeFuel);
     const maxPrice = (periodVals.length ? Math.max(...periodVals.map(p => p.val)) : 1) * 1.08;
     const compareRows = periodVals.map(p => {
-      const isCurrent = p.key === 'current_avg';
+      const isCurrent = p.key === 'current';
       const pct = ((p.val / maxPrice) * 100).toFixed(1);
-      const ch = (!isCurrent && currentVal != null) ? delta(currentVal, p.val) : { text: '', cls: '' };
+      const ch = (!isCurrent && aaaCurrent != null) ? delta(aaaCurrent, p.val) : { text: '', cls: '' };
       return `
         <div class="wpr-gas-compare-row${isCurrent ? ' active-fuel' : ''}">
           <span class="wpr-gas-compare-label">${p.label}</span>
@@ -549,7 +521,7 @@
         </div>`;
     }).join('');
     const compareSection = periodVals.length > 1
-      ? `<div class="wpr-state-section-label">${fuelLabel(activeFuel)} over time</div>
+      ? `<div class="wpr-state-section-label">Wisconsin ${fuelLabel(activeFuel)} over time · via AAA</div>
          <div class="wpr-gas-compare">${compareRows}</div>`
       : '';
 
