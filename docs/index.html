@@ -114,10 +114,14 @@
   .wpr-trends-btn-divider { display:inline-block; width:1px; height:20px; background:var(--rule); margin:0 4px; align-self:center; }
   .wpr-trends-title { font-family:'Playfair Display',Georgia,serif; font-size:16px; font-weight:700; color:var(--ink); text-align:center; padding:4px 0 12px; letter-spacing:-0.2px; }
   .wpr-trends-chart-wrap { padding:0 10px 10px; }
+  .wpr-trends-note { text-align:center; font-size:10px; color:var(--ink-faint); padding:0 18px 10px; margin-top:-8px; line-height:1.45; }
   .wpr-trends-stats { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; padding:8px 14px 12px; }
-  .wpr-trends-stat { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:8px 12px; text-align:center; min-width:100px; flex:1; }
+  .wpr-trends-stat { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:8px 12px; text-align:center; min-width:100px; flex:1; box-shadow:0 1px 3px rgba(20,50,45,0.05); }
+  .wpr-trends-stat-feature { background:linear-gradient(165deg,var(--accent-pale),#ffffff 80%); border-color:var(--accent-light); box-shadow:0 3px 10px rgba(62,132,122,0.16); }
   .wpr-trends-stat-label { display:block; font-size:8px; text-transform:uppercase; letter-spacing:0.7px; color:var(--ink-faint); margin-bottom:3px; }
+  .wpr-trends-stat-feature .wpr-trends-stat-label { color:var(--accent-dark); }
   .wpr-trends-stat-value { font-family:'Playfair Display',Georgia,serif; font-size:18px; font-weight:700; }
+  .wpr-trends-stat-sub { display:block; font-size:8.5px; color:var(--ink-light); margin-top:2px; font-weight:600; }
   .wpr-trends-svg { width:100%; height:auto; }
   .wpr-trends-empty { text-align:center; padding:40px 10px; color:var(--ink-faint); font-style:italic; font-size:13px; }
   .wpr-chart-axis-label { font-size:9px; fill:var(--ink-faint); font-family:'DM Sans',sans-serif; }
@@ -680,12 +684,18 @@
     const changePct = ((totalChange / firstPt.price) * 100).toFixed(1);
     const changeSign = totalChange > 0 ? '+' : '';
     const changeColor = totalChange > 0 ? 'var(--up)' : totalChange < 0 ? 'var(--down)' : 'var(--neutral)';
+    const absChange = (totalChange >= 0 ? '+' : '−') + '$' + Math.abs(totalChange).toFixed(2);
+    const baseLabel = `since ${months[firstPt.date.getMonth()]} ${firstPt.date.getFullYear()}`;
+
+    // Points to annotate on the curve
+    const maxPt = points[prices.indexOf(maxP)];
+    const minPt = points[prices.indexOf(minP)];
 
     const rangeLabel = trendRange === 26 ? '6 Month' : '12 Month';
 
     return `
       <div class="wpr-trends-stats">
-        <div class="wpr-trends-stat">
+        <div class="wpr-trends-stat wpr-trends-stat-feature">
           <span class="wpr-trends-stat-label">Latest</span>
           <span class="wpr-trends-stat-value"><span class="wpr-dollar">$</span>${lastPt.price.toFixed(3)}</span>
         </div>
@@ -704,14 +714,26 @@
         <div class="wpr-trends-stat">
           <span class="wpr-trends-stat-label">Overall Change</span>
           <span class="wpr-trends-stat-value" style="color:${changeColor}">${changeSign}${changePct}%</span>
+          <span class="wpr-trends-stat-sub" style="color:${changeColor}">${absChange} ${baseLabel}</span>
         </div>
       </div>
       <svg viewBox="0 0 ${W} ${H}" class="wpr-trends-svg" role="img"
            aria-label="Line chart of ${fuelLabel(activeFuel)} gas price over the ${rangeLabel}, overall change ${changeSign}${changePct}%.">
         <title>${fuelLabel(activeFuel)} price trend — ${rangeLabel}</title>
+        <defs>
+          <linearGradient id="wprTrendArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
         ${grid}
-        <path d="${areaPath}" fill="var(--accent-pale)" opacity="0.4"/>
+        <path d="${areaPath}" fill="url(#wprTrendArea)"/>
+        <line x1="${padL}" y1="${lastPt.y.toFixed(1)}" x2="${W - padR}" y2="${lastPt.y.toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,3" opacity="0.45"/>
         <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${minPt.x.toFixed(1)}" cy="${minPt.y.toFixed(1)}" r="3.5" fill="var(--down)" stroke="#fff" stroke-width="1.5"/>
+        <text x="${minPt.x.toFixed(1)}" y="${(minPt.y + 15).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--down)" font-family="'Source Sans 3',sans-serif">$${minP.toFixed(2)}</text>
+        <circle cx="${maxPt.x.toFixed(1)}" cy="${maxPt.y.toFixed(1)}" r="3.5" fill="var(--up)" stroke="#fff" stroke-width="1.5"/>
+        <text x="${maxPt.x.toFixed(1)}" y="${(maxPt.y - 8).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--up)" font-family="'Source Sans 3',sans-serif">$${maxP.toFixed(2)}</text>
         <circle cx="${lastPt.x}" cy="${lastPt.y}" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1.5"/>
         ${xLabels}
         ${hitAreas}
@@ -756,6 +778,7 @@
       </div>
       <div class="wpr-trends-chart-wrap">
         <div class="wpr-trends-title">Midwest Region · ${fuelName} · ${rangeLabel}</div>
+        <div class="wpr-trends-note">Regional benchmark from the U.S. EIA — broader than the Wisconsin prices on the other tabs.</div>
         ${chartContent}
       </div>
     `;
