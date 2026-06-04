@@ -109,29 +109,30 @@ def test_extract_cheapest_stations_keeps_all_fuel_prices():
 
 
 # ---------------------------------------------------------------------------
-# statewide_from_history (comparison baselines come from our own history)
+# parse_aaa (statewide trend: today / yesterday / week / month / year)
 # ---------------------------------------------------------------------------
 
-def _hist(*pairs):
-    """Build a history dict from (mm/dd/yy, statewide_regular) pairs."""
-    return {k: {"statewide": {"regular": v}} for k, v in pairs}
+# Mirrors AAA's tag-stripped Wisconsin table: each period label is followed by
+# four prices in column order Regular, Mid-Grade, Premium, Diesel.
+SAMPLE_AAA = """
+<table><tr><td>Current Avg.</td><td>$4.069</td><td>$4.631</td><td>$5.200</td><td>$5.411</td></tr>
+<tr><td>Yesterday Avg.</td><td>$4.097</td><td>$4.655</td><td>$5.231</td><td>$5.456</td></tr>
+<tr><td>Week Ago Avg.</td><td>$4.330</td><td>$4.886</td><td>$5.458</td><td>$5.669</td></tr>
+<tr><td>Month Ago Avg.</td><td>$4.371</td><td>$4.843</td><td>$5.438</td><td>$5.584</td></tr>
+<tr><td>Year Ago Avg.</td><td>$2.968</td><td>$3.478</td><td>$3.977</td><td>$3.225</td></tr></table>
+"""
 
 
-def test_statewide_from_history_nearest_within_tolerance():
-    hist = _hist(("05/28/26", 4.21), ("05/05/26", 4.29), ("06/03/26", 3.95))
-    # 7 days before 06/04/26 = 05/28 -> 4.21
-    assert s.statewide_from_history(hist, "06/04/26", 7, 4) == 4.21
-    # 30 days before -> ~05/05 -> 4.29
-    assert s.statewide_from_history(hist, "06/04/26", 30, 10) == 4.29
+def test_parse_aaa_extracts_all_periods_and_fuels():
+    out = s.parse_aaa(SAMPLE_AAA)
+    assert out["current"] == {"regular": 4.069, "mid_grade": 4.631, "premium": 5.200, "diesel": 5.411}
+    assert out["week_ago"]["regular"] == 4.330
+    assert out["year_ago"]["regular"] == 2.968   # column order Regular first
+    assert out["year_ago"]["diesel"] == 3.225
 
 
-def test_statewide_from_history_none_when_outside_tolerance():
-    hist = _hist(("01/01/26", 3.00))  # ~a year-ish off any recent target
-    assert s.statewide_from_history(hist, "06/04/26", 7, 4) is None
-
-
-def test_statewide_from_history_none_when_empty():
-    assert s.statewide_from_history({}, "06/04/26", 7, 4) is None
+def test_parse_aaa_empty_without_table():
+    assert s.parse_aaa("<html>no table here</html>") == {}
 
 
 # ---------------------------------------------------------------------------
@@ -265,36 +266,39 @@ def test_compute_statewide_defaults_weight_when_count_missing():
 def test_build_summary_full():
     data = {
         "price_date": "06/04/26",
-        "statewide": {"current_avg": {"regular": 3.92}},
+        "statewide": {"current_avg": {"regular": 3.92}},   # GasBuddy headline number
+        "aaa": {                                            # AAA-internal trend
+            "current": {"regular": 4.07}, "week_ago": {"regular": 4.33},
+            "month_ago": {"regular": 4.37}, "year_ago": {"regular": 2.97},
+        },
         "metros": {"Madison": _city(3.68), "Wausau": _city(4.41)},
     }
-    history = _hist(("05/28/26", 3.88), ("05/05/26", 3.80), ("06/04/25", 3.32))
-    out = s.build_summary(data, history)
+    out = s.build_summary(data)
     assert out["as_of"] == "June 4, 2026"
     assert out["headline"] == "Wisconsin gas averages $3.92/gal"
     b = out["blurb"]
-    assert "$3.92 per gallon" in b
-    assert "up 4¢ from a week ago" in b
-    assert "up 60¢ from a year ago" in b
+    assert "$3.92 per gallon, according to GasBuddy" in b
+    assert "down 26¢ from a week ago" in b      # 4.07 vs 4.33 (AAA-internal)
+    assert "up 110¢ from a year ago" in b       # 4.07 vs 2.97
+    assert "per AAA" in b
     assert "Madison is cheapest ($3.68)" in b
     assert "Wausau priciest ($4.41)" in b
 
 
-def test_build_summary_skips_unchanged_and_missing_comparisons():
+def test_build_summary_no_trend_without_aaa():
     data = {
         "price_date": "06/04/26",
         "statewide": {"current_avg": {"regular": 3.50}},
-        "metros": {"Madison": _city(3.50)},  # only one metro -> no metro clause
+        "metros": {"Madison": _city(3.50)},  # one metro -> no metro clause; no aaa -> no trend
     }
-    history = _hist(("05/28/26", 3.50))  # week-ago unchanged -> skipped; no month/year
-    out = s.build_summary(data, history)
-    assert "from a week ago" not in out["blurb"]
+    out = s.build_summary(data)
+    assert "per AAA" not in out["blurb"]
     assert "Among metro areas" not in out["blurb"]
-    assert out["blurb"].endswith("$3.50 per gallon.")
+    assert out["blurb"].endswith("according to GasBuddy.")
 
 
 def test_build_summary_empty_without_regular():
-    assert s.build_summary({"statewide": {"current_avg": {}}}, {}) == {}
+    assert s.build_summary({"statewide": {"current_avg": {}}}) == {}
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +329,7 @@ def test_build_summary_excludes_stale_metros():
             "Ghost": {**_city(1.50), "stale": True},  # implausible + stale -> ignored
         },
     }
-    b = s.build_summary(data, {})["blurb"]
+    b = s.build_summary(data)["blurb"]
     assert "Ghost" not in b
     assert "Madison is cheapest ($3.68)" in b
 

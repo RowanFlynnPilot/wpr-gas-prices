@@ -32,8 +32,9 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
 1. **GasBuddy** — per-city station prices and names for 22 Wisconsin cities, via
    GasBuddy's GraphQL API. Uses `curl_cffi` (Chrome impersonation) to fetch like a
    real browser, so no proxy is required.
-2. **Our own daily history** — week/month/year price comparisons are computed from
-   the history the scraper has been saving, not from a third party.
+2. **AAA** — Wisconsin's statewide price trend (today / yesterday / week / month /
+   year, all fuels), from AAA's public state page. GasBuddy gives the live station
+   detail; AAA gives the historical trend.
 3. **EIA** (U.S. Energy Information Administration) — weekly Midwest fuel-price
    trends, plus the U.S. national average and WTI crude for context. Requires a free
    `EIA_API_KEY`; if it's missing, this part is simply skipped and everything else
