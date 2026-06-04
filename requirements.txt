@@ -1,2 +1,4 @@
-requests>=2.31.0
-curl_cffi>=0.7.0
+# curl_cffi is load-bearing: its Chrome impersonation clears Cloudflare on GasBuddy.
+# Pin the minor version — impersonation/TLS behavior can change between minors.
+curl_cffi>=0.15,<0.16
+requests>=2.32,<3

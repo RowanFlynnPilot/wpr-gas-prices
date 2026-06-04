@@ -103,7 +103,15 @@ In WordPress, add a **Custom HTML** block where the widget should appear:
 
 ## Schedule
 
-The scraper runs automatically at **7:00 AM** and **12:00 PM** Central Time daily.
+The scraper runs automatically twice daily on a **fixed UTC schedule** (12:00 and
+17:00 UTC). GitHub Actions cron does not observe daylight saving, so the Central
+local times shift with the season:
+
+| | Central Daylight (Mar–Nov) | Central Standard (Nov–Mar) |
+| --- | --- | --- |
+| First run | 7:00 AM CDT | 6:00 AM CST |
+| Second run | 12:00 PM CDT | 11:00 AM CST |
+
 You can also trigger it anytime from the **Actions** tab. To change the timing, edit
 the cron expressions in `.github/workflows/update-gas-prices.yml`
 ([crontab.guru](https://crontab.guru/) helps).

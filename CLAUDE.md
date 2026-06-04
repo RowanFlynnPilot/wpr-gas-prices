@@ -45,8 +45,9 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 |------|---------|-------|
 | `scrape_gas_prices.py` | The scraper — all logic lives here | Yes |
 | `requirements.txt` | `requests`, `curl_cffi` | Rarely |
-| `.github/workflows/update-gas-prices.yml` | Cron schedule (7 AM & 12 PM CT) | To change timing |
-| `docs/index.html` | The widget UI (reads the JSON) | Yes — design/colors |
+| `.github/workflows/update-gas-prices.yml` | Cron schedule (fixed UTC 12:00 & 17:00 — see note) | To change timing |
+| `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
+| `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/gas_prices.json` | Main output | **Never by hand** — scraper owns it |
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly series | **Never by hand** |
@@ -101,6 +102,9 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Fail-soft on GasBuddy, continue to EIA.** If the GasBuddy scrape throws, the
   previous `gas_prices.json` is left untouched and EIA still updates.
 - **History cap.** `gas_prices_history.json` is trimmed to the most recent 400 days.
+- **Cron is fixed UTC, not Central.** The workflow runs at `12:00` and `17:00` UTC.
+  GitHub Actions cron ignores DST, so local times drift: 7 AM / 12 PM during CDT,
+  6 AM / 11 AM during CST. Don't describe the schedule as a fixed Central time.
 
 ## Commands
 
