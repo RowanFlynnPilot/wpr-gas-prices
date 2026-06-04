@@ -123,6 +123,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows
   a quiet "temporarily unavailable" state (no stale baked-in snapshot). The header
   shows a relative "Updated Nh ago" that turns amber past ~26h.
+- **Iframe auto-resize contract.** The widget posts `{type:'wpr-gas-height',height}`
+  to `window.parent` on every render/resize; the WordPress embed snippet (in the
+  README) listens and resizes the iframe. JSON fetches are cache-busted in 10-min
+  buckets, and fonts load non-blocking — keep these when editing `index.html`.
 
 ## Commands
 
@@ -162,5 +166,11 @@ cd docs && python -m http.server 8000   # then open http://localhost:8000
 
 ## Known follow-ups
 
-- [ ] Rewrite `README.md` to match the GasBuddy/curl_cffi reality (currently describes AAA).
-- [ ] Add a `.gitignore` (`.venv/`, `__pycache__/`, `*.pyc`).
+- [x] Rewrite `README.md` to match the GasBuddy/curl_cffi reality.
+- [x] Add a `.gitignore`.
+- [ ] **Port enhancements to `docs/index-compact.html`.** The compact variant is
+  currently behind `index.html`: it lacks the honest error state, relative-time
+  freshness label, auto-resize `postMessage`, non-blocking fonts, cache-busting,
+  and the ARIA pass. Keep the two in sync or formally retire the compact one.
+- [ ] Harden the Fuel Insights price regex: `[\d.]+` will swallow a trailing
+  period (e.g. `$3.45.`). Real markup doesn't trigger it today, but it's fragile.
