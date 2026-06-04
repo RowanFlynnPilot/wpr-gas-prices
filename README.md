@@ -27,17 +27,17 @@ check the **Actions** tab on GitHub.
 
 ## Where the Data Comes From
 
-The scraper pulls from three sources, all from the cloud — no proxies, no paid
-services beyond a free API key:
+The scraper pulls from the cloud — no proxies, no paid services beyond a free API key:
 
-1. **GasBuddy** — per-city station prices for 15 Wisconsin cities, via GasBuddy's
-   GraphQL API. Uses `curl_cffi` (Chrome impersonation) to fetch like a real
-   browser, so no proxy is required.
-2. **GasBuddy Fuel Insights** — statewide historical comparisons (yesterday, last
-   week, last month, last year).
+1. **GasBuddy** — per-city station prices and names for 22 Wisconsin cities, via
+   GasBuddy's GraphQL API. Uses `curl_cffi` (Chrome impersonation) to fetch like a
+   real browser, so no proxy is required.
+2. **Our own daily history** — week/month/year price comparisons are computed from
+   the history the scraper has been saving, not from a third party.
 3. **EIA** (U.S. Energy Information Administration) — weekly Midwest fuel-price
-   trends. Requires a free `EIA_API_KEY`; if it's missing, this part is simply
-   skipped and everything else still works.
+   trends, plus the U.S. national average and WTI crude for context. Requires a free
+   `EIA_API_KEY`; if it's missing, this part is simply skipped and everything else
+   still works.
 
 If a city fails on a given run, its **previous price is carried forward** and marked
 stale, so the widget never shows blank cities.
@@ -202,11 +202,11 @@ PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "
 
 | File | Purpose | Who edits it |
 | --- | --- | --- |
-| `scrape_gas_prices.py` | The scraper (GasBuddy + EIA + Fuel Insights) | Rowan |
+| `scrape_gas_prices.py` | The scraper (GasBuddy + EIA) | Rowan |
 | `requirements.txt` | Python dependencies (`requests`, `curl_cffi`) | Rarely |
 | `.github/workflows/update-gas-prices.yml` | Automation schedule | Rowan |
 | `docs/index.html` | The widget UI | Rowan |
 | `docs/gas_prices.json` | Live price data | **Never by hand** — the scraper owns it |
 | `docs/gas_prices_history.json` | Daily history (last 400 days) | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly trend series | **Never by hand** |
-| `docs/fuel_insights_cache.json` | Fuel Insights cache / fallback | **Never by hand** |
+| `docs/eia_context.json` | EIA national avg + WTI crude | **Never by hand** |

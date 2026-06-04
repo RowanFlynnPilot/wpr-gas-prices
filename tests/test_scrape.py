@@ -1,8 +1,9 @@
 """Unit tests for the pure (no-network) logic in scrape_gas_prices.py.
 
 These guard the parts most likely to break silently when GasBuddy changes its
-markup or response shape: station-price aggregation, the Fuel Insights regexes,
-stale-city preservation, history capping, and output validation.
+markup or response shape: station-price aggregation, cheapest-station extraction,
+history-based comparisons, the newsroom blurb, stale-city preservation, history
+capping, and output validation.
 
 Run: pytest -q
 """
@@ -108,38 +109,29 @@ def test_extract_cheapest_stations_keeps_all_fuel_prices():
 
 
 # ---------------------------------------------------------------------------
-# parse_fuel_insights
+# statewide_from_history (comparison baselines come from our own history)
 # ---------------------------------------------------------------------------
 
-SAMPLE_INSIGHTS = """
-<html><body>
-  <span class="live">$3.50/gal</span> across Wisconsin
-  <p>Up from Yesterday's Avg of $3.45 </p>
-  <p>Up from Last Week's Avg of $3.40 </p>
-  <p>Down from Last Month's Avg of $3.70 </p>
-  <p>Down from Last Year's Avg of $3.90 </p>
-</body></html>
-"""
+def _hist(*pairs):
+    """Build a history dict from (mm/dd/yy, statewide_regular) pairs."""
+    return {k: {"statewide": {"regular": v}} for k, v in pairs}
 
 
-def test_parse_fuel_insights_extracts_all_periods():
-    out = s.parse_fuel_insights(SAMPLE_INSIGHTS)
-    assert out["yesterday_avg"]["regular"] == 3.45
-    assert out["week_ago_avg"]["regular"] == 3.40
-    assert out["month_ago_avg"]["regular"] == 3.70
-    assert out["year_ago_avg"]["regular"] == 3.90
-    assert out["gasbuddy_live_avg"]["regular"] == 3.50
+def test_statewide_from_history_nearest_within_tolerance():
+    hist = _hist(("05/28/26", 4.21), ("05/05/26", 4.29), ("06/03/26", 3.95))
+    # 7 days before 06/04/26 = 05/28 -> 4.21
+    assert s.statewide_from_history(hist, "06/04/26", 7, 4) == 4.21
+    # 30 days before -> ~05/05 -> 4.29
+    assert s.statewide_from_history(hist, "06/04/26", 30, 10) == 4.29
 
 
-def test_parse_fuel_insights_empty_without_marker():
-    assert s.parse_fuel_insights("<html>no data here</html>") == {}
+def test_statewide_from_history_none_when_outside_tolerance():
+    hist = _hist(("01/01/26", 3.00))  # ~a year-ish off any recent target
+    assert s.statewide_from_history(hist, "06/04/26", 7, 4) is None
 
 
-def test_parse_fuel_insights_ignores_trailing_period():
-    # A sentence period right after the price must not be captured into the float.
-    text = "Up from Yesterday's Avg of $3.45. That's notable."
-    out = s.parse_fuel_insights(text)
-    assert out["yesterday_avg"]["regular"] == 3.45
+def test_statewide_from_history_none_when_empty():
+    assert s.statewide_from_history({}, "06/04/26", 7, 4) is None
 
 
 # ---------------------------------------------------------------------------
@@ -273,13 +265,11 @@ def test_compute_statewide_defaults_weight_when_count_missing():
 def test_build_summary_full():
     data = {
         "price_date": "06/04/26",
-        "statewide": {"current_avg": {"regular": 3.92},
-                      "week_ago_avg": {"regular": 3.88},
-                      "month_ago_avg": {"regular": 3.80},
-                      "year_ago_avg": {"regular": 3.32}},
+        "statewide": {"current_avg": {"regular": 3.92}},
         "metros": {"Madison": _city(3.68), "Wausau": _city(4.41)},
     }
-    out = s.build_summary(data)
+    history = _hist(("05/28/26", 3.88), ("05/05/26", 3.80), ("06/04/25", 3.32))
+    out = s.build_summary(data, history)
     assert out["as_of"] == "June 4, 2026"
     assert out["headline"] == "Wisconsin gas averages $3.92/gal"
     b = out["blurb"]
@@ -293,18 +283,18 @@ def test_build_summary_full():
 def test_build_summary_skips_unchanged_and_missing_comparisons():
     data = {
         "price_date": "06/04/26",
-        "statewide": {"current_avg": {"regular": 3.50},
-                      "week_ago_avg": {"regular": 3.50}},  # unchanged -> skipped
+        "statewide": {"current_avg": {"regular": 3.50}},
         "metros": {"Madison": _city(3.50)},  # only one metro -> no metro clause
     }
-    out = s.build_summary(data)
+    history = _hist(("05/28/26", 3.50))  # week-ago unchanged -> skipped; no month/year
+    out = s.build_summary(data, history)
     assert "from a week ago" not in out["blurb"]
     assert "Among metro areas" not in out["blurb"]
     assert out["blurb"].endswith("$3.50 per gallon.")
 
 
 def test_build_summary_empty_without_regular():
-    assert s.build_summary({"statewide": {"current_avg": {}}}) == {}
+    assert s.build_summary({"statewide": {"current_avg": {}}}, {}) == {}
 
 
 # ---------------------------------------------------------------------------
@@ -335,7 +325,7 @@ def test_build_summary_excludes_stale_metros():
             "Ghost": {**_city(1.50), "stale": True},  # implausible + stale -> ignored
         },
     }
-    b = s.build_summary(data)["blurb"]
+    b = s.build_summary(data, {})["blurb"]
     assert "Ghost" not in b
     assert "Madison is cheapest ($3.68)" in b
 
@@ -356,7 +346,7 @@ def test_main_writes_status_and_strips_run_health(tmp_path, monkeypatch):
             "metros": {"Wausau": _city(3.9)},
             "priority_metros": ["Wausau"],
             "run_health": {"cities_total": 15, "cities_fresh": 1,
-                           "failed_cities": ["Madison"], "insights_from_cache": False},
+                           "failed_cities": ["Madison"]},
         }
 
     monkeypatch.setattr(s, "scrape_gasbuddy", fake_scrape)
