@@ -222,24 +222,24 @@ def parse_fuel_insights(text: str) -> dict:
     result = {}
     for key, patterns in [
         ("yesterday_avg", [
-            r"Yesterday'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
-            r"Yesterday'?s?\s+Avg\*?[^$]*\$([\d.]+)",
-            r"from\s+Yesterday[^$]*\$([\d.]+)",
+            r"Yesterday'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
+            r"Yesterday'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
+            r"from\s+Yesterday[^$]*\$(\d+\.\d+)",
         ]),
         ("week_ago_avg", [
-            r"Last\s+Week'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
-            r"Last\s+Week'?s?\s+Avg\*?[^$]*\$([\d.]+)",
-            r"from\s+Last\s+Week[^$]*\$([\d.]+)",
+            r"Last\s+Week'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
+            r"Last\s+Week'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
+            r"from\s+Last\s+Week[^$]*\$(\d+\.\d+)",
         ]),
         ("month_ago_avg", [
-            r"Last\s+Month'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
-            r"Last\s+Month'?s?\s+Avg\*?[^$]*\$([\d.]+)",
-            r"from\s+Last\s+Month[^$]*\$([\d.]+)",
+            r"Last\s+Month'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
+            r"Last\s+Month'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
+            r"from\s+Last\s+Month[^$]*\$(\d+\.\d+)",
         ]),
         ("year_ago_avg", [
-            r"Last\s+Year'?s?\s+Avg\*?\s+of\s+\$([\d.]+)",
-            r"Last\s+Year'?s?\s+Avg\*?[^$]*\$([\d.]+)",
-            r"from\s+Last\s+Year[^$]*\$([\d.]+)",
+            r"Last\s+Year'?s?\s+Avg\*?\s+of\s+\$(\d+\.\d+)",
+            r"Last\s+Year'?s?\s+Avg\*?[^$]*\$(\d+\.\d+)",
+            r"from\s+Last\s+Year[^$]*\$(\d+\.\d+)",
         ]),
     ]:
         for pat in patterns:
@@ -248,7 +248,7 @@ def parse_fuel_insights(text: str) -> dict:
                 result[key] = {"regular": float(m.group(1))}
                 break
 
-    live = re.search(r"\$([\d.]+)\s*/gal", text)
+    live = re.search(r"\$(\d+\.\d+)\s*/gal", text)
     if live:
         result["gasbuddy_live_avg"] = {"regular": float(live.group(1))}
 

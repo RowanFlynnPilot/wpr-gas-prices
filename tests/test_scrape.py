@@ -95,6 +95,13 @@ def test_parse_fuel_insights_empty_without_marker():
     assert s.parse_fuel_insights("<html>no data here</html>") == {}
 
 
+def test_parse_fuel_insights_ignores_trailing_period():
+    # A sentence period right after the price must not be captured into the float.
+    text = "Up from Yesterday's Avg of $3.45. That's notable."
+    out = s.parse_fuel_insights(text)
+    assert out["yesterday_avg"]["regular"] == 3.45
+
+
 # ---------------------------------------------------------------------------
 # merge_with_previous + recalculate_statewide
 # ---------------------------------------------------------------------------
