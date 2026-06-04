@@ -87,8 +87,12 @@
   .wpr-state-city-label { font-size:10px; color:var(--ink-faint); text-align:center; margin-bottom:3px; }
 
   .wpr-metro-list { padding:8px 14px 14px; }
-  .wpr-metro-card { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--rule-light); border-radius:var(--radius); margin-bottom:6px; background:#fff; box-shadow:0 1px 3px rgba(20,50,45,0.05); transition:all 0.12s; }
-  .wpr-metro-card:hover { border-color:var(--accent); box-shadow:0 3px 10px rgba(62,132,122,0.14); transform:translateY(-1px); }
+  .wpr-metro-item { margin-bottom:6px; }
+  .wpr-metro-card { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--rule-light); border-radius:var(--radius); background:#fff; box-shadow:0 1px 3px rgba(20,50,45,0.05); transition:border-color 0.12s, box-shadow 0.12s; }
+  .wpr-metro-card.clickable { cursor:pointer; }
+  .wpr-metro-card.clickable:hover { border-color:var(--accent); box-shadow:0 3px 10px rgba(62,132,122,0.14); }
+  .wpr-metro-card.clickable:focus-visible { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-pale); }
+  .wpr-metro-card.expanded { border-radius:var(--radius) var(--radius) 0 0; border-bottom-color:transparent; box-shadow:none; }
   .wpr-metro-card.highlight { background:var(--accent-pale); border-color:var(--accent); }
   .wpr-metro-name { font-size:13px; font-weight:600; }
   .wpr-metro-right { text-align:right; display:flex; align-items:center; gap:12px; }
@@ -96,6 +100,15 @@
   .wpr-metro-range { font-size:10px; color:var(--ink-faint); }
   .wpr-metro-delta { font-size:11px; font-weight:600; min-width:55px; text-align:right; }
   .wpr-metro-spark { flex-shrink:0; opacity:0.85; }
+  .wpr-metro-expand { font-size:9px; color:var(--ink-faint); width:10px; text-align:center; flex-shrink:0; }
+  .wpr-metro-stations { background:var(--paper-warm); border:1px solid var(--accent); border-top:none; border-radius:0 0 var(--radius) var(--radius); padding:4px 14px 10px; }
+  .wpr-metro-stations-head { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-faint); font-weight:700; padding:8px 0 4px; }
+  .wpr-metro-station { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-top:1px solid var(--rule-light); }
+  .wpr-metro-station:first-of-type { border-top:none; }
+  .wpr-metro-station-info { display:flex; flex-direction:column; min-width:0; }
+  .wpr-metro-station-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wpr-metro-station-addr { font-size:10px; color:var(--ink-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wpr-metro-station-price { font-family:'Playfair Display',Georgia,serif; font-size:15px; font-weight:700; color:var(--accent-dark); flex-shrink:0; }
   .up-color { color:var(--up); } .down-color { color:var(--down); } .flat-color { color:var(--neutral); }
 
   /* Statewide comparison bars */
@@ -171,6 +184,7 @@
   let activeFuel = 'regular';
   let activeTab = 'statewide';
   let selectedCity = '';
+  let expandedCity = '';
   const widget = document.getElementById('gasWidget');
 
   // ── EIA ──
@@ -427,6 +441,13 @@
     if (citySelect) {
       citySelect.addEventListener('change', () => { selectedCity = citySelect.value; render(); });
     }
+    widget.querySelectorAll('.wpr-metro-card.clickable').forEach(c => {
+      const toggle = () => { expandedCity = expandedCity === c.dataset.city ? '' : c.dataset.city; render(); };
+      c.addEventListener('click', toggle);
+      c.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
     postHeight();
   }
 
@@ -563,17 +584,43 @@
       const isWausau = name === 'Wausau';
       const rangeText = (low != null && high != null) ? `$${low.toFixed(2)} – $${high.toFixed(2)}` : '';
 
+      // Cheapest specific stations for the active fuel (from the stored list)
+      const stations = (m.stations || [])
+        .filter(st => st.prices && st.prices[activeFuel] != null)
+        .sort((a, b) => a.prices[activeFuel] - b.prices[activeFuel])
+        .slice(0, 5);
+      const canExpand = stations.length > 0;
+      const isExpanded = expandedCity === name && canExpand;
+
+      const stationRows = stations.map((st, i) => `
+        <div class="wpr-metro-station">
+          <div class="wpr-metro-station-info">
+            <span class="wpr-metro-station-name">${st.name}</span>
+            ${st.address ? `<span class="wpr-metro-station-addr">${st.address}</span>` : ''}
+          </div>
+          <span class="wpr-metro-station-price${i === 0 ? ' down-color' : ''}">${fmt(st.prices[activeFuel])}</span>
+        </div>`).join('');
+
       return `
-        <div class="wpr-metro-card ${isWausau ? 'highlight' : ''}">
-          <div>
-            <div class="wpr-metro-name">${name}</div>
-            <div class="wpr-metro-range">${rangeText}</div>
+        <div class="wpr-metro-item">
+          <div class="wpr-metro-card ${isWausau ? 'highlight' : ''}${canExpand ? ' clickable' : ''}${isExpanded ? ' expanded' : ''}"
+               ${canExpand ? `data-city="${name}" role="button" tabindex="0" aria-expanded="${isExpanded}"` : ''}>
+            <div>
+              <div class="wpr-metro-name">${name}</div>
+              <div class="wpr-metro-range">${rangeText}</div>
+            </div>
+            <div class="wpr-metro-right">
+              ${metroSparkline(name, activeFuel)}
+              <div class="wpr-metro-price">${fmt(price)}</div>
+              <div class="wpr-metro-delta ${d.cls}">${yest != null ? d.text : ''}</div>
+              ${canExpand ? `<span class="wpr-metro-expand">${isExpanded ? '▲' : '▼'}</span>` : '<span class="wpr-metro-expand"></span>'}
+            </div>
           </div>
-          <div class="wpr-metro-right">
-            ${metroSparkline(name, activeFuel)}
-            <div class="wpr-metro-price">${fmt(price)}</div>
-            <div class="wpr-metro-delta ${d.cls}">${yest != null ? d.text : ''}</div>
-          </div>
+          ${isExpanded ? `
+            <div class="wpr-metro-stations">
+              <div class="wpr-metro-stations-head">Cheapest ${fuelLabel(activeFuel)} near ${name} · via GasBuddy</div>
+              ${stationRows}
+            </div>` : ''}
         </div>`;
     }).join('');
 

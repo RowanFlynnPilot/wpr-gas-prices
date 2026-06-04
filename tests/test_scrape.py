@@ -68,6 +68,46 @@ def test_parse_station_results_none_when_no_regular():
 
 
 # ---------------------------------------------------------------------------
+# extract_cheapest_stations
+# ---------------------------------------------------------------------------
+
+def _named(name, reg, line1="123 Main St", locality="Wausau", extra=()):
+    prices = [{"fuelProduct": "regular_gas", "credit": {"price": reg}, "cash": None}]
+    for fp, p in extra:
+        prices.append({"fuelProduct": fp, "credit": {"price": p}, "cash": None})
+    return {"name": name, "address": {"line1": line1, "locality": locality}, "prices": prices}
+
+
+def test_extract_cheapest_stations_sorted_with_address():
+    results = [_named("Kwik Trip", 3.69), _named("Costco", 3.59), _named("BP", 3.99)]
+    out = s.extract_cheapest_stations(results)
+    assert [st["name"] for st in out] == ["Costco", "Kwik Trip", "BP"]
+    assert out[0]["prices"]["regular"] == 3.59
+    assert out[0]["address"] == "123 Main St, Wausau"
+
+
+def test_extract_cheapest_stations_respects_limit():
+    results = [_named(f"Station {i}", 3.0 + i / 100) for i in range(20)]
+    assert len(s.extract_cheapest_stations(results, limit=5)) == 5
+
+
+def test_extract_cheapest_stations_skips_unnamed_and_no_regular():
+    results = [
+        {"name": "", "address": {}, "prices": [{"fuelProduct": "regular_gas", "credit": {"price": 3.1}}]},
+        {"name": "Diesel Only", "prices": [{"fuelProduct": "diesel", "credit": {"price": 4.0}}]},
+        _named("Good", 3.5),
+    ]
+    out = s.extract_cheapest_stations(results)
+    assert [st["name"] for st in out] == ["Good"]
+
+
+def test_extract_cheapest_stations_keeps_all_fuel_prices():
+    results = [_named("Kwik Trip", 3.69, extra=[("diesel", 4.59), ("premium_gas", 4.29)])]
+    st0 = s.extract_cheapest_stations(results)[0]
+    assert st0["prices"] == {"regular": 3.69, "diesel": 4.59, "premium": 4.29}
+
+
+# ---------------------------------------------------------------------------
 # parse_fuel_insights
 # ---------------------------------------------------------------------------
 
