@@ -3,13 +3,13 @@
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
   "price_date": "06/18/26",
-  "scraped_at": "2026-06-18T15:12:26.162125+00:00",
+  "scraped_at": "2026-06-18T19:37:54.565220+00:00",
   "statewide": {
     "current_avg": {
-      "regular": 3.73,
-      "mid_grade": 4.358,
-      "premium": 4.915,
-      "diesel": 5.065
+      "regular": 3.728,
+      "mid_grade": 4.362,
+      "premium": 4.913,
+      "diesel": 5.061
     },
     "low": {
       "regular": 3.49,
@@ -25,6 +25,199 @@
     }
   },
   "metros": {
+    "Sheboygan": {
+      "current_avg": {
+        "regular": 3.597,
+        "mid_grade": 4.267,
+        "premium": 4.808,
+        "diesel": 4.872
+      },
+      "low": {
+        "regular": 3.49,
+        "mid_grade": 3.95,
+        "premium": 4.49,
+        "diesel": 4.69
+      },
+      "high": {
+        "regular": 3.69,
+        "mid_grade": 4.57,
+        "premium": 5.19,
+        "diesel": 5.09
+      },
+      "station_count": {
+        "regular": 20,
+        "mid_grade": 7,
+        "premium": 13,
+        "diesel": 11
+      },
+      "stations": [
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.49,
+            "premium": 4.69,
+            "diesel": 4.79
+          },
+          "address": "21 N Business Park Dr, Oostburg"
+        },
+        {
+          "name": "Citgo",
+          "prices": {
+            "regular": 3.49,
+            "diesel": 4.99
+          },
+          "address": "1039 Center Ave, Oostburg"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.52,
+            "mid_grade": 4.32,
+            "premium": 4.92,
+            "diesel": 4.77
+          },
+          "address": "1050 N MAIN ST, Sheboygan Falls"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.52,
+            "premium": 4.75
+          },
+          "address": "300 Fond Du Lac Ave, Sheboygan Falls"
+        },
+        {
+          "name": "Marathon",
+          "prices": {
+            "regular": 3.52,
+            "mid_grade": 4.12,
+            "premium": 4.72
+          },
+          "address": "434 Monroe St, Sheboygan Falls"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.52,
+            "premium": 4.72,
+            "diesel": 4.79
+          },
+          "address": "1000 North Main, Sheboygan Falls"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.54
+          },
+          "address": "415 BROADWAY ST, Sheboygan Falls"
+        },
+        {
+          "name": "Clark",
+          "prices": {
+            "regular": 3.59,
+            "premium": 4.49
+          },
+          "address": "2709 N 15th St, Sheboygan"
+        }
+      ]
+    },
+    "Superior": {
+      "current_avg": {
+        "regular": 3.796,
+        "premium": 4.97,
+        "diesel": 5.185,
+        "mid_grade": 4.36
+      },
+      "low": {
+        "regular": 3.78,
+        "premium": 4.58,
+        "diesel": 5.16,
+        "mid_grade": 4.18
+      },
+      "high": {
+        "regular": 3.81,
+        "premium": 5.5,
+        "diesel": 5.19,
+        "mid_grade": 4.7
+      },
+      "station_count": {
+        "regular": 14,
+        "premium": 11,
+        "diesel": 13,
+        "mid_grade": 3
+      },
+      "stations": [
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.78,
+            "premium": 5.01,
+            "diesel": 5.19
+          },
+          "address": "3027 E 2nd St, Superior"
+        },
+        {
+          "name": "Krist",
+          "prices": {
+            "regular": 3.78,
+            "diesel": 5.16
+          },
+          "address": "4204 E 2nd St, Superior"
+        },
+        {
+          "name": "Holiday",
+          "prices": {
+            "regular": 3.78,
+            "mid_grade": 4.18,
+            "premium": 4.58,
+            "diesel": 5.19
+          },
+          "address": "4827 E 2nd St, Superior"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.78,
+            "premium": 4.98,
+            "diesel": 5.19
+          },
+          "address": "2128 E 2nd St, Superior"
+        },
+        {
+          "name": "Marathon",
+          "prices": {
+            "regular": 3.79
+          },
+          "address": "406 Belknap St, Superior"
+        },
+        {
+          "name": "Kimmes Tire",
+          "prices": {
+            "regular": 3.8,
+            "diesel": 5.19
+          },
+          "address": "6327 Tower Ave, Superior"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.8,
+            "premium": 5.0,
+            "diesel": 5.19
+          },
+          "address": "6007 Tower Ave, Superior"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.8,
+            "premium": 5.0,
+            "diesel": 5.19
+          },
+          "address": "2807 Tower Ave, Superior"
+        }
+      ]
+    },
     "Stevens Point": {
       "current_avg": {
         "regular": 3.897,
@@ -126,7 +319,9 @@
           },
           "address": "1600 Maria Dr, Stevens Point"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Wisconsin Rapids": {
       "current_avg": {
@@ -226,7 +421,9 @@
           },
           "address": "3553 8TH ST S, Wisconsin Rapids"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Marshfield": {
       "current_avg": {
@@ -331,7 +528,9 @@
           },
           "address": "1101 W Upham St, Marshfield"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Rhinelander": {
       "current_avg": {
@@ -421,7 +620,9 @@
           },
           "address": "608 W Kemp St, Rhinelander"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Merrill": {
       "current_avg": {
@@ -519,7 +720,9 @@
           },
           "address": "3350 E Main St, Merrill"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Mosinee": {
       "current_avg": {
@@ -601,7 +804,9 @@
           },
           "address": "490 Orbiting Dr, Mosinee"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Antigo": {
       "current_avg": {
@@ -696,7 +901,9 @@
           },
           "address": "815 S Superior St, Antigo"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Eau Claire": {
       "current_avg": {
@@ -793,7 +1000,9 @@
           },
           "address": "19756 CR-X, Chippewa Falls"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Green Bay": {
       "current_avg": {
@@ -891,7 +1100,9 @@
           },
           "address": "221 N Chestnut Ave, Oconto Falls"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Appleton": {
       "current_avg": {
@@ -987,7 +1198,9 @@
           },
           "address": "800 E Northland Ave, Appleton"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Madison": {
       "current_avg": {
@@ -1085,7 +1298,9 @@
           },
           "address": "9 TOWER DR, Sun Prairie"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Milwaukee": {
       "current_avg": {
@@ -1189,7 +1404,9 @@
           },
           "address": "4229 W GREENFIELD AVE, Milwaukee"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "La Crosse": {
       "current_avg": {
@@ -1287,7 +1504,9 @@
           },
           "address": "9421 WI-16, Onalaska"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/18/26"
     },
     "Janesville": {
       "current_avg": {
@@ -1394,7 +1613,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/17/26"
+      "stale_from": "06/18/26"
     },
     "Kenosha": {
       "current_avg": {
@@ -1493,7 +1712,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/17/26"
+      "stale_from": "06/18/26"
     },
     "Oshkosh": {
       "current_avg": {
@@ -1595,7 +1814,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/17/26"
+      "stale_from": "06/18/26"
     },
     "Racine": {
       "current_avg": {
@@ -1698,209 +1917,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/17/26"
-    },
-    "Sheboygan": {
-      "current_avg": {
-        "regular": 3.624,
-        "premium": 4.832,
-        "diesel": 5.001,
-        "mid_grade": 4.215
-      },
-      "low": {
-        "regular": 3.49,
-        "premium": 4.59,
-        "diesel": 4.79,
-        "mid_grade": 3.89
-      },
-      "high": {
-        "regular": 3.69,
-        "premium": 5.27,
-        "diesel": 5.29,
-        "mid_grade": 4.57
-      },
-      "station_count": {
-        "regular": 20,
-        "premium": 13,
-        "diesel": 14,
-        "mid_grade": 10
-      },
-      "stations": [
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.49,
-            "premium": 4.69,
-            "diesel": 4.79
-          },
-          "address": "21 N Business Park Dr, Oostburg"
-        },
-        {
-          "name": "Citgo",
-          "prices": {
-            "regular": 3.49,
-            "diesel": 4.99
-          },
-          "address": "1039 Center Ave, Oostburg"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.52,
-            "mid_grade": 4.32,
-            "premium": 4.92,
-            "diesel": 4.95
-          },
-          "address": "1050 N MAIN ST, Sheboygan Falls"
-        },
-        {
-          "name": "Marathon",
-          "prices": {
-            "regular": 3.55,
-            "mid_grade": 4.15,
-            "premium": 4.75
-          },
-          "address": "434 Monroe St, Sheboygan Falls"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.55,
-            "premium": 4.75
-          },
-          "address": "300 Fond Du Lac Ave, Sheboygan Falls"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.55,
-            "premium": 4.75,
-            "diesel": 4.79
-          },
-          "address": "1000 North Main, Sheboygan Falls"
-        },
-        {
-          "name": "Mobil",
-          "prices": {
-            "regular": 3.59,
-            "mid_grade": 4.09,
-            "diesel": 5.09
-          },
-          "address": "1010 Fond du Lac Ave, Sheboygan Falls"
-        },
-        {
-          "name": "Mobil",
-          "prices": {
-            "regular": 3.62,
-            "mid_grade": 4.57,
-            "premium": 5.27,
-            "diesel": 4.99
-          },
-          "address": "3 W Union Ave, Cedar Grove"
-        }
-      ],
-      "stale": true,
-      "stale_from": "06/17/26"
-    },
-    "Superior": {
-      "current_avg": {
-        "regular": 3.817,
-        "mid_grade": 4.39,
-        "premium": 4.991,
-        "diesel": 5.187
-      },
-      "low": {
-        "regular": 3.79,
-        "mid_grade": 4.23,
-        "premium": 4.63,
-        "diesel": 5.16
-      },
-      "high": {
-        "regular": 3.85,
-        "mid_grade": 4.7,
-        "premium": 5.5,
-        "diesel": 5.19
-      },
-      "station_count": {
-        "regular": 14,
-        "mid_grade": 3,
-        "premium": 11,
-        "diesel": 11
-      },
-      "stations": [
-        {
-          "name": "Marathon",
-          "prices": {
-            "regular": 3.79
-          },
-          "address": "406 Belknap St, Superior"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.8,
-            "premium": 5.0,
-            "diesel": 5.19
-          },
-          "address": "6007 Tower Ave, Superior"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.8,
-            "premium": 5.0,
-            "diesel": 5.19
-          },
-          "address": "2807 Tower Ave, Superior"
-        },
-        {
-          "name": "Holiday",
-          "prices": {
-            "regular": 3.8,
-            "mid_grade": 4.24,
-            "premium": 4.64,
-            "diesel": 5.19
-          },
-          "address": "2111 Tower Ave, Superior"
-        },
-        {
-          "name": "Krist",
-          "prices": {
-            "regular": 3.81,
-            "mid_grade": 4.7,
-            "premium": 5.5,
-            "diesel": 5.16
-          },
-          "address": "2821 E 2nd St, Superior"
-        },
-        {
-          "name": "Krist",
-          "prices": {
-            "regular": 3.81
-          },
-          "address": "4204 E 2nd St, Superior"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.81,
-            "premium": 5.01,
-            "diesel": 5.19
-          },
-          "address": "2128 E 2nd St, Superior"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.81,
-            "premium": 5.01,
-            "diesel": 5.19
-          },
-          "address": "3027 E 2nd St, Superior"
-        }
-      ],
-      "stale": true,
-      "stale_from": "06/17/26"
+      "stale_from": "06/18/26"
     },
     "Wausau": {
       "current_avg": {
@@ -2002,7 +2019,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/17/26"
+      "stale_from": "06/18/26"
     },
     "Fond du Lac": {
       "current_avg": {
@@ -2103,7 +2120,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/17/26"
+      "stale_from": "06/18/26"
     },
     "Waukesha": {
       "current_avg": {
@@ -2205,7 +2222,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/17/26"
+      "stale_from": "06/18/26"
     }
   },
   "aaa": {
