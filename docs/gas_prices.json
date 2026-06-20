@@ -3,12 +3,12 @@
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
   "price_date": "06/20/26",
-  "scraped_at": "2026-06-20T13:59:27.417704+00:00",
+  "scraped_at": "2026-06-20T18:28:43.836981+00:00",
   "statewide": {
     "current_avg": {
-      "regular": 3.679,
-      "mid_grade": 4.313,
-      "premium": 4.853,
+      "regular": 3.677,
+      "mid_grade": 4.312,
+      "premium": 4.851,
       "diesel": 4.973
     },
     "low": {
@@ -25,6 +25,104 @@
     }
   },
   "metros": {
+    "Eau Claire": {
+      "current_avg": {
+        "regular": 3.647,
+        "mid_grade": 4.077,
+        "premium": 4.753,
+        "diesel": 4.933
+      },
+      "low": {
+        "regular": 3.49,
+        "mid_grade": 3.99,
+        "premium": 4.39,
+        "diesel": 4.49
+      },
+      "high": {
+        "regular": 3.74,
+        "mid_grade": 4.25,
+        "premium": 5.09,
+        "diesel": 5.39
+      },
+      "station_count": {
+        "regular": 20,
+        "mid_grade": 3,
+        "premium": 14,
+        "diesel": 13
+      },
+      "stations": [
+        {
+          "name": "Express Mart",
+          "prices": {
+            "regular": 3.49,
+            "mid_grade": 3.99,
+            "premium": 4.39,
+            "diesel": 4.79
+          },
+          "address": "810 N Bridge St, Chippewa Falls"
+        },
+        {
+          "name": "Shadick's C Store",
+          "prices": {
+            "regular": 3.55,
+            "mid_grade": 4.25,
+            "premium": 4.65,
+            "diesel": 4.49
+          },
+          "address": "18928 State Hwy 40, Bloomer"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.59,
+            "premium": 4.88,
+            "diesel": 4.99
+          },
+          "address": "1267 Chippewa Crossing Blvd, Chippewa Falls"
+        },
+        {
+          "name": "Cenex",
+          "prices": {
+            "regular": 3.59
+          },
+          "address": "19756 CR-X, Chippewa Falls"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.59,
+            "premium": 4.79
+          },
+          "address": "503 E Grand Ave, Chippewa Falls"
+        },
+        {
+          "name": "Circle K",
+          "prices": {
+            "regular": 3.59,
+            "mid_grade": 3.99,
+            "premium": 4.39,
+            "diesel": 4.89
+          },
+          "address": "501 N Bridge St, Chippewa Falls"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.59,
+            "premium": 4.79,
+            "diesel": 4.89
+          },
+          "address": "1010 Woodward Ave, Chippewa Falls"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.64
+          },
+          "address": "2016 17th Ave, Bloomer"
+        }
+      ]
+    },
     "Wausau": {
       "current_avg": {
         "regular": 3.59,
@@ -126,7 +224,9 @@
           },
           "address": "306 South 18th Avenue, Wausau"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Stevens Point": {
       "current_avg": {
@@ -224,7 +324,9 @@
           },
           "address": "281 E Grand Ave, Rosholt"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Wisconsin Rapids": {
       "current_avg": {
@@ -326,7 +428,9 @@
           },
           "address": "1101 W Upham St, Marshfield"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Marshfield": {
       "current_avg": {
@@ -429,7 +533,9 @@
           },
           "address": "1000 N Central Ave, Marshfield"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Rhinelander": {
       "current_avg": {
@@ -527,7 +633,9 @@
           },
           "address": "2141 LINCOLN ST, Rhinelander"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Merrill": {
       "current_avg": {
@@ -628,7 +736,9 @@
           },
           "address": "981 N 4th St, Tomahawk"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Mosinee": {
       "current_avg": {
@@ -708,7 +818,9 @@
           },
           "address": "1108 Western Avenue, Mosinee"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Antigo": {
       "current_avg": {
@@ -802,106 +914,9 @@
           },
           "address": "702 Superior St, Antigo"
         }
-      ]
-    },
-    "Eau Claire": {
-      "current_avg": {
-        "regular": 3.671,
-        "mid_grade": 4.155,
-        "premium": 4.813,
-        "diesel": 4.933
-      },
-      "low": {
-        "regular": 3.49,
-        "mid_grade": 3.99,
-        "premium": 4.39,
-        "diesel": 4.49
-      },
-      "high": {
-        "regular": 3.79,
-        "mid_grade": 4.39,
-        "premium": 5.09,
-        "diesel": 5.39
-      },
-      "station_count": {
-        "regular": 20,
-        "mid_grade": 4,
-        "premium": 15,
-        "diesel": 14
-      },
-      "stations": [
-        {
-          "name": "Express Mart",
-          "prices": {
-            "regular": 3.49,
-            "mid_grade": 3.99,
-            "premium": 4.39,
-            "diesel": 4.79
-          },
-          "address": "810 N Bridge St, Chippewa Falls"
-        },
-        {
-          "name": "Shadick's C Store",
-          "prices": {
-            "regular": 3.55,
-            "mid_grade": 4.25,
-            "premium": 4.65,
-            "diesel": 4.49
-          },
-          "address": "18928 State Hwy 40, Bloomer"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.59,
-            "premium": 4.88,
-            "diesel": 4.99
-          },
-          "address": "1267 Chippewa Crossing Blvd, Chippewa Falls"
-        },
-        {
-          "name": "Cenex",
-          "prices": {
-            "regular": 3.59
-          },
-          "address": "19756 CR-X, Chippewa Falls"
-        },
-        {
-          "name": "Circle K",
-          "prices": {
-            "regular": 3.59,
-            "mid_grade": 3.99,
-            "premium": 4.39,
-            "diesel": 4.89
-          },
-          "address": "501 N Bridge St, Chippewa Falls"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.59,
-            "premium": 4.79,
-            "diesel": 4.89
-          },
-          "address": "1010 Woodward Ave, Chippewa Falls"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.64
-          },
-          "address": "2016 17th Ave, Bloomer"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.64,
-            "premium": 4.84,
-            "diesel": 4.99
-          },
-          "address": "1625 Woodard Rd, Bloomer"
-        }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Green Bay": {
       "current_avg": {
@@ -1001,7 +1016,9 @@
           },
           "address": "2600 Niagara Trail, Green Bay"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Appleton": {
       "current_avg": {
@@ -1101,7 +1118,9 @@
           },
           "address": "606 S Main St, Black Creek"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Madison": {
       "current_avg": {
@@ -1197,7 +1216,9 @@
           },
           "address": "1000 Batker Ct, Verona"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Milwaukee": {
       "current_avg": {
@@ -1295,7 +1316,9 @@
           },
           "address": "4229 W GREENFIELD AVE, Milwaukee"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "La Crosse": {
       "current_avg": {
@@ -1391,7 +1414,9 @@
           },
           "address": "1800 Commercial St, Bangor"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Fond du Lac": {
       "current_avg": {
@@ -1491,7 +1516,9 @@
           },
           "address": "351 Fond du Lac Ave, Fond du Lac"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Janesville": {
       "current_avg": {
@@ -1592,7 +1619,9 @@
           },
           "address": "1871 E Inman Pkwy, Beloit"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Kenosha": {
       "current_avg": {
@@ -1693,7 +1722,9 @@
           },
           "address": "6300 52nd St, Kenosha"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Oshkosh": {
       "current_avg": {
@@ -1793,7 +1824,9 @@
           },
           "address": "5171 Jackson St, Oshkosh"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Racine": {
       "current_avg": {
@@ -1895,7 +1928,9 @@
           },
           "address": "26480 Fries Ln, Wind Lake"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Sheboygan": {
       "current_avg": {
@@ -1991,7 +2026,9 @@
           },
           "address": "4912 Vanguard Dr, Sheboygan"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Superior": {
       "current_avg": {
@@ -2090,7 +2127,9 @@
           },
           "address": "6007 Tower Ave, Superior"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     },
     "Waukesha": {
       "current_avg": {
@@ -2194,7 +2233,9 @@
           },
           "address": "2106 S West Ave, Waukesha"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/20/26"
     }
   },
   "aaa": {
