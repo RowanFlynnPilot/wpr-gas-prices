@@ -2,14 +2,14 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "06/23/26",
-  "scraped_at": "2026-06-23T15:00:59.994822+00:00",
+  "price_date": "06/24/26",
+  "scraped_at": "2026-06-24T14:45:05.984030+00:00",
   "statewide": {
     "current_avg": {
-      "regular": 3.636,
-      "mid_grade": 4.251,
-      "premium": 4.795,
-      "diesel": 4.908
+      "regular": 3.632,
+      "mid_grade": 4.241,
+      "premium": 4.788,
+      "diesel": 4.906
     },
     "low": {
       "regular": 3.35,
@@ -27,30 +27,47 @@
   "metros": {
     "Appleton": {
       "current_avg": {
-        "regular": 3.626,
-        "premium": 4.853,
-        "diesel": 4.802,
-        "mid_grade": 4.422
+        "regular": 3.587,
+        "premium": 4.814,
+        "diesel": 4.855,
+        "mid_grade": 4.37
       },
       "low": {
         "regular": 3.54,
         "premium": 4.39,
         "diesel": 4.55,
-        "mid_grade": 4.08
+        "mid_grade": 4.04
       },
       "high": {
-        "regular": 3.71,
+        "regular": 3.69,
         "premium": 5.29,
-        "diesel": 4.99,
+        "diesel": 5.39,
         "mid_grade": 4.84
       },
       "station_count": {
         "regular": 20,
-        "premium": 18,
-        "diesel": 12,
-        "mid_grade": 10
+        "premium": 16,
+        "diesel": 13,
+        "mid_grade": 11
       },
       "stations": [
+        {
+          "name": "The Northsider",
+          "prices": {
+            "regular": 3.54
+          },
+          "address": "5208 N Richmond St, Appleton"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.54,
+            "mid_grade": 4.14,
+            "premium": 4.94,
+            "diesel": 5.39
+          },
+          "address": "2619 N RICHMOND ST, Appleton"
+        },
         {
           "name": "Kwik Trip",
           "prices": {
@@ -61,13 +78,13 @@
           "address": "710  W Evergreen Dr, Appleton"
         },
         {
-          "name": "Amoco",
+          "name": "CITGO",
           "prices": {
             "regular": 3.54,
-            "premium": 4.79,
-            "diesel": 4.79
+            "mid_grade": 4.39,
+            "premium": 5.19
           },
-          "address": "800 E Northland Ave, Appleton"
+          "address": "111 W Wisconsin Ave, Appleton"
         },
         {
           "name": "Costco",
@@ -79,51 +96,131 @@
           "address": "5401 W Integrity Way, Appleton"
         },
         {
-          "name": "Meijer",
-          "prices": {
-            "regular": 3.54,
-            "mid_grade": 4.08,
-            "premium": 4.48,
-            "diesel": 4.91
-          },
-          "address": "3995 N Richmond St, Grand Chute"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.57,
-            "mid_grade": 4.34,
-            "premium": 4.79,
-            "diesel": 4.75
-          },
-          "address": "606 S Main St, Black Creek"
-        },
-        {
           "name": "Mobil",
           "prices": {
-            "regular": 3.58,
-            "mid_grade": 4.18,
-            "premium": 4.79
+            "regular": 3.54,
+            "premium": 4.59,
+            "diesel": 4.62
           },
-          "address": "125 W Northland Ave, Appleton"
+          "address": "1201 N Badger Ave, Appleton"
         },
         {
           "name": "Woodman's",
           "prices": {
-            "regular": 3.59,
+            "regular": 3.54,
             "mid_grade": 4.59,
             "premium": 4.89
           },
           "address": "595 N Westhill Blvd, Appleton"
         },
         {
+          "name": "Amoco",
+          "prices": {
+            "regular": 3.57,
+            "diesel": 4.63
+          },
+          "address": "101 W STATE ST, Black Creek"
+        }
+      ]
+    },
+    "Waukesha": {
+      "current_avg": {
+        "regular": 3.593,
+        "premium": 4.765,
+        "mid_grade": 4.214,
+        "diesel": 5.087
+      },
+      "low": {
+        "regular": 3.49,
+        "premium": 4.57,
+        "mid_grade": 4.07,
+        "diesel": 4.79
+      },
+      "high": {
+        "regular": 3.69,
+        "premium": 5.05,
+        "mid_grade": 4.59,
+        "diesel": 5.49
+      },
+      "station_count": {
+        "regular": 20,
+        "premium": 19,
+        "mid_grade": 13,
+        "diesel": 12
+      },
+      "stations": [
+        {
+          "name": "HomeTown",
+          "prices": {
+            "regular": 3.49,
+            "mid_grade": 4.59,
+            "premium": 4.99,
+            "diesel": 5.39
+          },
+          "address": "500 Arcadian Ave, Waukesha"
+        },
+        {
+          "name": "Woodman's",
+          "prices": {
+            "regular": 3.49,
+            "mid_grade": 4.09,
+            "premium": 5.05,
+            "diesel": 5.49
+          },
+          "address": "1620 E Main St, Waukesha"
+        },
+        {
           "name": "Kwik Trip",
           "prices": {
-            "regular": 3.64,
-            "premium": 4.84,
-            "diesel": 4.89
+            "regular": 3.49,
+            "premium": 4.79,
+            "diesel": 4.95
           },
-          "address": "1500 Mill St, New London"
+          "address": "2302 E Moreland Blvd, Waukesha"
+        },
+        {
+          "name": "24/7 Petroleum",
+          "prices": {
+            "regular": 3.57,
+            "premium": 4.67
+          },
+          "address": "1605 Summit Ave, Waukesha"
+        },
+        {
+          "name": "Clark",
+          "prices": {
+            "regular": 3.57,
+            "mid_grade": 4.07,
+            "premium": 4.57
+          },
+          "address": "1709 Summit Ave, Waukesha"
+        },
+        {
+          "name": "Hometown",
+          "prices": {
+            "regular": 3.58,
+            "mid_grade": 4.27,
+            "premium": 4.77
+          },
+          "address": "304 N Grand Ave, Waukesha"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.59,
+            "premium": 4.79,
+            "diesel": 4.95
+          },
+          "address": "2801 River Valley Rd, Waukesha"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.59,
+            "premium": 4.79,
+            "diesel": 4.95
+          },
+          "address": "924 Fleetfoot Dr, Waukesha"
         }
       ]
     },
@@ -225,7 +322,9 @@
           },
           "address": "3401 Milwaukee St, Madison"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/23/26"
     },
     "Milwaukee": {
       "current_avg": {
@@ -324,7 +423,9 @@
           },
           "address": "7605 W Lisbon Ave, Milwaukee"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/23/26"
     },
     "La Crosse": {
       "current_avg": {
@@ -424,7 +525,9 @@
           },
           "address": "4180 State Rd, La Crosse"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/23/26"
     },
     "Wausau": {
       "current_avg": {
@@ -525,7 +628,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Stevens Point": {
       "current_avg": {
@@ -625,7 +728,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Wisconsin Rapids": {
       "current_avg": {
@@ -721,7 +824,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Marshfield": {
       "current_avg": {
@@ -821,7 +924,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Rhinelander": {
       "current_avg": {
@@ -918,7 +1021,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Merrill": {
       "current_avg": {
@@ -1016,7 +1119,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Mosinee": {
       "current_avg": {
@@ -1082,7 +1185,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Antigo": {
       "current_avg": {
@@ -1156,7 +1259,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Eau Claire": {
       "current_avg": {
@@ -1255,7 +1358,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Green Bay": {
       "current_avg": {
@@ -1354,7 +1457,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Fond du Lac": {
       "current_avg": {
@@ -1455,7 +1558,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Janesville": {
       "current_avg": {
@@ -1559,7 +1662,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Kenosha": {
       "current_avg": {
@@ -1663,7 +1766,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Oshkosh": {
       "current_avg": {
@@ -1765,7 +1868,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Racine": {
       "current_avg": {
@@ -1861,7 +1964,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Sheboygan": {
       "current_avg": {
@@ -1959,7 +2062,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     },
     "Superior": {
       "current_avg": {
@@ -2061,144 +2164,41 @@
         }
       ],
       "stale": true,
-      "stale_from": "06/22/26"
-    },
-    "Waukesha": {
-      "current_avg": {
-        "regular": 3.63,
-        "mid_grade": 4.301,
-        "premium": 4.838,
-        "diesel": 5.158
-      },
-      "low": {
-        "regular": 3.58,
-        "mid_grade": 4.07,
-        "premium": 4.59,
-        "diesel": 4.95
-      },
-      "high": {
-        "regular": 3.71,
-        "mid_grade": 4.99,
-        "premium": 5.79,
-        "diesel": 5.99
-      },
-      "station_count": {
-        "regular": 20,
-        "mid_grade": 14,
-        "premium": 19,
-        "diesel": 13
-      },
-      "stations": [
-        {
-          "name": "Hometown",
-          "prices": {
-            "regular": 3.58,
-            "premium": 4.88
-          },
-          "address": "304 N Grand Ave, Waukesha"
-        },
-        {
-          "name": "HomeTown",
-          "prices": {
-            "regular": 3.59,
-            "mid_grade": 4.59,
-            "premium": 4.99,
-            "diesel": 5.39
-          },
-          "address": "500 Arcadian Ave, Waukesha"
-        },
-        {
-          "name": "Woodman's",
-          "prices": {
-            "regular": 3.59,
-            "mid_grade": 4.18,
-            "premium": 5.05,
-            "diesel": 5.49
-          },
-          "address": "1620 E Main St, Waukesha"
-        },
-        {
-          "name": "Speedway",
-          "prices": {
-            "regular": 3.59,
-            "mid_grade": 4.09,
-            "premium": 4.59,
-            "diesel": 4.95
-          },
-          "address": "521 S Grand Ave, Waukesha"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.59,
-            "premium": 4.79,
-            "diesel": 4.95
-          },
-          "address": "2801 River Valley Rd, Waukesha"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.59,
-            "premium": 4.79,
-            "diesel": 4.95
-          },
-          "address": "924 Fleetfoot Dr, Waukesha"
-        },
-        {
-          "name": "Meijer",
-          "prices": {
-            "regular": 3.59,
-            "mid_grade": 4.09,
-            "premium": 4.59,
-            "diesel": 4.95
-          },
-          "address": "831 E Sunset Dr, Waukesha"
-        },
-        {
-          "name": "Hometown",
-          "prices": {
-            "regular": 3.59
-          },
-          "address": "1445 Whiterock Ave, Waukesha"
-        }
-      ],
-      "stale": true,
-      "stale_from": "06/22/26"
+      "stale_from": "06/23/26"
     }
   },
   "aaa": {
     "current": {
+      "regular": 3.703,
+      "mid_grade": 4.261,
+      "premium": 4.844,
+      "diesel": 4.848
+    },
+    "yesterday": {
       "regular": 3.717,
       "mid_grade": 4.282,
       "premium": 4.86,
       "diesel": 4.872
     },
-    "yesterday": {
-      "regular": 3.729,
-      "mid_grade": 4.292,
-      "premium": 4.869,
-      "diesel": 4.898
-    },
     "week_ago": {
-      "regular": 3.846,
-      "mid_grade": 4.417,
-      "premium": 4.983,
-      "diesel": 5.063
+      "regular": 3.828,
+      "mid_grade": 4.403,
+      "premium": 4.965,
+      "diesel": 5.033
     },
     "month_ago": {
-      "regular": 4.41,
-      "mid_grade": 4.956,
-      "premium": 5.535,
-      "diesel": 5.73
+      "regular": 4.393,
+      "mid_grade": 4.94,
+      "premium": 5.513,
+      "diesel": 5.719
     },
     "year_ago": {
-      "regular": 3.041,
-      "mid_grade": 3.548,
-      "premium": 4.042,
-      "diesel": 3.568
+      "regular": 3.037,
+      "mid_grade": 3.557,
+      "premium": 4.043,
+      "diesel": 3.566
     },
-    "as_of": "06/23/26"
+    "as_of": "06/24/26"
   },
   "priority_metros": [
     "Wausau",
@@ -2209,8 +2209,8 @@
     "Milwaukee"
   ],
   "summary": {
-    "as_of": "June 23, 2026",
-    "headline": "Wisconsin gas averages $3.64/gal",
-    "blurb": "Regular gas is averaging $3.64 a gallon across Wisconsin as of June 23, 2026, according to GasBuddy. AAA figures put the statewide average 13¢ lower than a week ago, 69¢ lower than a month ago, and 68¢ higher than a year ago. Drivers are finding the lowest metro average in Fond du Lac ($3.49) and the highest in Mosinee ($3.92)."
+    "as_of": "June 24, 2026",
+    "headline": "Wisconsin gas averages $3.63/gal",
+    "blurb": "Regular gas is averaging $3.63 a gallon across Wisconsin as of June 24, 2026, according to GasBuddy. AAA figures put the statewide average 12¢ lower than a week ago, 69¢ lower than a month ago, and 67¢ higher than a year ago. Drivers are finding the lowest metro average in Fond du Lac ($3.49) and the highest in Mosinee ($3.92)."
   }
 }
