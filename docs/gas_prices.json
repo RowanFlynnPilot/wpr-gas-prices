@@ -2,13 +2,13 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "06/29/26",
-  "scraped_at": "2026-06-29T19:21:13.505129+00:00",
+  "price_date": "06/30/26",
+  "scraped_at": "2026-06-30T14:33:03.379645+00:00",
   "statewide": {
     "current_avg": {
       "regular": 3.578,
-      "mid_grade": 4.181,
-      "premium": 4.722,
+      "mid_grade": 4.182,
+      "premium": 4.723,
       "diesel": 4.787
     },
     "low": {
@@ -25,6 +25,99 @@
     }
   },
   "metros": {
+    "Marshfield": {
+      "current_avg": {
+        "regular": 3.657,
+        "mid_grade": 4.05,
+        "premium": 4.605,
+        "diesel": 4.77
+      },
+      "low": {
+        "regular": 3.64,
+        "mid_grade": 4.05,
+        "premium": 4.35,
+        "diesel": 4.77
+      },
+      "high": {
+        "regular": 3.69,
+        "mid_grade": 4.05,
+        "premium": 5.17,
+        "diesel": 4.77
+      },
+      "station_count": {
+        "regular": 8,
+        "mid_grade": 2,
+        "premium": 4,
+        "diesel": 3
+      },
+      "stations": [
+        {
+          "name": "Fleet Farm",
+          "prices": {
+            "regular": 3.64
+          },
+          "address": "1101 W Upham St, Marshfield"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.65
+          },
+          "address": "1600 W McMillan St, Marshfield"
+        },
+        {
+          "name": "Weiler",
+          "prices": {
+            "regular": 3.65,
+            "mid_grade": 4.05,
+            "premium": 4.35,
+            "diesel": 4.77
+          },
+          "address": "600 N Central Ave, Marshfield"
+        },
+        {
+          "name": "Weiler",
+          "prices": {
+            "regular": 3.65,
+            "mid_grade": 4.05,
+            "premium": 4.35,
+            "diesel": 4.77
+          },
+          "address": "2005 N Central Ave, Marshfield"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.65
+          },
+          "address": "1502 S Central Ave, Marshfield"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.65,
+            "premium": 4.55,
+            "diesel": 4.77
+          },
+          "address": "101 N Central Ave, Marshfield"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.68,
+            "premium": 5.17
+          },
+          "address": "539 S Central Ave, Marshfield"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.69
+          },
+          "address": "1000 N Central Ave, Marshfield"
+        }
+      ]
+    },
     "Janesville": {
       "current_avg": {
         "regular": 3.566,
@@ -126,7 +219,9 @@
           },
           "address": "2826 Milton Ave, Janesville"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/29/26"
     },
     "Kenosha": {
       "current_avg": {
@@ -223,7 +318,9 @@
           },
           "address": "6623 39th Ave, Kenosha"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "06/29/26"
     },
     "Stevens Point": {
       "current_avg": {
@@ -419,89 +516,6 @@
             "diesel": 4.69
           },
           "address": "8810 WI-13 S, Wisconsin Rapids"
-        }
-      ],
-      "stale": true,
-      "stale_from": "06/29/26"
-    },
-    "Marshfield": {
-      "current_avg": {
-        "regular": 3.672,
-        "premium": 4.562,
-        "mid_grade": 4.06,
-        "diesel": 4.78
-      },
-      "low": {
-        "regular": 3.65,
-        "premium": 4.35,
-        "mid_grade": 4.05,
-        "diesel": 4.77
-      },
-      "high": {
-        "regular": 3.69,
-        "premium": 5.17,
-        "mid_grade": 4.08,
-        "diesel": 4.79
-      },
-      "station_count": {
-        "regular": 6,
-        "premium": 4,
-        "mid_grade": 3,
-        "diesel": 4
-      },
-      "stations": [
-        {
-          "name": "Weiler",
-          "prices": {
-            "regular": 3.65,
-            "mid_grade": 4.05,
-            "premium": 4.35,
-            "diesel": 4.77
-          },
-          "address": "2005 N Central Ave, Marshfield"
-        },
-        {
-          "name": "Weiler",
-          "prices": {
-            "regular": 3.65,
-            "mid_grade": 4.05,
-            "premium": 4.35,
-            "diesel": 4.77
-          },
-          "address": "600 N Central Ave, Marshfield"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.68,
-            "premium": 5.17
-          },
-          "address": "539 S Central Ave, Marshfield"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.68,
-            "diesel": 4.79
-          },
-          "address": "101 N Central Ave, Marshfield"
-        },
-        {
-          "name": "Weiler",
-          "prices": {
-            "regular": 3.68,
-            "mid_grade": 4.08,
-            "premium": 4.38,
-            "diesel": 4.79
-          },
-          "address": "2401 E 4th St, Marshfield"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.69
-          },
-          "address": "1000 N Central Ave, Marshfield"
         }
       ],
       "stale": true,
@@ -2205,36 +2219,36 @@
   },
   "aaa": {
     "current": {
+      "regular": 3.637,
+      "mid_grade": 4.204,
+      "premium": 4.777,
+      "diesel": 4.7
+    },
+    "yesterday": {
       "regular": 3.651,
       "mid_grade": 4.201,
       "premium": 4.783,
       "diesel": 4.711
     },
-    "yesterday": {
-      "regular": 3.66,
-      "mid_grade": 4.216,
-      "premium": 4.797,
-      "diesel": 4.735
-    },
     "week_ago": {
-      "regular": 3.729,
-      "mid_grade": 4.292,
-      "premium": 4.869,
-      "diesel": 4.898
+      "regular": 3.717,
+      "mid_grade": 4.282,
+      "premium": 4.86,
+      "diesel": 4.872
     },
     "month_ago": {
-      "regular": 4.248,
-      "mid_grade": 4.807,
-      "premium": 5.386,
-      "diesel": 5.584
+      "regular": 4.209,
+      "mid_grade": 4.772,
+      "premium": 5.347,
+      "diesel": 5.555
     },
     "year_ago": {
-      "regular": 2.984,
-      "mid_grade": 3.511,
-      "premium": 3.995,
-      "diesel": 3.516
+      "regular": 2.972,
+      "mid_grade": 3.49,
+      "premium": 3.975,
+      "diesel": 3.505
     },
-    "as_of": "06/29/26"
+    "as_of": "06/30/26"
   },
   "priority_metros": [
     "Wausau",
@@ -2245,8 +2259,8 @@
     "Milwaukee"
   ],
   "summary": {
-    "as_of": "June 29, 2026",
+    "as_of": "June 30, 2026",
     "headline": "Wisconsin gas averages $3.58/gal",
-    "blurb": "Regular gas is averaging $3.58 a gallon across Wisconsin as of June 29, 2026, according to GasBuddy. AAA figures put the statewide average 8¢ lower than a week ago, 60¢ lower than a month ago, and 67¢ higher than a year ago. Drivers are finding the lowest metro average in Milwaukee ($3.42) and the highest in Mosinee ($3.89)."
+    "blurb": "Regular gas is averaging $3.58 a gallon across Wisconsin as of June 30, 2026, according to GasBuddy. AAA figures put the statewide average 8¢ lower than a week ago, 57¢ lower than a month ago, and 66¢ higher than a year ago. Drivers are finding the lowest metro average in Milwaukee ($3.42) and the highest in Mosinee ($3.89)."
   }
 }
