@@ -53,6 +53,9 @@
   .dg-fuel-lbl { font-size:8.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--ink-faint); }
   .dg-fuel-val { font-family:'Playfair Display',Georgia,serif; font-size:18px; font-weight:700; margin-top:2px; }
 
+  /* Blurb */
+  .dg-blurb { margin:12px 20px 2px; padding:11px 14px; background:var(--paper-warm); border-left:3px solid var(--accent); border-radius:4px; font-size:12.5px; line-height:1.55; color:var(--ink-mid); }
+
   /* Metros */
   .dg-sec { padding:14px 20px 4px; }
   .dg-sec-title { font-size:10px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--accent-dark); margin-bottom:8px; }
@@ -161,6 +164,9 @@
     var natl = ctx && ctx.national_regular != null
       ? ' · U.S. avg <strong>$' + ctx.national_regular.toFixed(2) + '</strong>' : '';
 
+    var blurbText = (data.summary && data.summary.blurb) || '';
+    var blurbHtml = blurbText ? '<div class="dg-blurb">' + blurbText + '</div>' : '';
+
     document.getElementById('card').innerHTML =
       '<div class="dg-head"><img class="dg-logo" src="' + LOGO + '" alt="">'
       + '<div><div class="dg-kicker">Wausau Pilot &amp; Review · Fuel Watch</div>'
@@ -174,6 +180,8 @@
       + '<div class="dg-trend">' + trendHtml + '</div></div>'
 
       + '<div class="dg-fuels">' + fuelHtml + '</div>'
+
+      + blurbHtml
 
       + '<div class="dg-sec"><div class="dg-sec-title">Cheapest metro areas</div></div>'
       + '<div class="dg-metros">' + metroHtml + '</div>'
