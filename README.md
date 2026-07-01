@@ -131,9 +131,12 @@ tracker:
   <img src="https://rowanflynnpilot.github.io/wpr-gas-prices/digest.png"
        alt="Wisconsin gas prices" width="480" style="max-width:100%;height:auto;border:0;">
 </a>
-<p style="text-align:center;margin:8px 0 0;font-family:Arial,sans-serif;font-size:14px;">
-  <a href="https://wausaupilotandreview.com/wausau-gas-price-tracker/">Access the full gas price tracker here</a>
-</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 0;">
+  <tr><td align="center">
+    <a href="https://wausaupilotandreview.com/wausau-gas-price-tracker/"
+       style="display:inline-block;padding:12px 28px;background:#3e847a;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:1;text-decoration:none;border-radius:6px;">Access the full gas price tracker&nbsp;&rarr;</a>
+  </td></tr>
+</table>
 ```
 
 The image is regenerated on every scheduled run (via a headless Chromium screenshot of
