@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wisconsin Gas Prices — Digest</title>
+<!-- Non-blocking fonts so the headless render never stalls waiting on the network. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@700;800;900&family=Source+Sans+3:wght@600;700&display=swap">
+<style>
+  :root {
+    --ink:#1a1a1a; --ink-mid:#444; --ink-light:#6b6b6b; --ink-faint:#9a9a9a;
+    --paper:#ffffff; --paper-warm:#f0f5f4; --rule:#dfe9e7;
+    --accent:#3e847a; --accent-light:#5ab8ad; --accent-pale:#e6f3f0; --accent-dark:#2d6259;
+    --up:#c0392b; --down:#27864a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#e9edec; font-family:'DM Sans',-apple-system,sans-serif; }
+
+  .digest-card { width:480px; background:var(--paper); color:var(--ink); overflow:hidden;
+    border:1px solid var(--rule); }
+
+  /* Masthead */
+  .dg-head { background:var(--ink); color:#fff; padding:16px 20px 18px; position:relative; display:flex; align-items:center; gap:14px; }
+  .dg-head::after { content:''; position:absolute; left:0; right:0; bottom:0; height:4px; background:linear-gradient(90deg,var(--accent),var(--accent-light)); }
+  .dg-logo { width:52px; height:52px; border-radius:50%; border:2px solid rgba(255,255,255,0.18); flex-shrink:0; }
+  .dg-kicker { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--accent-light); }
+  .dg-title { font-family:'Playfair Display',Georgia,serif; font-size:26px; font-weight:800; line-height:1.1; margin-top:1px; }
+  .dg-date { font-size:11px; color:rgba(255,255,255,0.5); margin-top:4px; font-style:italic; }
+
+  /* Hero */
+  .dg-hero { display:flex; align-items:stretch; border-bottom:1px solid var(--rule); }
+  .dg-hero-main { flex:1; padding:16px 20px; }
+  .dg-hero-label { font-size:10px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-faint); }
+  .dg-hero-value { font-family:'Playfair Display',Georgia,serif; font-size:52px; font-weight:900; line-height:1; margin-top:2px; }
+  .dg-hero-value .cent { font-size:30px; }
+  .dg-hero-sub { font-size:11px; color:var(--ink-light); margin-top:4px; }
+  .dg-dollar { font-family:'Source Sans 3',sans-serif; }
+
+  .dg-trend { width:172px; background:var(--paper-warm); border-left:1px solid var(--rule); padding:12px 14px; display:flex; flex-direction:column; justify-content:center; gap:7px; }
+  .dg-trend-cap { font-size:8.5px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-faint); margin-bottom:1px; }
+  .dg-trend-row { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; }
+  .dg-trend-row .lbl { color:var(--ink-mid); }
+  .dg-trend-row .val { font-weight:700; font-variant-numeric:tabular-nums; }
+  .up { color:var(--up); } .down { color:var(--down); }
+
+  /* Fuel row */
+  .dg-fuels { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid var(--rule); }
+  .dg-fuel { text-align:center; padding:10px 4px; border-right:1px solid var(--rule); }
+  .dg-fuel:last-child { border-right:none; }
+  .dg-fuel-lbl { font-size:8.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--ink-faint); }
+  .dg-fuel-val { font-family:'Playfair Display',Georgia,serif; font-size:18px; font-weight:700; margin-top:2px; }
+
+  /* Blurb */
+  .dg-blurb { margin:12px 20px 2px; padding:11px 14px; background:var(--paper-warm); border-left:3px solid var(--accent); border-radius:4px; font-size:12.5px; line-height:1.55; color:var(--ink-mid); }
+
+  /* Metros */
+  .dg-sec { padding:14px 20px 4px; }
+  .dg-sec-title { font-size:10px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--accent-dark); margin-bottom:8px; }
+  .dg-metros { display:grid; grid-template-columns:1fr 1fr; gap:6px 20px; padding:0 20px 12px; }
+  .dg-metro { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:4px 0; border-bottom:1px dotted var(--rule); }
+  .dg-metro .nm { color:var(--ink-mid); font-weight:500; }
+  .dg-metro .pr { font-family:'Playfair Display',Georgia,serif; font-weight:700; }
+  .dg-metro.low .pr { color:var(--down); }
+  .dg-metro.high .pr { color:var(--up); }
+
+  /* Local station highlight */
+  .dg-local { margin:2px 20px 14px; background:linear-gradient(135deg,var(--accent-pale),#fff 85%); border:1px solid var(--accent-light); border-radius:8px; padding:11px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .dg-local-lbl { font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--accent-dark); }
+  .dg-local-name { font-size:14px; font-weight:700; margin-top:2px; }
+  .dg-local-addr { font-size:11px; color:var(--ink-light); margin-top:1px; }
+  .dg-local-price { font-family:'Playfair Display',Georgia,serif; font-size:28px; font-weight:800; color:var(--accent-dark); flex-shrink:0; }
+
+  /* Footer */
+  .dg-foot { background:var(--paper-warm); border-top:1px solid var(--rule); padding:10px 20px; font-size:10px; color:var(--ink-faint); line-height:1.5; text-align:center; }
+  .dg-foot strong { color:var(--ink-mid); font-weight:600; }
+
+  .dg-unavail { padding:60px 20px; text-align:center; color:var(--ink-light); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="digest-card" id="card">
+  <div class="dg-unavail">Loading…</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var DATA = './gas_prices.json', CTX = './eia_context.json', LOGO = './wpr-logo.jpg';
+  var FUELS = [['regular','Regular'],['mid_grade','Mid'],['premium','Premium'],['diesel','Diesel']];
+
+  function done() { document.body.setAttribute('data-ready', '1'); }
+  function bust() { return '?t=' + Math.floor(Date.now() / 600000); }
+
+  function money(d) { var c = Math.round(Math.abs(d) * 100); return c >= 100 ? '$' + (c / 100).toFixed(2) : c + '¢'; }
+  function price(p) { return '<span class="dg-dollar">$</span>' + p.toFixed(2); }
+  function heroPrice(p) { var s = p.toFixed(2).split('.'); return '<span class="dg-dollar">$</span>' + s[0] + '<span class="cent">.' + s[1] + '</span>'; }
+
+  function longDate(mmddyy) {
+    var m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(mmddyy || '');
+    var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    if (!m) return mmddyy || '';
+    return months[(+m[1]) - 1] + ' ' + (+m[2]) + ', 20' + m[3];
+  }
+
+  function trendRow(label, cur, prev) {
+    if (cur == null || prev == null) return '';
+    var d = cur - prev, up = d > 0.005, dn = d < -0.005;
+    var arrow = up ? '▲' : dn ? '▼' : '–', cls = up ? 'up' : dn ? 'down' : '';
+    return '<div class="dg-trend-row"><span class="lbl">' + label + '</span>'
+      + '<span class="val ' + cls + '">' + arrow + ' ' + money(d) + '</span></div>';
+  }
+
+  function render(data, ctx) {
+    var sw = (data.statewide && data.statewide.current_avg) || {};
+    var reg = sw.regular;
+    var aaa = data.aaa || {};
+    var aaaCur = (aaa.current || {}).regular;
+
+    // Metros with a plausible regular price (fresh + carried-forward)
+    var metros = [];
+    Object.keys(data.metros || {}).forEach(function (n) {
+      var p = ((data.metros[n].current_avg) || {}).regular;
+      if (typeof p === 'number' && p > 1 && p < 10) metros.push([n, p]);
+    });
+    metros.sort(function (a, b) { return a[1] - b[1]; });
+    var cheapest = metros.slice(0, 3);
+    var highest = metros.length ? metros[metros.length - 1] : null;
+
+    // Local (Wausau) cheapest station
+    var wausau = (data.metros && data.metros.Wausau) || {};
+    var st = (wausau.stations || []).filter(function (s) { return s.prices && s.prices.regular != null; })
+      .sort(function (a, b) { return a.prices.regular - b.prices.regular; })[0];
+
+    var fuelHtml = FUELS.map(function (f) {
+      var v = sw[f[0]];
+      return '<div class="dg-fuel"><div class="dg-fuel-lbl">' + f[1] + '</div>'
+        + '<div class="dg-fuel-val">' + (v != null ? price(v) : '—') + '</div></div>';
+    }).join('');
+
+    var metroHtml = cheapest.map(function (m, i) {
+      return '<div class="dg-metro' + (i === 0 ? ' low' : '') + '"><span class="nm">' + m[0]
+        + '</span><span class="pr">' + price(m[1]) + '</span></div>';
+    }).join('');
+    if (highest) metroHtml += '<div class="dg-metro high"><span class="nm">' + highest[0]
+      + ' (highest)</span><span class="pr">' + price(highest[1]) + '</span></div>';
+
+    var trendHtml = '';
+    if (aaaCur != null) {
+      trendHtml = '<div class="dg-trend-cap">Statewide · via AAA</div>'
+        + trendRow('Week ago', aaaCur, (aaa.week_ago || {}).regular)
+        + trendRow('Month ago', aaaCur, (aaa.month_ago || {}).regular)
+        + trendRow('Year ago', aaaCur, (aaa.year_ago || {}).regular);
+    }
+
+    var localHtml = st ? (
+      '<div class="dg-local"><div><div class="dg-local-lbl">Cheapest in Wausau</div>'
+      + '<div class="dg-local-name">' + st.name + '</div>'
+      + (st.address ? '<div class="dg-local-addr">' + st.address + '</div>' : '')
+      + '</div><div class="dg-local-price">' + price(st.prices.regular) + '</div></div>'
+    ) : '';
+
+    var natl = ctx && ctx.national_regular != null
+      ? ' · U.S. avg <strong>$' + ctx.national_regular.toFixed(2) + '</strong>' : '';
+
+    var blurbText = (data.summary && data.summary.blurb) || '';
+    var blurbHtml = blurbText ? '<div class="dg-blurb">' + blurbText + '</div>' : '';
+
+    document.getElementById('card').innerHTML =
+      '<div class="dg-head"><img class="dg-logo" src="' + LOGO + '" alt="">'
+      + '<div><div class="dg-kicker">Wausau Pilot &amp; Review · Fuel Watch</div>'
+      + '<div class="dg-title">Wisconsin Gas Prices</div>'
+      + '<div class="dg-date">' + longDate(data.price_date) + '</div></div></div>'
+
+      + '<div class="dg-hero"><div class="dg-hero-main">'
+      + '<div class="dg-hero-label">Statewide average · Regular</div>'
+      + '<div class="dg-hero-value">' + (reg != null ? heroPrice(reg) : '—') + '</div>'
+      + '<div class="dg-hero-sub">per gallon · live via GasBuddy</div></div>'
+      + '<div class="dg-trend">' + trendHtml + '</div></div>'
+
+      + '<div class="dg-fuels">' + fuelHtml + '</div>'
+
+      + blurbHtml
+
+      + '<div class="dg-sec"><div class="dg-sec-title">Cheapest metro areas</div></div>'
+      + '<div class="dg-metros">' + metroHtml + '</div>'
+
+      + localHtml
+
+      + '<div class="dg-foot">Live prices via <strong>GasBuddy</strong> · statewide trend via '
+      + '<strong>AAA</strong>' + natl + '<br>Wausau Pilot &amp; Review · wausaupilotandreview.com</div>';
+
+    done();
+  }
+
+  function fail() {
+    document.getElementById('card').innerHTML =
+      '<div class="dg-head"><div><div class="dg-kicker">Wausau Pilot &amp; Review · Fuel Watch</div>'
+      + '<div class="dg-title">Wisconsin Gas Prices</div></div></div>'
+      + '<div class="dg-unavail">Prices are temporarily unavailable.</div>';
+    done();
+  }
+
+  Promise.all([
+    fetch(DATA + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    fetch(CTX + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+  ]).then(function (res) {
+    if (res[0]) render(res[0], res[1]); else fail();
+  }).catch(fail);
+})();
+</script>
+</body>
+</html>

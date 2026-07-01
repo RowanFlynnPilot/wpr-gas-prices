@@ -32,6 +32,28 @@ jobs:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: python scrape_gas_prices.py --output docs/gas_prices.json
 
+      # Bake the fresh data into a static PNG for the email newsletter (email can't
+      # embed the live widget). See scripts/render-digest.mjs.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Render newsletter digest image
+        run: |
+          python -m http.server 4180 --bind 127.0.0.1 --directory docs &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:4180/digest.html > /dev/null && break
+            sleep 1
+          done
+          node scripts/render-digest.mjs http://127.0.0.1:4180/digest.html docs/digest.png
+
       - name: Commit and push updated data
         run: |
           git config user.name "GitHub Actions Bot"
@@ -40,6 +62,7 @@ jobs:
           git add docs/gas_prices_history.json || true
           git add docs/eia_weekly.json || true
           git add docs/eia_context.json || true
+          git add docs/digest.png || true
           if git diff --staged --quiet; then
             echo "No price changes detected, skipping commit."
           else

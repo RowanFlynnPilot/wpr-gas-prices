@@ -1,0 +1,13 @@
+{
+  "name": "wpr-gas-prices",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "WPR Wisconsin Gas Prices — newsletter digest image renderer (the widget itself is pure static HTML/JSON; this only bakes docs/digest.png for email).",
+  "scripts": {
+    "render:digest": "node scripts/render-digest.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
