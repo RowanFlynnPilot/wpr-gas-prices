@@ -62,6 +62,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
+| `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
+| `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
+| `package.json` / `package-lock.json` | Node deps for the digest renderer (Playwright only) | Rarely |
+| `docs/digest.png` | Baked newsletter image (twice-daily) at a stable Pages URL | **Never by hand** — CI owns it |
+| `docs/wpr-logo.jpg` | WPR logo asset used by the digest card | Rarely |
 | `docs/gas_prices.json` | Main output | **Never by hand** — scraper owns it |
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly Midwest series (trends chart) | **Never by hand** |
@@ -175,6 +180,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   to `window.parent` on every render/resize; the WordPress embed snippet (in the
   README) listens and resizes the iframe. JSON fetches are cache-busted in 10-min
   buckets, and fonts load non-blocking — keep these when editing `index.html`.
+- **Newsletter digest image.** Email can't embed the live widget, so the update
+  workflow renders `docs/digest.html` (a self-contained card reading the same JSON)
+  to `docs/digest.png` via Playwright/Chromium, then commits it — served at a stable
+  URL (`.../wpr-gas-prices/digest.png`) the newsletter `<img>`-embeds. The renderer
+  waits for `body[data-ready]` (set after the card's fetch/render) so it never races
+  the data. It's an **image for email**, not a data cache. Keep `digest.html` fonts
+  non-blocking and the `data-ready` signal intact.
 
 ## Commands
 

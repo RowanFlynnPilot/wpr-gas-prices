@@ -116,6 +116,26 @@ In WordPress, add a **Custom HTML** block where the widget should appear:
 > `<script>` from Custom HTML blocks, the widget still works — it just keeps the fixed
 > height (set it tall enough for the Price Trends tab, ~600px).
 
+### 7. Newsletter image (email digest)
+
+Email can't run the live widget, so the automation also bakes a fresh **PNG** twice a
+day — the same data as a self-contained card — at a stable URL:
+
+`https://rowanflynnpilot.github.io/wpr-gas-prices/digest.png`
+
+Drop it into the newsletter as a normal image (link it to the full tracker):
+
+```html
+<a href="https://wausaupilotandreview.com/wausau-gas-price-tracker/">
+  <img src="https://rowanflynnpilot.github.io/wpr-gas-prices/digest.png"
+       alt="Wisconsin gas prices" width="480" style="max-width:100%;height:auto;border:0;">
+</a>
+```
+
+The image is regenerated on every scheduled run (via a headless Chromium screenshot of
+`docs/digest.html`), so it always shows the latest prices. Design lives in
+`docs/digest.html`; the renderer is `scripts/render-digest.mjs`.
+
 ---
 
 ## Schedule
