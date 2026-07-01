@@ -123,13 +123,17 @@ day — the same data as a self-contained card — at a stable URL:
 
 `https://rowanflynnpilot.github.io/wpr-gas-prices/digest.png`
 
-Drop it into the newsletter as a normal image (link it to the full tracker):
+Drop it into the newsletter as a normal image, with a text link below it to the full
+tracker:
 
 ```html
 <a href="https://wausaupilotandreview.com/wausau-gas-price-tracker/">
   <img src="https://rowanflynnpilot.github.io/wpr-gas-prices/digest.png"
        alt="Wisconsin gas prices" width="480" style="max-width:100%;height:auto;border:0;">
 </a>
+<p style="text-align:center;margin:8px 0 0;font-family:Arial,sans-serif;font-size:14px;">
+  <a href="https://wausaupilotandreview.com/wausau-gas-price-tracker/">Access the full gas price tracker here</a>
+</p>
 ```
 
 The image is regenerated on every scheduled run (via a headless Chromium screenshot of
