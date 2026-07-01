@@ -34,9 +34,9 @@
   .dg-hero { display:flex; align-items:stretch; border-bottom:1px solid var(--rule); }
   .dg-hero-main { flex:1; padding:16px 20px; }
   .dg-hero-label { font-size:10px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-faint); }
-  .dg-hero-value { font-family:'Playfair Display',Georgia,serif; font-size:52px; font-weight:900; line-height:1; margin-top:2px; }
-  .dg-hero-value .cent { font-size:30px; }
-  .dg-hero-sub { font-size:11px; color:var(--ink-light); margin-top:4px; }
+  .dg-hero-value { font-family:'Playfair Display',Georgia,serif; font-size:56px; font-weight:900; line-height:1; margin-top:3px; letter-spacing:-1.5px; }
+  .dg-hero-value .dg-cur { font-family:'Source Sans 3',sans-serif; font-size:0.46em; font-weight:700; vertical-align:0.5em; letter-spacing:0; margin-right:1px; }
+  .dg-hero-sub { font-size:11px; color:var(--ink-light); margin-top:6px; }
   .dg-dollar { font-family:'Source Sans 3',sans-serif; }
 
   .dg-trend { width:172px; background:var(--paper-warm); border-left:1px solid var(--rule); padding:12px 14px; display:flex; flex-direction:column; justify-content:center; gap:7px; }
@@ -95,7 +95,7 @@
 
   function money(d) { var c = Math.round(Math.abs(d) * 100); return c >= 100 ? '$' + (c / 100).toFixed(2) : c + '¢'; }
   function price(p) { return '<span class="dg-dollar">$</span>' + p.toFixed(2); }
-  function heroPrice(p) { var s = p.toFixed(2).split('.'); return '<span class="dg-dollar">$</span>' + s[0] + '<span class="cent">.' + s[1] + '</span>'; }
+  function heroPrice(p) { return '<span class="dg-cur">$</span>' + p.toFixed(2); }
 
   function longDate(mmddyy) {
     var m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(mmddyy || '');
