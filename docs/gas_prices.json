@@ -2,14 +2,14 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "07/11/26",
-  "scraped_at": "2026-07-11T17:58:11.447537+00:00",
+  "price_date": "07/12/26",
+  "scraped_at": "2026-07-12T13:33:31.483601+00:00",
   "statewide": {
     "current_avg": {
       "regular": 3.584,
-      "mid_grade": 4.164,
-      "premium": 4.716,
-      "diesel": 4.595
+      "mid_grade": 4.163,
+      "premium": 4.714,
+      "diesel": 4.594
     },
     "low": {
       "regular": 3.29,
@@ -25,6 +25,186 @@
     }
   },
   "metros": {
+    "Marshfield": {
+      "current_avg": {
+        "regular": 3.723,
+        "diesel": 4.65,
+        "mid_grade": 4.09,
+        "premium": 4.457
+      },
+      "low": {
+        "regular": 3.69,
+        "diesel": 4.64,
+        "mid_grade": 4.09,
+        "premium": 4.39
+      },
+      "high": {
+        "regular": 3.79,
+        "diesel": 4.69,
+        "mid_grade": 4.09,
+        "premium": 4.59
+      },
+      "station_count": {
+        "regular": 9,
+        "diesel": 5,
+        "mid_grade": 2,
+        "premium": 3
+      },
+      "stations": [
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.69,
+            "diesel": 4.69
+          },
+          "address": "1000 N Central Ave, Marshfield"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.69,
+            "diesel": 4.64
+          },
+          "address": "101 N Central Ave, Marshfield"
+        },
+        {
+          "name": "Weiler",
+          "prices": {
+            "regular": 3.69,
+            "mid_grade": 4.09,
+            "premium": 4.39,
+            "diesel": 4.64
+          },
+          "address": "600 N Central Ave, Marshfield"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.69,
+            "premium": 4.59,
+            "diesel": 4.64
+          },
+          "address": "1600 W McMillan St, Marshfield"
+        },
+        {
+          "name": "Weiler",
+          "prices": {
+            "regular": 3.69,
+            "mid_grade": 4.09,
+            "premium": 4.39,
+            "diesel": 4.64
+          },
+          "address": "2005 N Central Ave, Marshfield"
+        },
+        {
+          "name": "Fleet Farm",
+          "prices": {
+            "regular": 3.69
+          },
+          "address": "1101 W Upham St, Marshfield"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.79
+          },
+          "address": "1727 N Central Ave, Marshfield"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.79
+          },
+          "address": "539 S Central Ave, Marshfield"
+        }
+      ]
+    },
+    "Rhinelander": {
+      "current_avg": {
+        "regular": 3.776,
+        "premium": 4.857,
+        "diesel": 4.67,
+        "mid_grade": 4.39
+      },
+      "low": {
+        "regular": 3.77,
+        "premium": 4.59,
+        "diesel": 4.65,
+        "mid_grade": 4.39
+      },
+      "high": {
+        "regular": 3.79,
+        "premium": 4.99,
+        "diesel": 4.69,
+        "mid_grade": 4.39
+      },
+      "station_count": {
+        "regular": 7,
+        "premium": 3,
+        "diesel": 5,
+        "mid_grade": 1
+      },
+      "stations": [
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.77,
+            "diesel": 4.67
+          },
+          "address": "235 S Eisenhower Pkwy, Rhinelander"
+        },
+        {
+          "name": "Krist",
+          "prices": {
+            "regular": 3.77,
+            "diesel": 4.65
+          },
+          "address": "724 Lincoln St, Rhinelander"
+        },
+        {
+          "name": "Shell",
+          "prices": {
+            "regular": 3.77,
+            "mid_grade": 4.39,
+            "premium": 4.99,
+            "diesel": 4.67
+          },
+          "address": "2219  Stevens St, Rhinelander"
+        },
+        {
+          "name": "Shell",
+          "prices": {
+            "regular": 3.77
+          },
+          "address": "308 S Courtney St, Rhinelander"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 3.77,
+            "premium": 4.99,
+            "diesel": 4.67
+          },
+          "address": "1539 N Stevens St, Rhinelander"
+        },
+        {
+          "name": "Holiday",
+          "prices": {
+            "regular": 3.79,
+            "premium": 4.59,
+            "diesel": 4.69
+          },
+          "address": "255 E Courtney St, Rhinelander"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 3.79
+          },
+          "address": "2141 LINCOLN ST, Rhinelander"
+        }
+      ]
+    },
     "Wausau": {
       "current_avg": {
         "regular": 3.685,
@@ -126,7 +306,9 @@
           },
           "address": "4000 Rib Mountain Dr, Wausau"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Stevens Point": {
       "current_avg": {
@@ -228,7 +410,9 @@
           },
           "address": "5601B Carrie Frost Dr, Stevens Point"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Wisconsin Rapids": {
       "current_avg": {
@@ -324,196 +508,9 @@
           },
           "address": "6018 Main St, Auburndale"
         }
-      ]
-    },
-    "Marshfield": {
-      "current_avg": {
-        "regular": 3.74,
-        "premium": 4.457,
-        "diesel": 4.66,
-        "mid_grade": 4.09
-      },
-      "low": {
-        "regular": 3.69,
-        "premium": 4.39,
-        "diesel": 4.64,
-        "mid_grade": 4.09
-      },
-      "high": {
-        "regular": 3.79,
-        "premium": 4.59,
-        "diesel": 4.67,
-        "mid_grade": 4.09
-      },
-      "station_count": {
-        "regular": 8,
-        "premium": 3,
-        "diesel": 3,
-        "mid_grade": 2
-      },
-      "stations": [
-        {
-          "name": "Fleet Farm",
-          "prices": {
-            "regular": 3.69
-          },
-          "address": "1101 W Upham St, Marshfield"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.69,
-            "premium": 4.59,
-            "diesel": 4.64
-          },
-          "address": "1600 W McMillan St, Marshfield"
-        },
-        {
-          "name": "Weiler",
-          "prices": {
-            "regular": 3.69,
-            "mid_grade": 4.09,
-            "premium": 4.39,
-            "diesel": 4.67
-          },
-          "address": "600 N Central Ave, Marshfield"
-        },
-        {
-          "name": "Weiler",
-          "prices": {
-            "regular": 3.69,
-            "mid_grade": 4.09,
-            "premium": 4.39,
-            "diesel": 4.67
-          },
-          "address": "2005 N Central Ave, Marshfield"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.79
-          },
-          "address": "539 S Central Ave, Marshfield"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.79
-          },
-          "address": "1727 N Central Ave, Marshfield"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.79
-          },
-          "address": "101 N Central Ave, Marshfield"
-        },
-        {
-          "name": "The Store",
-          "prices": {
-            "regular": 3.79
-          },
-          "address": "1304 S Central Ave, Marshfield"
-        }
-      ]
-    },
-    "Rhinelander": {
-      "current_avg": {
-        "regular": 3.783,
-        "premium": 4.896,
-        "diesel": 4.713,
-        "mid_grade": 4.305
-      },
-      "low": {
-        "regular": 3.77,
-        "premium": 4.59,
-        "diesel": 4.67,
-        "mid_grade": 4.22
-      },
-      "high": {
-        "regular": 3.79,
-        "premium": 4.99,
-        "diesel": 4.87,
-        "mid_grade": 4.39
-      },
-      "station_count": {
-        "regular": 8,
-        "premium": 5,
-        "diesel": 6,
-        "mid_grade": 2
-      },
-      "stations": [
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.77,
-            "premium": 4.99,
-            "diesel": 4.67
-          },
-          "address": "1539 N Stevens St, Rhinelander"
-        },
-        {
-          "name": "Shell",
-          "prices": {
-            "regular": 3.77
-          },
-          "address": "308 S Courtney St, Rhinelander"
-        },
-        {
-          "name": "Krist",
-          "prices": {
-            "regular": 3.77,
-            "diesel": 4.67
-          },
-          "address": "724 Lincoln St, Rhinelander"
-        },
-        {
-          "name": "Holiday",
-          "prices": {
-            "regular": 3.79,
-            "premium": 4.59,
-            "diesel": 4.69
-          },
-          "address": "255 E Courtney St, Rhinelander"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 3.79
-          },
-          "address": "2141 LINCOLN ST, Rhinelander"
-        },
-        {
-          "name": "Shell",
-          "prices": {
-            "regular": 3.79,
-            "mid_grade": 4.39,
-            "premium": 4.99,
-            "diesel": 4.69
-          },
-          "address": "2219  Stevens St, Rhinelander"
-        },
-        {
-          "name": "Shell",
-          "prices": {
-            "regular": 3.79,
-            "mid_grade": 4.22,
-            "premium": 4.92,
-            "diesel": 4.87
-          },
-          "address": "1999 River St, Rhinelander"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 3.79,
-            "premium": 4.99,
-            "diesel": 4.69
-          },
-          "address": "235 S Eisenhower Pkwy, Rhinelander"
-        }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Merrill": {
       "current_avg": {
@@ -607,7 +604,9 @@
           },
           "address": "1201 Grand Ave, Merrill"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Mosinee": {
       "current_avg": {
@@ -677,7 +676,9 @@
           },
           "address": "124 Main St, Mosinee"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Antigo": {
       "current_avg": {
@@ -771,7 +772,9 @@
           },
           "address": "815 S Superior St, Antigo"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Eau Claire": {
       "current_avg": {
@@ -871,7 +874,9 @@
           },
           "address": "425 S 3rd St, Cornell"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Green Bay": {
       "current_avg": {
@@ -964,7 +969,9 @@
           },
           "address": "409 E Highland Dr, Oconto Falls"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Appleton": {
       "current_avg": {
@@ -1062,7 +1069,9 @@
           },
           "address": "125 W Northland Ave, Appleton"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Madison": {
       "current_avg": {
@@ -1161,7 +1170,9 @@
           },
           "address": "1423 Northport Dr, Madison"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Milwaukee": {
       "current_avg": {
@@ -1264,7 +1275,9 @@
           },
           "address": "5072 S 27th St, Milwaukee"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "La Crosse": {
       "current_avg": {
@@ -1363,7 +1376,9 @@
           },
           "address": "402 N HOLMEN DR, Holmen"
         }
-      ]
+      ],
+      "stale": true,
+      "stale_from": "07/11/26"
     },
     "Janesville": {
       "current_avg": {
@@ -1468,7 +1483,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     },
     "Kenosha": {
       "current_avg": {
@@ -1566,7 +1581,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     },
     "Oshkosh": {
       "current_avg": {
@@ -1667,7 +1682,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     },
     "Racine": {
       "current_avg": {
@@ -1771,7 +1786,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     },
     "Sheboygan": {
       "current_avg": {
@@ -1866,7 +1881,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     },
     "Superior": {
       "current_avg": {
@@ -1965,7 +1980,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     },
     "Waukesha": {
       "current_avg": {
@@ -2066,7 +2081,7 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     },
     "Fond du Lac": {
       "current_avg": {
@@ -2167,41 +2182,41 @@
         }
       ],
       "stale": true,
-      "stale_from": "07/10/26"
+      "stale_from": "07/11/26"
     }
   },
   "aaa": {
     "current": {
+      "regular": 3.687,
+      "mid_grade": 4.255,
+      "premium": 4.827,
+      "diesel": 4.583
+    },
+    "yesterday": {
       "regular": 3.697,
       "mid_grade": 4.247,
       "premium": 4.842,
       "diesel": 4.589
     },
-    "yesterday": {
-      "regular": 3.684,
-      "mid_grade": 4.21,
-      "premium": 4.831,
-      "diesel": 4.581
-    },
     "week_ago": {
-      "regular": 3.58,
-      "mid_grade": 4.15,
-      "premium": 4.724,
-      "diesel": 4.617
+      "regular": 3.57,
+      "mid_grade": 4.118,
+      "premium": 4.712,
+      "diesel": 4.595
     },
     "month_ago": {
-      "regular": 3.911,
-      "mid_grade": 4.485,
-      "premium": 5.058,
-      "diesel": 5.202
+      "regular": 3.898,
+      "mid_grade": 4.478,
+      "premium": 5.044,
+      "diesel": 5.157
     },
     "year_ago": {
-      "regular": 3.02,
-      "mid_grade": 3.528,
-      "premium": 4.031,
-      "diesel": 3.597
+      "regular": 3.016,
+      "mid_grade": 3.53,
+      "premium": 4.03,
+      "diesel": 3.579
     },
-    "as_of": "07/11/26"
+    "as_of": "07/12/26"
   },
   "priority_metros": [
     "Wausau",
@@ -2212,8 +2227,8 @@
     "Milwaukee"
   ],
   "summary": {
-    "as_of": "July 11, 2026",
+    "as_of": "July 12, 2026",
     "headline": "Wisconsin gas averages $3.58/gal",
-    "blurb": "Regular gas is averaging $3.58 a gallon across Wisconsin as of July 11, 2026, according to GasBuddy. AAA figures put the statewide average 12¢ higher than a week ago, 21¢ lower than a month ago, and 68¢ higher than a year ago. Drivers are finding the lowest metro average in Milwaukee ($3.37) and the highest in Mosinee ($3.79)."
+    "blurb": "Regular gas is averaging $3.58 a gallon across Wisconsin as of July 12, 2026, according to GasBuddy. AAA figures put the statewide average 12¢ higher than a week ago, 21¢ lower than a month ago, and 67¢ higher than a year ago. Drivers are finding the lowest metro average in Milwaukee ($3.37) and the highest in Mosinee ($3.79)."
   }
 }
