@@ -34,7 +34,8 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
    real browser, so no proxy is required.
 2. **AAA** — Wisconsin's statewide price trend (today / yesterday / week / month /
    year, all fuels), from AAA's public state page. GasBuddy gives the live station
-   detail; AAA gives the historical trend.
+   detail; AAA gives the historical trend. AAA is fetched **independently**, so it
+   keeps updating even on days GasBuddy can't be reached.
 3. **EIA** (U.S. Energy Information Administration) — weekly Midwest fuel-price
    trends, plus the U.S. national average and WTI crude for context. Requires a free
    `EIA_API_KEY`; if it's missing, this part is simply skipped and everything else
@@ -42,6 +43,20 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
 
 If a city fails on a given run, its **previous price is carried forward** and marked
 stale, so the widget never shows blank cities.
+
+### When GasBuddy can't be reached
+
+GasBuddy sits behind Cloudflare, which sometimes blocks GitHub's servers outright for
+days at a stretch. When that happens the widget does **not** go blank or silently show
+old numbers as if they were new:
+
+- AAA's statewide trend and the newsroom blurb still refresh normally.
+- Station-level and per-metro prices hold their last known values.
+- The header switches to an amber "Updated N days ago", so the staleness is visible.
+- An issue is opened on the repo saying which sources were reachable; it closes
+  itself once a healthy run succeeds.
+
+Nothing needs to be done by hand — it recovers on its own when the block lifts.
 
 ---
 

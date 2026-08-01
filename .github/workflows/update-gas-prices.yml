@@ -17,10 +17,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -34,18 +34,26 @@ jobs:
 
       # Bake the fresh data into a static PNG for the email newsletter (email can't
       # embed the live widget). See scripts/render-digest.mjs.
+      #
+      # These run with `!cancelled()` rather than on success: the scraper is designed
+      # to fail soft, but if it ever dies hard the digest must still be re-rendered
+      # from whatever data is on disk — AAA and EIA may have refreshed even when
+      # GasBuddy did not, and the newsletter image has to keep pace twice a day.
       - name: Set up Node
-        uses: actions/setup-node@v4
+        if: ${{ !cancelled() }}
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install Playwright
+        if: ${{ !cancelled() }}
         run: |
           npm ci
           npx playwright install --with-deps chromium
 
       - name: Render newsletter digest image
+        if: ${{ !cancelled() }}
         run: |
           python -m http.server 4180 --bind 127.0.0.1 --directory docs &
           for i in $(seq 1 20); do
@@ -55,6 +63,7 @@ jobs:
           node scripts/render-digest.mjs http://127.0.0.1:4180/digest.html docs/digest.png
 
       - name: Commit and push updated data
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
@@ -77,10 +86,10 @@ jobs:
         run: |
           TITLE="⚠️ Gas scraper needs attention"
           if [ -f docs/scrape_status.json ]; then
-            read OK DEG FRESH TOTAL <<< "$(python -c "import json;d=json.load(open('docs/scrape_status.json'));print(str(d.get('gasbuddy_success',False)).lower(), str(d.get('degraded',False)).lower(), d.get('cities_fresh','?'), d.get('cities_total','?'))")"
+            read OK DEG FRESH TOTAL AAA <<< "$(python -c "import json;d=json.load(open('docs/scrape_status.json'));print(str(d.get('gasbuddy_success',False)).lower(), str(d.get('degraded',False)).lower(), d.get('cities_fresh',0), d.get('cities_total','?'), str(d.get('aaa_updated',False)).lower())")"
           else
             echo "No scrape_status.json — scraper crashed before writing status."
-            OK=false; DEG=false; FRESH=0; TOTAL="?"
+            OK=false; DEG=false; FRESH=0; TOTAL="?"; AAA=false
           fi
           RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
@@ -95,9 +104,13 @@ jobs:
           fi
 
           if [ "$OK" != "true" ]; then
-            echo "GasBuddy scrape failed — alerting."
-            SUMMARY="did not produce any fresh GasBuddy data. The previous prices are preserved, so the widget still shows last-known values."
-            CAUSE="Common cause: GasBuddy changed its homepage and the CSRF-token scrape broke (see scrape_gas_prices.py)."
+            echo "GasBuddy scrape failed — alerting (aaa_updated=$AAA)."
+            if [ "$AAA" = "true" ]; then
+              SUMMARY="could not reach GasBuddy, so station and metro prices are carried forward from the last good run. AAA's statewide trend **did** refresh, so the widget's statewide numbers and blurb are current."
+            else
+              SUMMARY="could not reach GasBuddy **or** AAA. Every price on the widget is carried forward from the last good run."
+            fi
+            CAUSE="Most common cause: Cloudflare is 403ing the GitHub Actions datacenter IP on the CSRF-token fetch (the scraper rotates TLS fingerprints and entry URLs, but cannot defeat a pure IP-reputation block). Check the 'Run scraper' log — repeated 'CSRF fetch failed ... 403' means the IP is blocked, not that the site changed. If instead the token is fetched but cities return no data, GasBuddy changed its GraphQL shape (see scrape_gas_prices.py)."
           else
             echo "Degraded run ($FRESH/$TOTAL fresh) — alerting."
             SUMMARY="only scraped $FRESH of $TOTAL cities fresh; the rest fell back to carried-forward (stale) prices, and the statewide average was recomputed mostly from stale data."
