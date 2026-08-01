@@ -44,6 +44,30 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
 If a city fails on a given run, its **previous price is carried forward** and marked
 stale, so the widget never shows blank cities.
 
+### Where it runs
+
+The update runs **on your own machine**, twice a day, at **7am and 7pm Central**.
+Windows Task Scheduler (`WPRGasPrices-Update`) runs `scripts/update-gas-prices.ps1`,
+which scrapes, re-renders the newsletter image, and pushes. The site updates a minute
+or so later.
+
+Why local? GasBuddy blocks GitHub's servers but not a home internet connection. That
+block is what froze the widget for five days in July 2026. Running from your machine
+avoids it entirely and costs nothing.
+
+**GitHub Actions still runs as a backup** (10am and 10pm Central-ish). If your laptop
+is off or you're away, it keeps AAA, the EIA data and the newsletter image refreshing,
+and still opens an issue if something's wrong. You just won't get new *station-level*
+prices until your machine runs again.
+
+To run it by hand at any time:
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\update-gas-prices.ps1
+```
+
+Add `-NoPush` to do everything except publish, which is useful for a dry run.
+
 ### When GasBuddy can't be reached
 
 GasBuddy sits behind Cloudflare, which sometimes blocks GitHub's servers outright for

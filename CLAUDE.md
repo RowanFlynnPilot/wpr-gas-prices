@@ -11,6 +11,31 @@ serves it, and a WordPress page embeds the widget via `<iframe>`. No servers.
 > **Note:** `README.md` is the plain-language operator guide and is current. This
 > file is the engineering source of truth; when they disagree, the code wins.
 
+## Where the update actually runs (read this first)
+
+**The primary runner is local, not CI.** GasBuddy's Cloudflare hard-403s the GitHub
+Actions datacenter IP for days at a stretch but trusts a residential one, so the
+twice-daily update runs on Rowan's machine via Windows Task Scheduler:
+
+| | Primary (local) | Backup (GitHub Actions) |
+|---|---|---|
+| What | `scripts/update-gas-prices.ps1` | `.github/workflows/update-gas-prices.yml` |
+| When | 7am + 7pm **Central** (Task Scheduler `WPRGasPrices-Update`) | 15:00 + 03:00 **UTC** |
+| Gets | Everything: GasBuddy stations/metros, AAA, EIA, digest PNG | AAA + EIA + digest only (GasBuddy usually blocked) |
+
+The two schedules are deliberately **~2h clear of each other in either DST season**
+so they never race to push. Local 7am/7pm Central = 12:00/00:00 UTC (CDT) or
+13:00/01:00 UTC (CST); CI at 15:00/03:00 UTC misses all four. If you change either
+schedule, re-check that separation. The local script also `pull --rebase`s before
+scraping and retries once on a rejected push, as a second line of defence.
+
+The local script refuses to run off `main` (it publishes), warns when `EIA_API_KEY`
+is unset, and reports the run's health from `docs/scrape_status.json`.
+
+> **Keep `update-gas-prices.ps1` pure ASCII.** PowerShell 5.1 reads BOM-less scripts
+> as ANSI, where a UTF-8 em-dash (`E2 80 94`) decodes to a smart quote and silently
+> terminates a string mid-line. This bit us once already.
+
 ## Architecture (standard WPR widget pattern)
 
 ```
@@ -71,6 +96,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
 | `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
+| `scripts/update-gas-prices.ps1` | **Primary** twice-daily runner (Windows Task Scheduler, local) | Yes |
 | `package.json` / `package-lock.json` | Node deps for the digest renderer (Playwright only) | Rarely |
 | `docs/digest.png` | Baked newsletter image (twice-daily) at a stable Pages URL | **Never by hand** — CI owns it |
 | `docs/wpr-logo.jpg` | WPR logo asset used by the digest card | Rarely |
@@ -176,9 +202,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   actually is the prior day; otherwise they name the date ("vs Jul 24").
 - **History cap.** `gas_prices_history.json` is trimmed to the most recent 400 days,
   oldest-first **by parsed date**.
-- **Cron is fixed UTC, not Central.** The workflow runs at `12:00` and `17:00` UTC.
-  GitHub Actions cron ignores DST, so local times drift: 7 AM / 12 PM during CDT,
-  6 AM / 11 AM during CST. Don't describe the schedule as a fixed Central time.
+- **Cron is fixed UTC, not Central.** The backup workflow runs at `15:00` and `03:00`
+  UTC. GitHub Actions cron ignores DST, so local times drift: 10 AM / 10 PM during
+  CDT, 9 AM / 9 PM during CST. Don't describe the *workflow* schedule as a fixed
+  Central time — only the local Task Scheduler runs are true 7am/7pm Central.
 - **Output is validated before write.** `validate_output()` raises if the assembled
   data is missing keys or has an implausible statewide regular avg; the live file is
   preserved on failure (caught like any scrape error).

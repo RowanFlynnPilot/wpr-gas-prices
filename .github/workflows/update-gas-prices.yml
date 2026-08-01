@@ -2,8 +2,17 @@ name: Update Gas Prices
 
 on:
   schedule:
-    - cron: '0 12 * * *'
-    - cron: '0 17 * * *'
+    # BACKUP schedule. The primary update now runs on Rowan's machine twice daily
+    # (7am/7pm Central) via Windows Task Scheduler — see scripts/update-gas-prices.ps1
+    # — because GasBuddy's Cloudflare hard-403s this datacenter IP but trusts a
+    # residential one.
+    #
+    # These times are deliberately clear of the local runs so the two never race to
+    # push. Local 7am/7pm Central lands at 12:00/00:00 UTC (CDT) or 13:00/01:00 UTC
+    # (CST); 15:00 and 03:00 UTC stay ~2h clear of all four, in either season.
+    # Cron is fixed UTC and ignores DST, so local times drift an hour seasonally.
+    - cron: '0 15 * * *'   # 10am CDT / 9am CST
+    - cron: '0 3 * * *'    # 10pm CDT / 9pm CST
   workflow_dispatch:
 
 permissions:
