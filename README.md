@@ -34,7 +34,8 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
    real browser, so no proxy is required.
 2. **AAA** — Wisconsin's statewide price trend (today / yesterday / week / month /
    year, all fuels), from AAA's public state page. GasBuddy gives the live station
-   detail; AAA gives the historical trend.
+   detail; AAA gives the historical trend. AAA is fetched **independently**, so it
+   keeps updating even on days GasBuddy can't be reached.
 3. **EIA** (U.S. Energy Information Administration) — weekly Midwest fuel-price
    trends, plus the U.S. national average and WTI crude for context. Requires a free
    `EIA_API_KEY`; if it's missing, this part is simply skipped and everything else
@@ -42,6 +43,44 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
 
 If a city fails on a given run, its **previous price is carried forward** and marked
 stale, so the widget never shows blank cities.
+
+### Where it runs
+
+The update runs **on your own machine**, twice a day, at **7am and 7pm Central**.
+Windows Task Scheduler (`WPRGasPrices-Update`) runs `scripts/update-gas-prices.ps1`,
+which scrapes, re-renders the newsletter image, and pushes. The site updates a minute
+or so later.
+
+Why local? GasBuddy blocks GitHub's servers but not a home internet connection. That
+block is what froze the widget for five days in July 2026. Running from your machine
+avoids it entirely and costs nothing.
+
+**GitHub Actions still runs as a backup** (10am and 10pm Central-ish). If your laptop
+is off or you're away, it keeps AAA, the EIA data and the newsletter image refreshing,
+and still opens an issue if something's wrong. You just won't get new *station-level*
+prices until your machine runs again.
+
+To run it by hand at any time:
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\update-gas-prices.ps1
+```
+
+Add `-NoPush` to do everything except publish, which is useful for a dry run.
+
+### When GasBuddy can't be reached
+
+GasBuddy sits behind Cloudflare, which sometimes blocks GitHub's servers outright for
+days at a stretch. When that happens the widget does **not** go blank or silently show
+old numbers as if they were new:
+
+- AAA's statewide trend and the newsroom blurb still refresh normally.
+- Station-level and per-metro prices hold their last known values.
+- The header switches to an amber "Updated N days ago", so the staleness is visible.
+- An issue is opened on the repo saying which sources were reachable; it closes
+  itself once a healthy run succeeds.
+
+Nothing needs to be done by hand — it recovers on its own when the block lifts.
 
 ---
 

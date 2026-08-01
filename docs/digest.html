@@ -78,6 +78,11 @@
   .dg-foot strong { color:var(--ink-mid); font-weight:600; }
 
   .dg-unavail { padding:60px 20px; text-align:center; color:var(--ink-light); font-size:14px; }
+
+  /* Shown only when station prices are older than the AAA refresh (GasBuddy blocked) */
+  .dg-stale { margin:0 20px 12px; background:#fdf6e7; border:1px solid #e8cf9a; border-radius:6px;
+              padding:7px 11px; font-size:11px; line-height:1.45; color:#7a5b1e; }
+  .dg-stale strong { font-weight:700; }
 </style>
 </head>
 <body>
@@ -167,6 +172,15 @@
     var blurbText = (data.summary && data.summary.blurb) || '';
     var blurbHtml = blurbText ? '<div class="dg-blurb">' + blurbText + '</div>' : '';
 
+    // The card carries two sources with independent freshness. When GasBuddy is
+    // blocked, AAA still refreshes, so the station figures can be older than the
+    // trend beside them. Email readers can't check a timestamp, so say it outright.
+    var staleHtml = (aaa.as_of && data.price_date && aaa.as_of !== data.price_date)
+      ? '<div class="dg-stale">Station and metro prices are from <strong>'
+        + longDate(data.price_date) + '</strong>, the latest available. '
+        + 'The statewide trend is current as of ' + longDate(aaa.as_of) + '.</div>'
+      : '';
+
     document.getElementById('card').innerHTML =
       '<div class="dg-head"><img class="dg-logo" src="' + LOGO + '" alt="">'
       + '<div><div class="dg-kicker">Wausau Pilot &amp; Review · Fuel Watch</div>'
@@ -178,6 +192,8 @@
       + '<div class="dg-hero-value">' + (reg != null ? heroPrice(reg) : '—') + '</div>'
       + '<div class="dg-hero-sub">per gallon · live via GasBuddy</div></div>'
       + '<div class="dg-trend">' + trendHtml + '</div></div>'
+
+      + staleHtml
 
       + '<div class="dg-fuels">' + fuelHtml + '</div>'
 

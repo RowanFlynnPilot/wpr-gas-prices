@@ -66,6 +66,23 @@ GASBUDDY_HOME    = "https://www.gasbuddy.com/home"
 GASBUDDY_GRAPHQL = "https://www.gasbuddy.com/graphql"
 AAA_URL          = "https://gasprices.aaa.com/?state=WI"
 
+# Entry pages tried when hunting for the CSRF token. Cloudflare's bot rules are
+# per-route, so a block on /home doesn't always mean the site is unreachable.
+GASBUDDY_ENTRY_URLS = [GASBUDDY_HOME, "https://www.gasbuddy.com/"]
+
+# curl_cffi impersonation targets, rotated across CSRF attempts. Each presents a
+# different TLS/JA3 + HTTP2 fingerprint; Cloudflare scores them independently, so
+# rotating costs nothing and occasionally clears a block a single profile can't.
+IMPERSONATE_PROFILES = ["chrome", "chrome131", "chrome124", "safari17_0"]
+
+# AAA is served plainly (no bot wall), so a normal browser UA is all it needs.
+BROWSER_HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
 # AAA's state table column order (Regular | Mid | Premium | Diesel)
 AAA_FUELS = ["regular", "mid_grade", "premium", "diesel"]
 
@@ -89,13 +106,17 @@ log = logging.getLogger(__name__)
 # GasBuddy GraphQL helpers
 # ---------------------------------------------------------------------------
 
-def establish_session(attempts: int = 4):
-    """Create a Chrome-impersonated session and obtain the CSRF token.
+def establish_session(attempts: int = 6):
+    """Create a browser-impersonated session and obtain the CSRF token.
 
-    GasBuddy sits behind Cloudflare, which intermittently 403s the GitHub Actions
-    datacenter IP. The 403s are transient, so we retry with backoff and a **fresh
-    session each attempt** (the session that clears Cloudflare carries the cookies
-    needed for the GraphQL calls, so the winning session is the one we return).
+    GasBuddy sits behind Cloudflare, which 403s the GitHub Actions datacenter IP.
+    Each attempt uses a **fresh session** with a rotated impersonation profile and
+    entry URL, because Cloudflare scores TLS fingerprints and routes independently —
+    the session that clears the wall carries the cookies the GraphQL calls need, so
+    the winning session is the one we return.
+
+    Rotation widens the odds but cannot defeat a pure IP-reputation block; when every
+    attempt fails the caller aborts and the run is reported as a GasBuddy failure.
 
     Returns (session, token); token is "" if every attempt fails.
     """
@@ -103,20 +124,24 @@ def establish_session(attempts: int = 4):
 
     session = None
     for attempt in range(1, attempts + 1):
-        session = cffi_req.Session(impersonate="chrome")
+        profile = IMPERSONATE_PROFILES[(attempt - 1) % len(IMPERSONATE_PROFILES)]
+        url     = GASBUDDY_ENTRY_URLS[(attempt - 1) % len(GASBUDDY_ENTRY_URLS)]
+        session = cffi_req.Session(impersonate=profile)
         try:
-            resp = session.get(GASBUDDY_HOME, timeout=20)
+            resp = session.get(url, timeout=20)
             resp.raise_for_status()
             match = re.search(r"window\.gbcsrf\s*=\s*[\"'](.*?)[\"']", resp.text)
             if match:
-                log.info("CSRF token obtained (%.10s...) on attempt %d/%d",
-                         match.group(1), attempt, attempts)
+                log.info("CSRF token obtained (%.10s...) on attempt %d/%d [%s %s]",
+                         match.group(1), attempt, attempts, profile, url)
                 return session, match.group(1)
-            log.warning("CSRF token not in homepage HTML (attempt %d/%d)", attempt, attempts)
+            log.warning("CSRF token not in HTML (attempt %d/%d) [%s %s]",
+                        attempt, attempts, profile, url)
         except Exception as e:
-            log.warning("CSRF fetch failed (attempt %d/%d): %s", attempt, attempts, e)
+            log.warning("CSRF fetch failed (attempt %d/%d) [%s %s]: %s",
+                        attempt, attempts, profile, url, e)
         if attempt < attempts:
-            wait = 15 * attempt  # 15s, 30s, 45s — ride out transient Cloudflare blocks
+            wait = min(15 * attempt, 60)  # 15/30/45/60/60 — ride out transient blocks
             log.info("  retrying CSRF in %ds...", wait)
             time.sleep(wait)
     return session, ""
@@ -291,19 +316,28 @@ def parse_aaa(html: str) -> dict:
     return result if result.get("current", {}).get("regular") else {}
 
 
-def scrape_aaa(session) -> dict:
-    """Fetch AAA's Wisconsin page and parse the statewide comparison table."""
-    log.info("  Scraping AAA for Wisconsin statewide trend...")
+def scrape_aaa() -> dict:
+    """Fetch AAA's Wisconsin page and parse the statewide comparison table.
+
+    Deliberately independent of the GasBuddy scrape: AAA is served plainly (no
+    Cloudflare bot wall), so it uses `requests` and its own connection. That means
+    the statewide trend keeps refreshing on every run even when GasBuddy is blocked.
+    Stamps its own `as_of` so downstream staleness is always visible.
+    """
+    log.info("Scraping AAA for Wisconsin statewide trend...")
     try:
-        html = session.get(AAA_URL, timeout=20).text
+        resp = requests.get(AAA_URL, headers=BROWSER_HEADERS, timeout=20)
+        resp.raise_for_status()
+        html = resp.text
     except Exception as e:
         log.warning("  AAA fetch failed: %s", e)
         return {}
     aaa = parse_aaa(html)
     if aaa:
-        cur = aaa.get("current", {}).get("regular")
-        yr = aaa.get("year_ago", {}).get("regular")
-        log.info("  AAA: reg now=$%s, year ago=$%s", cur, yr)
+        aaa["as_of"] = datetime.now(timezone.utc).strftime("%m/%d/%y")
+        log.info("  AAA: reg now=$%s, year ago=$%s",
+                 aaa.get("current", {}).get("regular"),
+                 aaa.get("year_ago", {}).get("regular"))
     else:
         log.warning("  AAA: could not parse statewide table")
     return aaa
@@ -399,12 +433,9 @@ def scrape_gasbuddy() -> dict:
 
     today = datetime.now(timezone.utc).strftime("%m/%d/%y")
 
-    # AAA statewide trend (today/yesterday/week/month/year). Best-effort; carried
-    # forward from the previous run by merge_with_previous() if it fails.
-    aaa = scrape_aaa(session)
-    if aaa:
-        aaa["as_of"] = today
-
+    # NOTE: AAA is scraped independently in main() — it must not share this
+    # function's failure path, or a GasBuddy block would also freeze the
+    # statewide trend (which AAA can still serve just fine).
     return {
         "source":      "GasBuddy",
         "source_url":  "https://www.gasbuddy.com/gasprices/wisconsin",
@@ -413,7 +444,6 @@ def scrape_gasbuddy() -> dict:
         "scraped_at":  datetime.now(timezone.utc).isoformat(),
         "statewide":   statewide,
         "metros":      metros,
-        "aaa":         aaa,
         "priority_metros": PRIORITY_METROS,
         # Transient run health — popped before gas_prices.json is written, then
         # finalized into docs/scrape_status.json by main().
@@ -539,6 +569,33 @@ def fetch_eia_context(out_dir: str) -> None:
 # History
 # ---------------------------------------------------------------------------
 
+def history_key_date(key: str):
+    """Parse an 'mm/dd/yy' history key to a date, or None if it isn't one.
+
+    History keys must never be compared as strings: some legacy entries were written
+    unpadded ('3/18/26'), and even padded keys sort month-major, so a string sort
+    interleaves months and years.
+    """
+    try:
+        return datetime.strptime(key, "%m/%d/%y").date()
+    except (ValueError, TypeError):
+        return None
+
+
+def normalize_history_keys(history: dict) -> dict:
+    """Rewrite legacy unpadded keys ('3/18/26') to the canonical '%m/%d/%y' form.
+
+    Self-heals the file so every consumer sees one key format. Unparseable keys are
+    dropped — they can't be placed on a timeline anyway.
+    """
+    normalized = {}
+    for key, value in history.items():
+        parsed = history_key_date(key)
+        if parsed is not None:
+            normalized[parsed.strftime("%m/%d/%y")] = value
+    return normalized
+
+
 def update_history(data: dict, out_dir: str) -> None:
     history_path = os.path.join(out_dir, "gas_prices_history.json")
     today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
@@ -549,6 +606,7 @@ def update_history(data: dict, out_dir: str) -> None:
                 history = json.load(f)
         except (json.JSONDecodeError, OSError):
             history = {}
+    history = normalize_history_keys(history)
 
     entry: dict = {}
     sw = data.get("statewide", {}).get("current_avg", {})
@@ -565,8 +623,9 @@ def update_history(data: dict, out_dir: str) -> None:
     if entry:
         history[today_key] = entry
 
+    # Trim oldest-first by date, not by string — a string sort would drop the wrong days.
     if len(history) > 400:
-        for k in sorted(history.keys())[: len(history) - 400]:
+        for k in sorted(history, key=history_key_date)[: len(history) - 400]:
             del history[k]
 
     with open(history_path, "w", encoding="utf-8") as f:
@@ -693,6 +752,36 @@ def merge_with_previous(data: dict, previous_data: dict) -> None:
         recalculate_statewide(data)
 
 
+def publish_aaa_only(output_path: str, aaa: dict, previous_data: dict) -> bool:
+    """Refresh just the AAA trend inside an existing gas_prices.json.
+
+    Used when the GasBuddy scrape is blocked. The station-derived fields
+    (`statewide`, `metros`, `price_date`, `scraped_at`) are left exactly as they
+    were, so the widget's freshness label keeps telling the truth about them, while
+    the statewide trend — which AAA can still supply — updates normally.
+
+    The summary blurb is rebuilt too: it quotes AAA's trend legs, so leaving it
+    behind would contradict the refreshed AAA panel. Its headline stays explicitly
+    dated to the (older) GasBuddy figure, which is what makes that honest.
+
+    Returns True if the file was rewritten.
+    """
+    if not aaa or not previous_data:
+        return False
+
+    updated = dict(previous_data)
+    updated["aaa"] = aaa
+    summary = build_summary(updated)
+    if summary:
+        updated["summary"] = summary
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(updated, f, indent=2, ensure_ascii=False)
+    log.info("GasBuddy unavailable — refreshed AAA statewide trend only (as of %s)",
+             aaa.get("as_of"))
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Output validation + run-status heartbeat
 # ---------------------------------------------------------------------------
@@ -722,8 +811,8 @@ def is_degraded(run_health: dict | None) -> bool:
     return total > 0 and fresh < total / 2
 
 
-def write_status(out_dir: str, *, gasbuddy_success: bool,
-                 run_health: dict | None, eia_updated: bool) -> None:
+def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | None,
+                 eia_updated: bool, aaa_updated: bool, aaa_only: bool) -> None:
     """Always-written per-run heartbeat consumed by the failure-alert workflow step.
 
     Not committed (gitignored) — it is read in-job, after the scraper, to decide
@@ -734,6 +823,14 @@ def write_status(out_dir: str, *, gasbuddy_success: bool,
         "gasbuddy_success": gasbuddy_success,
         "degraded":         gasbuddy_success and is_degraded(run_health),
         "eia_updated":      eia_updated,
+        "aaa_updated":      aaa_updated,
+        "aaa_only":         aaa_only,
+        # Defaults so the alert step always has real numbers to report: when the
+        # scrape aborts before reaching any city, run_health is None and the honest
+        # count is 0 of all cities — not "?/?".
+        "cities_total":     len(CITIES),
+        "cities_fresh":     0,
+        "failed_cities":    sorted(CITIES),
     }
     if run_health:
         status.update(run_health)
@@ -768,11 +865,17 @@ def main() -> None:
         except (json.JSONDecodeError, OSError):
             previous_data = {}
 
+    # AAA runs first, on its own connection, so a GasBuddy block can never freeze
+    # the statewide trend (see scrape_aaa / publish_aaa_only).
+    aaa = scrape_aaa()
+
     gb_success = False
+    aaa_only = False
     run_health: dict | None = None
     try:
         data = scrape_gasbuddy()
         run_health = data.pop("run_health", None)  # transient — not persisted in gas_prices.json
+        data["aaa"] = aaa  # empty dict → merge_with_previous carries the last one forward
 
         fresh_count = len(data.get("metros", {}))
         merge_with_previous(data, previous_data)
@@ -795,19 +898,25 @@ def main() -> None:
             log.info("Wrote gas prices to %s", args.output)
             update_history(data, out_dir)
         else:
-            log.warning("No fresh city data — preserving previous file unchanged")
+            # Reached when GasBuddy answered but every city came back empty (e.g. all
+            # rate-limited). Same outcome as a hard failure: keep the station prices,
+            # still publish AAA.
+            log.warning("No fresh city data — preserving station prices unchanged")
+            aaa_only = publish_aaa_only(args.output, aaa, previous_data)
 
     except Exception:
-        log.exception("GasBuddy scrape failed — will still update EIA data")
+        log.exception("GasBuddy scrape failed — publishing AAA trend and EIA data")
+        aaa_only = publish_aaa_only(args.output, aaa, previous_data)
 
     eia_updated = fetch_eia_data(out_dir)
     fetch_eia_context(out_dir)
 
-    write_status(out_dir, gasbuddy_success=gb_success,
-                 run_health=run_health, eia_updated=eia_updated)
+    write_status(out_dir, gasbuddy_success=gb_success, run_health=run_health,
+                 eia_updated=eia_updated, aaa_updated=bool(aaa), aaa_only=aaa_only)
 
     if not gb_success:
-        log.warning("GasBuddy scrape failed but EIA data was updated.")
+        log.warning("GasBuddy scrape failed; AAA %s, EIA data updated.",
+                    "refreshed" if aaa_only else "unavailable too")
     elif is_degraded(run_health):
         log.warning("Degraded run: only %d/%d cities fresh — output is mostly stale.",
                     run_health.get("cities_fresh"), run_health.get("cities_total"))

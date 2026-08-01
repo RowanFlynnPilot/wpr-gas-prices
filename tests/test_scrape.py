@@ -190,16 +190,71 @@ def test_update_history_excludes_stale_and_records_statewide(tmp_path):
 
 
 def test_update_history_caps_at_400_days(tmp_path):
+    from datetime import date, timedelta
+
     hist_path = tmp_path / "gas_prices_history.json"
-    seed = {f"{d:04d}": {"statewide": {"regular": 3.0}} for d in range(405)}
+    start = date(2025, 1, 1)
+    days = [start + timedelta(days=i) for i in range(405)]
+    seed = {d.strftime("%m/%d/%y"): {"statewide": {"regular": 3.0}} for d in days}
     hist_path.write_text(json.dumps(seed))
 
-    data = {"price_date": "9999", "statewide": {"current_avg": {"regular": 3.9}}, "metros": {}}
+    today = (days[-1] + timedelta(days=1)).strftime("%m/%d/%y")
+    data = {"price_date": today, "statewide": {"current_avg": {"regular": 3.9}}, "metros": {}}
     s.update_history(data, str(tmp_path))
     hist = json.loads(hist_path.read_text())
+
     assert len(hist) == 400
-    assert "9999" in hist  # newest kept
-    assert "0000" not in hist  # oldest trimmed
+    assert today in hist                                # newest kept
+    assert days[0].strftime("%m/%d/%y") not in hist     # oldest trimmed
+    # Trimming must be chronological: the 6 oldest days go, nothing newer.
+    assert days[6].strftime("%m/%d/%y") in hist
+    assert days[5].strftime("%m/%d/%y") not in hist
+
+
+def test_update_history_trims_by_date_not_string(tmp_path):
+    """A string sort would keep December and drop January of the following year."""
+    hist_path = tmp_path / "gas_prices_history.json"
+    seed = {
+        "12/30/25": {"statewide": {"regular": 3.0}},   # oldest by date, LAST by string
+        "01/02/26": {"statewide": {"regular": 3.1}},
+        "01/03/26": {"statewide": {"regular": 3.2}},
+    }
+    hist_path.write_text(json.dumps(seed))
+
+    data = {"price_date": "01/04/26", "statewide": {"current_avg": {"regular": 3.3}},
+            "metros": {}}
+    s.update_history(data, str(tmp_path))
+    hist = json.loads(hist_path.read_text())
+    assert len(hist) == 4  # under the 400 cap, nothing trimmed
+    # The real guarantee: chronological order is recoverable from the keys.
+    ordered = sorted(hist, key=s.history_key_date)
+    assert ordered == ["12/30/25", "01/02/26", "01/03/26", "01/04/26"]
+
+
+def test_normalize_history_keys_pads_legacy_and_drops_junk():
+    normalized = s.normalize_history_keys({
+        "3/18/26": {"statewide": {"regular": 3.0}},    # legacy unpadded
+        "07/27/26": {"statewide": {"regular": 3.8}},   # already canonical
+        "not-a-date": {"statewide": {"regular": 9.9}}, # unplaceable on a timeline
+    })
+    assert set(normalized) == {"03/18/26", "07/27/26"}
+    assert normalized["03/18/26"]["statewide"]["regular"] == 3.0
+
+
+def test_history_key_date_orders_across_years():
+    keys = ["3/18/26", "12/30/25", "07/27/26", "01/02/26"]
+    assert sorted(keys, key=s.history_key_date) == \
+        ["12/30/25", "01/02/26", "3/18/26", "07/27/26"]
+
+
+def test_update_history_normalizes_existing_file(tmp_path):
+    hist_path = tmp_path / "gas_prices_history.json"
+    hist_path.write_text(json.dumps({"3/18/26": {"statewide": {"regular": 3.0}}}))
+    data = {"price_date": "07/27/26", "statewide": {"current_avg": {"regular": 3.8}},
+            "metros": {}}
+    s.update_history(data, str(tmp_path))
+    hist = json.loads(hist_path.read_text())
+    assert set(hist) == {"03/18/26", "07/27/26"}  # legacy key self-healed
 
 
 # ---------------------------------------------------------------------------
@@ -370,6 +425,7 @@ def test_main_writes_status_and_strips_run_health(tmp_path, monkeypatch):
         }
 
     monkeypatch.setattr(s, "scrape_gasbuddy", fake_scrape)
+    monkeypatch.setattr(s, "scrape_aaa", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
@@ -393,6 +449,7 @@ def test_main_reports_failure_when_scrape_raises(tmp_path, monkeypatch):
         raise RuntimeError("No CSRF token")
 
     monkeypatch.setattr(s, "scrape_gasbuddy", boom)
+    monkeypatch.setattr(s, "scrape_aaa", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
@@ -402,3 +459,146 @@ def test_main_reports_failure_when_scrape_raises(tmp_path, monkeypatch):
     status = json.loads((tmp_path / "scrape_status.json").read_text(encoding="utf-8"))
     assert status["gasbuddy_success"] is False
     assert status["eia_updated"] is True
+    # A hard failure must report real numbers, not "?/?" — the alert step prints these.
+    assert status["cities_fresh"] == 0
+    assert status["cities_total"] == len(s.CITIES)
+
+
+# ---------------------------------------------------------------------------
+# AAA independence — a GasBuddy block must not freeze the statewide trend
+# ---------------------------------------------------------------------------
+
+_AAA_FRESH = {
+    "as_of": "08/01/26",
+    "current":   {"regular": 3.97},
+    "week_ago":  {"regular": 3.89},
+    "year_ago":  {"regular": 2.96},
+}
+
+
+def test_main_refreshes_aaa_when_gasbuddy_fails(tmp_path, monkeypatch):
+    """GasBuddy blocked + AAA reachable → AAA trend updates, station data untouched."""
+    out = tmp_path / "gas_prices.json"
+    previous = {
+        "source": "GasBuddy", "price_date": "07/27/26",
+        "scraped_at": "2026-07-27T18:24:37+00:00",
+        "statewide": {"current_avg": {"regular": 3.823}},
+        "metros": {"Wausau": _city(3.9), "Madison": _city(3.7)},
+        "aaa": {"as_of": "07/27/26", "current": {"regular": 3.884}},
+    }
+    out.write_text(json.dumps(previous), encoding="utf-8")
+
+    def boom():
+        raise RuntimeError("No CSRF token")
+
+    monkeypatch.setattr(s, "scrape_gasbuddy", boom)
+    monkeypatch.setattr(s, "scrape_aaa", lambda: dict(_AAA_FRESH))
+    monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
+    monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
+    s.main()
+
+    live = json.loads(out.read_text(encoding="utf-8"))
+    assert live["aaa"]["current"]["regular"] == 3.97   # AAA refreshed
+    assert live["aaa"]["as_of"] == "08/01/26"
+    # GasBuddy-derived fields stay exactly as they were, so the widget's freshness
+    # label keeps telling the truth about the station data.
+    assert live["price_date"] == "07/27/26"
+    assert live["scraped_at"] == "2026-07-27T18:24:37+00:00"
+    assert live["statewide"]["current_avg"]["regular"] == 3.823
+    assert set(live["metros"]) == {"Wausau", "Madison"}
+    # The blurb quotes AAA's legs, so it must be rebuilt against the fresh AAA.
+    assert "8¢ higher than a week ago" in live["summary"]["blurb"]
+
+    status = json.loads((tmp_path / "scrape_status.json").read_text(encoding="utf-8"))
+    assert status["gasbuddy_success"] is False
+    assert status["aaa_updated"] is True
+    assert status["aaa_only"] is True
+
+
+def test_main_leaves_file_untouched_when_gasbuddy_and_aaa_both_fail(tmp_path, monkeypatch):
+    out = tmp_path / "gas_prices.json"
+    previous = {"source": "GasBuddy", "price_date": "07/27/26",
+                "statewide": {"current_avg": {"regular": 3.823}},
+                "metros": {"Wausau": _city(3.9)}}
+    original = json.dumps(previous)
+    out.write_text(original, encoding="utf-8")
+
+    def boom():
+        raise RuntimeError("No CSRF token")
+
+    monkeypatch.setattr(s, "scrape_gasbuddy", boom)
+    monkeypatch.setattr(s, "scrape_aaa", lambda: {})
+    monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
+    monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
+    s.main()
+
+    assert out.read_text(encoding="utf-8") == original  # byte-for-byte untouched
+    status = json.loads((tmp_path / "scrape_status.json").read_text(encoding="utf-8"))
+    assert status["aaa_updated"] is False
+    assert status["aaa_only"] is False
+
+
+def test_main_refreshes_aaa_when_every_city_comes_back_empty(tmp_path, monkeypatch):
+    """GasBuddy answers but returns no cities — AAA must still be published."""
+    out = tmp_path / "gas_prices.json"
+    out.write_text(json.dumps({
+        "source": "GasBuddy", "price_date": "07/27/26",
+        "scraped_at": "2026-07-27T18:24:37+00:00",
+        "statewide": {"current_avg": {"regular": 3.823}},
+        "metros": {"Wausau": _city(3.9)},
+        "aaa": {"as_of": "07/27/26", "current": {"regular": 3.884}},
+    }), encoding="utf-8")
+
+    monkeypatch.setattr(s, "scrape_gasbuddy", lambda: {
+        "source": "GasBuddy", "source_url": "x", "state": "Wisconsin",
+        "price_date": "08/01/26", "scraped_at": "2026-08-01T13:00:00+00:00",
+        "statewide": {"current_avg": {}}, "metros": {}, "priority_metros": [],
+        "run_health": {"cities_total": 22, "cities_fresh": 0,
+                       "failed_cities": ["Wausau"]},
+    })
+    monkeypatch.setattr(s, "scrape_aaa", lambda: dict(_AAA_FRESH))
+    monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
+    monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
+    s.main()
+
+    live = json.loads(out.read_text(encoding="utf-8"))
+    assert live["aaa"]["as_of"] == "08/01/26"          # AAA published
+    assert live["price_date"] == "07/27/26"            # station data preserved
+    assert live["statewide"]["current_avg"]["regular"] == 3.823
+    status = json.loads((tmp_path / "scrape_status.json").read_text(encoding="utf-8"))
+    assert status["gasbuddy_success"] is False
+    assert status["aaa_only"] is True
+
+
+def test_publish_aaa_only_noop_without_previous_file(tmp_path):
+    out = tmp_path / "gas_prices.json"
+    assert s.publish_aaa_only(str(out), dict(_AAA_FRESH), {}) is False
+    assert not out.exists()
+
+
+def test_fresh_aaa_overrides_carried_forward_aaa(tmp_path, monkeypatch):
+    """When GasBuddy succeeds, a fresh AAA must win over the previous run's."""
+    out = tmp_path / "gas_prices.json"
+    out.write_text(json.dumps({
+        "metros": {}, "aaa": {"as_of": "07/27/26", "current": {"regular": 3.884}},
+    }), encoding="utf-8")
+
+    monkeypatch.setattr(s, "scrape_gasbuddy", lambda: {
+        "source": "GasBuddy", "source_url": "x", "state": "Wisconsin",
+        "price_date": "08/01/26", "scraped_at": "2026-08-01T13:00:00+00:00",
+        "statewide": {"current_avg": {"regular": 3.9}},
+        "metros": {"Wausau": _city(3.9)}, "priority_metros": ["Wausau"],
+        "run_health": {"cities_total": 22, "cities_fresh": 22, "failed_cities": []},
+    })
+    monkeypatch.setattr(s, "scrape_aaa", lambda: dict(_AAA_FRESH))
+    monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
+    monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
+    s.main()
+
+    live = json.loads(out.read_text(encoding="utf-8"))
+    assert live["aaa"]["as_of"] == "08/01/26"
+    assert live["aaa"]["current"]["regular"] == 3.97

@@ -8,9 +8,33 @@ A zero-maintenance gas price widget for **Wausau Pilot & Review (WPR)**. A Pytho
 scraper runs on a GitHub Actions cron, writes static JSON to `docs/`, GitHub Pages
 serves it, and a WordPress page embeds the widget via `<iframe>`. No servers.
 
-> **Note:** The `README.md` is out of date — it describes an old AAA + Playwright +
-> Webshare-proxy approach. The actual scraper uses **GasBuddy GraphQL + EIA + Fuel
-> Insights**. Treat this file (and the code) as the source of truth, not the README.
+> **Note:** `README.md` is the plain-language operator guide and is current. This
+> file is the engineering source of truth; when they disagree, the code wins.
+
+## Where the update actually runs (read this first)
+
+**The primary runner is local, not CI.** GasBuddy's Cloudflare hard-403s the GitHub
+Actions datacenter IP for days at a stretch but trusts a residential one, so the
+twice-daily update runs on Rowan's machine via Windows Task Scheduler:
+
+| | Primary (local) | Backup (GitHub Actions) |
+|---|---|---|
+| What | `scripts/update-gas-prices.ps1` | `.github/workflows/update-gas-prices.yml` |
+| When | 7am + 7pm **Central** (Task Scheduler `WPRGasPrices-Update`) | 15:00 + 03:00 **UTC** |
+| Gets | Everything: GasBuddy stations/metros, AAA, EIA, digest PNG | AAA + EIA + digest only (GasBuddy usually blocked) |
+
+The two schedules are deliberately **~2h clear of each other in either DST season**
+so they never race to push. Local 7am/7pm Central = 12:00/00:00 UTC (CDT) or
+13:00/01:00 UTC (CST); CI at 15:00/03:00 UTC misses all four. If you change either
+schedule, re-check that separation. The local script also `pull --rebase`s before
+scraping and retries once on a rejected push, as a second line of defence.
+
+The local script refuses to run off `main` (it publishes), warns when `EIA_API_KEY`
+is unset, and reports the run's health from `docs/scrape_status.json`.
+
+> **Keep `update-gas-prices.ps1` pure ASCII.** PowerShell 5.1 reads BOM-less scripts
+> as ANSI, where a UTF-8 em-dash (`E2 80 94`) decodes to a smart quote and silently
+> terminates a string mid-line. This bit us once already.
 
 ## Architecture (standard WPR widget pattern)
 
@@ -27,20 +51,28 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 ## Data sources
 
 1. **GasBuddy GraphQL** (`/graphql`) — per-city station prices and names. Uses
-   `curl_cffi` with `impersonate="chrome"` to clear Cloudflare; **no proxy needed**.
-   - Requires a CSRF token scraped from `https://www.gasbuddy.com/home`
-     (`window.gbcsrf = "..."`). `establish_session()` retries this up to 4× with
-     backoff and a **fresh impersonated session each time**, because Cloudflare
-     intermittently 403s the Actions datacenter IP; only if all attempts fail does the
-     scrape abort (→ failure alert). The session that clears Cloudflare is reused.
+   `curl_cffi` browser impersonation to clear Cloudflare; **no proxy**.
+   - Requires a CSRF token scraped from the homepage (`window.gbcsrf = "..."`).
+     `establish_session()` retries up to 6× with backoff, rotating both the
+     **impersonation profile** (`IMPERSONATE_PROFILES`) and the **entry URL**
+     (`GASBUDDY_ENTRY_URLS`) with a fresh session each attempt — Cloudflare scores
+     TLS fingerprints and routes independently. The session that clears the wall is
+     reused for the GraphQL calls.
+   - **Rotation cannot beat a pure IP-reputation block.** Cloudflare hard-403s the
+     Actions datacenter IP for stretches at a time (it did so on every run from
+     2026-07-28 to 08-01). When that happens the scrape aborts → GasBuddy data is
+     carried forward, AAA still refreshes, and the run alerts.
    - Query: `LocationBySearchTerm` → `stations.results[]` (name, address, prices).
 2. **AAA** (`gasprices.aaa.com/?state=WI`) — the **statewide trend** source
    (today / yesterday / week / month / year, all four fuels). Server-rendered table,
    parsed with `parse_aaa()` (column order Regular, Mid-Grade, Premium, Diesel).
-   Computed AAA-internally and attributed to AAA; carried forward by
-   `merge_with_previous()` if a run fails. (Replaced **GasBuddy Fuel Insights**, which
-   went defunct — now a JS shell with no server-rendered data.)
-   - Our own `gas_prices_history.json` still backs the GasBuddy "vs yesterday" deltas
+   - **Deliberately independent of GasBuddy.** `scrape_aaa()` takes no session and
+     uses plain `requests` (AAA has no bot wall), and `main()` calls it *before* and
+     *outside* the GasBuddy try-block. This is load-bearing: AAA used to be fetched
+     inside `scrape_gasbuddy()`, so a Cloudflare block froze the statewide trend too.
+     Don't re-couple them.
+   - Carried forward by `merge_with_previous()` only if AAA itself fails.
+   - Our own `gas_prices_history.json` still backs the GasBuddy day-over-day deltas
      on the hero and per-metro rows (same-source, clean).
 3. **EIA API** (`api.eia.gov/v2`) — weekly Midwest (PADD 2, `duoarea=R20`) trend
    series for the chart, plus national reg-gas avg (`duoarea=NUS`) and WTI crude
@@ -64,6 +96,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
 | `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
+| `scripts/update-gas-prices.ps1` | **Primary** twice-daily runner (Windows Task Scheduler, local) | Yes |
 | `package.json` / `package-lock.json` | Node deps for the digest renderer (Playwright only) | Rarely |
 | `docs/digest.png` | Baked newsletter image (twice-daily) at a stable Pages URL | **Never by hand** — CI owns it |
 | `docs/wpr-logo.jpg` | WPR logo asset used by the digest card | Rarely |
@@ -152,12 +185,27 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   carries forward the previous value, tags it `stale` + `stale_from`, and
   `recalculate_statewide()` recomputes averages. Stale entries are excluded from
   `gas_prices_history.json`.
-- **Fail-soft on GasBuddy, continue to EIA.** If the GasBuddy scrape throws, the
-  previous `gas_prices.json` is left untouched and EIA still updates.
-- **History cap.** `gas_prices_history.json` is trimmed to the most recent 400 days.
-- **Cron is fixed UTC, not Central.** The workflow runs at `12:00` and `17:00` UTC.
-  GitHub Actions cron ignores DST, so local times drift: 7 AM / 12 PM during CDT,
-  6 AM / 11 AM during CST. Don't describe the schedule as a fixed Central time.
+- **Fail-soft on GasBuddy; AAA and EIA still land.** If the GasBuddy scrape throws,
+  `publish_aaa_only()` rewrites `gas_prices.json` with **just** the refreshed AAA
+  block (plus a rebuilt `summary`, which quotes AAA's legs). `statewide`, `metros`,
+  `price_date` and `scraped_at` are left byte-identical, so the widget's "Updated N
+  ago" label keeps telling the truth about the station data while the statewide trend
+  stays current. If AAA is down too, the file is not touched at all. EIA always runs.
+- **History keys are dates, never strings.** Keys are `mm/dd/yy`; a string sort
+  orders them month-major and mixes years (legacy entries were also written unpadded,
+  which once sorted March *after* July and made the hero compare against a
+  four-month-old price labeled "vs yesterday"). Use `history_key_date()` in Python
+  and `historyKeyTime()` in the widgets. `normalize_history_keys()` self-heals legacy
+  keys on write.
+- **Day-over-day deltas name their real comparison.** Runs can miss days, so the
+  widgets label the hero/metro delta "vs yesterday" only when the previous reading
+  actually is the prior day; otherwise they name the date ("vs Jul 24").
+- **History cap.** `gas_prices_history.json` is trimmed to the most recent 400 days,
+  oldest-first **by parsed date**.
+- **Cron is fixed UTC, not Central.** The backup workflow runs at `15:00` and `03:00`
+  UTC. GitHub Actions cron ignores DST, so local times drift: 10 AM / 10 PM during
+  CDT, 9 AM / 9 PM during CST. Don't describe the *workflow* schedule as a fixed
+  Central time — only the local Task Scheduler runs are true 7am/7pm Central.
 - **Output is validated before write.** `validate_output()` raises if the assembled
   data is missing keys or has an implausible statewide regular avg; the live file is
   preserved on failure (caught like any scrape error).
@@ -168,11 +216,17 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   **degraded** run — `is_degraded()` flags when fewer than half the cities scraped
   fresh (rest carried forward as stale); the file is still written either way.
   `run_health` is assembled in `scrape_gasbuddy()` and popped before `gas_prices.json`
-  is written — it never lands in the live file.
+  is written — it never lands in the live file. `write_status()` always seeds
+  `cities_fresh`/`cities_total`/`failed_cities` so a scrape that aborts before
+  reaching any city reports `0/22` rather than `?/?`, and records `aaa_updated` /
+  `aaa_only` so the alert can say whether the statewide trend still refreshed.
 - **Parsing is extracted for testability.** `parse_station_results()`,
-  `extract_cheapest_stations()`, `parse_aaa()`, `build_summary()`, and
-  `latest_eia_value()` are pure functions covered by `tests/test_scrape.py`;
-  run `pytest -q` after touching scraper logic.
+  `extract_cheapest_stations()`, `parse_aaa()`, `build_summary()`,
+  `history_key_date()`, `normalize_history_keys()`, and `latest_eia_value()` are pure
+  functions covered by `tests/test_scrape.py`; run `pytest -q` after touching scraper
+  logic. **Tests must not hit the network** — the `main()` tests stub `scrape_aaa`
+  alongside `scrape_gasbuddy` and the EIA fetchers; if the suite suddenly takes
+  seconds instead of ~0.5s, something is making a real request.
 - **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows
   a quiet "temporarily unavailable" state (no stale baked-in snapshot). The header
   shows a relative "Updated Nh ago" that turns amber past ~26h.
@@ -187,6 +241,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   waits for `body[data-ready]` (set after the card's fetch/render) so it never races
   the data. It's an **image for email**, not a data cache. Keep `digest.html` fonts
   non-blocking and the `data-ready` signal intact.
+  - **Re-renders on both daily runs.** The Node / Playwright / render / commit steps
+    carry `if: ${{ !cancelled() }}` so a hard scraper failure can't skip the digest —
+    AAA and EIA may have refreshed even when GasBuddy didn't. The PNG only *commits*
+    when its pixels actually change, so an unchanged day is a no-op, not churn.
+  - **Mixed freshness is stated on the card.** It carries two sources with independent
+    freshness; when `aaa.as_of` differs from `price_date` (GasBuddy blocked) an amber
+    notice names both dates. Email readers can't check a timestamp — don't drop it.
 
 ## Commands
 
@@ -236,3 +297,10 @@ cd docs && python -m http.server 8000   # then open http://localhost:8000
 - [x] ~~Harden the Fuel Insights price regex.~~ Superseded: Fuel Insights is defunct
   (page no longer serves data) and was removed entirely; statewide comparisons now
   come from our own history.
+- [x] **Decouple AAA from GasBuddy** so a Cloudflare block can't freeze the
+  statewide trend (`scrape_aaa()` + `publish_aaa_only()`).
+- [x] **Fix date-ordering of history keys** in the scraper and both widgets.
+- [ ] **Metro + per-station data still goes stale during a GasBuddy IP block.** AAA
+  only covers statewide. The known fix is routing GasBuddy through a residential
+  proxy (~$3–6/mo, one new repo secret) — deferred by choice, not blocked. If metro
+  staleness starts mattering to the newsroom, that's the lever.
