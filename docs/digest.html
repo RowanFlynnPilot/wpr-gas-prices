@@ -57,6 +57,10 @@
   .dg-fuel-lbl { font-size:8.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--ink-faint); }
   .dg-fuel-val { font-family:'Playfair Display',Georgia,serif; font-size:18px; font-weight:700; margin-top:2px; }
 
+  /* Across-the-border one-liner */
+  .dg-borders { text-align:center; font-size:10.5px; color:var(--ink-light); padding:9px 16px 0; letter-spacing:0.2px; }
+  .dg-borders strong { color:var(--ink-mid); font-weight:700; }
+
   /* Blurb */
   .dg-blurb { margin:12px 20px 2px; padding:11px 14px; background:var(--paper-warm); border-left:3px solid var(--accent); border-radius:4px; font-size:12.5px; line-height:1.55; color:var(--ink-mid); }
 
@@ -204,6 +208,18 @@
     var natl = ctx && ctx.national_regular != null
       ? ' · U.S. avg <strong>$' + ctx.national_regular.toFixed(2) + '</strong>' : '';
 
+    // Neighboring-state one-liner (AAA current averages, when present)
+    var nbHtml = '';
+    var nbStates = (data.neighbors || {}).states;
+    if (nbStates) {
+      var nbParts = [];
+      ['MN', 'IA', 'IL', 'MI'].forEach(function (c) {
+        var p = nbStates[c] && nbStates[c].current && nbStates[c].current.regular;
+        if (typeof p === 'number') nbParts.push(c + ' <strong>$' + p.toFixed(2) + '</strong>');
+      });
+      if (nbParts.length) nbHtml = '<div class="dg-borders">Across the border · ' + nbParts.join(' · ') + '</div>';
+    }
+
     var blurbText = (data.summary && data.summary.blurb) || '';
     var blurbHtml = blurbText ? '<div class="dg-blurb">' + blurbText + '</div>' : '';
 
@@ -232,6 +248,8 @@
       + staleHtml
 
       + '<div class="dg-fuels">' + fuelHtml + '</div>'
+
+      + nbHtml
 
       + blurbHtml
 

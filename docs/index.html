@@ -747,10 +747,15 @@
 
     // Wisconsin overlay: our own daily statewide history, clipped to the chart's
     // date window. Daily points on a weekly axis need time-based x, not index-based.
-    const t0 = cutoff[0].date.getTime();
-    const t1 = cutoff[cutoff.length - 1].date.getTime();
-    const span = (t1 - t0) || 1;
+    // The window END extends to the freshest series: EIA publishes weekly with up
+    // to ~2 weeks of lag, and cutting at its last point would hide the newest —
+    // most newsworthy — days of the Wisconsin line.
     const wiAll = getWIEntries(activeFuel);
+    const t0 = cutoff[0].date.getTime();
+    const lastEIA = cutoff[cutoff.length - 1].date.getTime();
+    const lastWI = wiAll ? wiAll[wiAll.length - 1].date.getTime() : 0;
+    const t1 = Math.max(lastEIA, lastWI);
+    const span = (t1 - t0) || 1;
     const wi = wiAll ? wiAll.filter(e => e.date.getTime() >= t0 && e.date.getTime() <= t1) : [];
     const hasWI = wi.length >= 2;
 
