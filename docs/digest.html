@@ -39,6 +39,10 @@
   .dg-hero-sub { font-size:11px; color:var(--ink-light); margin-top:6px; }
   .dg-dollar { font-family:'Source Sans 3',sans-serif; }
 
+  .dg-spark { margin-top:9px; }
+  .dg-spark svg { display:block; }
+  .dg-spark-cap { font-size:9px; color:var(--ink-faint); margin-top:3px; letter-spacing:0.3px; }
+
   .dg-trend { width:172px; background:var(--paper-warm); border-left:1px solid var(--rule); padding:12px 14px; display:flex; flex-direction:column; justify-content:center; gap:7px; }
   .dg-trend-cap { font-size:8.5px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-faint); margin-bottom:1px; }
   .dg-trend-row { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; }
@@ -92,7 +96,7 @@
 <script>
 (function () {
   'use strict';
-  var DATA = './gas_prices.json', CTX = './eia_context.json', LOGO = './wpr-logo.jpg';
+  var DATA = './gas_prices.json', CTX = './eia_context.json', HIST = './gas_prices_history.json', LOGO = './wpr-logo.jpg';
   var FUELS = [['regular','Regular'],['mid_grade','Mid'],['premium','Premium'],['diesel','Diesel']];
 
   function done() { document.body.setAttribute('data-ready', '1'); }
@@ -109,6 +113,37 @@
     return months[(+m[1]) - 1] + ' ' + (+m[2]) + ', 20' + m[3];
   }
 
+  // 30-day statewide-regular sparkline from our own history file. History keys
+  // are m/d/yy and may be unpadded, so sort by parsed date, never as strings.
+  function sparkline(hist) {
+    if (!hist) return '';
+    var days = Object.keys(hist).map(function (k) {
+      var m = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(k);
+      return m ? [Date.UTC(2000 + (+m[3]), (+m[1]) - 1, +m[2]), k] : null;
+    }).filter(Boolean).sort(function (a, b) { return a[0] - b[0]; });
+    var pts = [];
+    days.forEach(function (e) {
+      var v = hist[e[1]] && hist[e[1]].statewide && hist[e[1]].statewide.regular;
+      if (typeof v === 'number') pts.push(v);
+    });
+    pts = pts.slice(-30);
+    if (pts.length < 5) return '';
+    var w = 250, h = 34, pad = 2;
+    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+    var range = (max - min) || 1;
+    var step = (w - pad * 2) / (pts.length - 1);
+    var coords = pts.map(function (p, i) {
+      return (pad + i * step).toFixed(1) + ',' + (pad + (h - pad * 2) * (1 - (p - min) / range)).toFixed(1);
+    }).join(' ');
+    var trend = pts[pts.length - 1] - pts[0];
+    var color = trend > 0.005 ? 'var(--up)' : trend < -0.005 ? 'var(--down)' : 'var(--accent)';
+    var sign = trend > 0.005 ? '+' : trend < -0.005 ? '−' : '±';
+    var cents = Math.round(Math.abs(trend) * 100);
+    return '<div class="dg-spark"><svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">'
+      + '<polyline points="' + coords + '" fill="none" stroke="' + color + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>'
+      + '<div class="dg-spark-cap">past 30 days · <span style="color:' + color + ';font-weight:700">' + sign + cents + '¢</span></div></div>';
+  }
+
   function trendRow(label, cur, prev) {
     if (cur == null || prev == null) return '';
     var d = cur - prev, up = d > 0.005, dn = d < -0.005;
@@ -117,7 +152,7 @@
       + '<span class="val ' + cls + '">' + arrow + ' ' + money(d) + '</span></div>';
   }
 
-  function render(data, ctx) {
+  function render(data, ctx, hist) {
     var sw = (data.statewide && data.statewide.current_avg) || {};
     var reg = sw.regular;
     var aaa = data.aaa || {};
@@ -190,7 +225,8 @@
       + '<div class="dg-hero"><div class="dg-hero-main">'
       + '<div class="dg-hero-label">Statewide average · Regular</div>'
       + '<div class="dg-hero-value">' + (reg != null ? heroPrice(reg) : '—') + '</div>'
-      + '<div class="dg-hero-sub">per gallon · live via GasBuddy</div></div>'
+      + '<div class="dg-hero-sub">per gallon · live via GasBuddy</div>'
+      + sparkline(hist) + '</div>'
       + '<div class="dg-trend">' + trendHtml + '</div></div>'
 
       + staleHtml
@@ -220,9 +256,10 @@
 
   Promise.all([
     fetch(DATA + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-    fetch(CTX + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    fetch(CTX + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    fetch(HIST + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
   ]).then(function (res) {
-    if (res[0]) render(res[0], res[1]); else fail();
+    if (res[0]) render(res[0], res[1], res[2]); else fail();
   }).catch(fail);
 })();
 </script>
