@@ -630,17 +630,22 @@ def normalize_history_keys(history: dict) -> dict:
     return normalized
 
 
-def update_history(data: dict, out_dir: str) -> None:
+def load_history(out_dir: str) -> dict:
+    """Read gas_prices_history.json, or {} if missing/corrupt."""
     history_path = os.path.join(out_dir, "gas_prices_history.json")
-    today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
-    history = {}
     if os.path.exists(history_path):
         try:
             with open(history_path, "r", encoding="utf-8") as f:
-                history = json.load(f)
+                return json.load(f)
         except (json.JSONDecodeError, OSError):
-            history = {}
-    history = normalize_history_keys(history)
+            pass
+    return {}
+
+
+def update_history(data: dict, out_dir: str) -> None:
+    history_path = os.path.join(out_dir, "gas_prices_history.json")
+    today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
+    history = normalize_history_keys(load_history(out_dir))
 
     entry: dict = {}
     sw = data.get("statewide", {}).get("current_avg", {})
@@ -680,12 +685,47 @@ def _format_long_date(price_date: str) -> str:
     return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
 
 
-def build_summary(data: dict) -> dict:
+def history_extreme_note(history: dict, current: float, price_date: str) -> str:
+    """A 'the highest since June 4' milestone for the statewide regular average.
+
+    Compares today's figure against our own daily history (same GasBuddy source
+    as the headline number). Speaks only when the milestone reaches back at
+    least 30 days — "highest since Tuesday" is noise — and stays quiet with
+    under 60 days of history. Pure/testable. Returns "" when there is nothing
+    worth saying.
+    """
+    today = history_key_date(price_date)
+    if not isinstance(current, (int, float)) or today is None:
+        return ""
+    readings = []
+    for key, entry in (history or {}).items():
+        d = history_key_date(key)
+        v = (entry.get("statewide") or {}).get("regular") if isinstance(entry, dict) else None
+        if d is None or d >= today or not isinstance(v, (int, float)):
+            continue
+        readings.append((d, v))
+    if len(readings) < 60:
+        return ""
+    for label, at_least_as_extreme in [("highest", lambda v: v >= current),
+                                       ("lowest", lambda v: v <= current)]:
+        since = max((d for d, v in readings if at_least_as_extreme(v)), default=None)
+        if since is None:
+            first = min(d for d, _ in readings)
+            months = max(1, round((today - first).days / 30))
+            return f"the {label} in WPR's {months} months of tracking"
+        if (today - since).days >= 30:
+            return f"the {label} since {since.strftime('%B')} {since.day}"
+    return ""
+
+
+def build_summary(data: dict, history: dict | None = None) -> dict:
     """A quotable, plain-language summary the WPR newsroom can drop into articles.
 
     Headline average is GasBuddy (our station-derived figure); the price-trend
     comparisons are AAA's, computed AAA-internally (AAA current vs AAA past) and
-    attributed to AAA. Pure. Returns {} if there's no usable average.
+    attributed to AAA. A milestone clause ("the highest since June 4") comes
+    from our own history when one applies. Pure. Returns {} if there's no
+    usable average.
     """
     cur = data.get("statewide", {}).get("current_avg", {}).get("regular")
     if cur is None:
@@ -731,8 +771,10 @@ def build_summary(data: dict) -> dict:
                         f"(${reg[low_city]:.2f}) and the highest in {high_city} (${reg[high_city]:.2f}).")
 
     as_of = _format_long_date(data.get("price_date", ""))
+    extreme = history_extreme_note(history or {}, cur, data.get("price_date", ""))
+    extreme_clause = f" — {extreme}" if extreme else ""
     blurb = (f"Regular gas is averaging ${cur:.2f} a gallon across Wisconsin as of "
-             f"{as_of}, according to GasBuddy.{trend}{metro_clause}")
+             f"{as_of}, according to GasBuddy{extreme_clause}.{trend}{metro_clause}")
 
     return {
         "as_of": as_of,
@@ -812,7 +854,7 @@ def publish_aaa_only(output_path: str, aaa: dict, previous_data: dict,
     updated["aaa"] = aaa
     if neighbors:
         updated["neighbors"] = neighbors
-    summary = build_summary(updated)
+    summary = build_summary(updated, load_history(os.path.dirname(os.path.abspath(output_path))))
     if summary:
         updated["summary"] = summary
 
@@ -977,7 +1019,7 @@ def main() -> None:
 
         if fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
             validate_output(data)
-            summary = build_summary(data)
+            summary = build_summary(data, load_history(out_dir))
             if summary:
                 data["summary"] = summary
                 log.info("Summary: %s", summary["blurb"])

@@ -420,6 +420,56 @@ def test_build_summary_metro_clause_ranks_plausible_incl_stale():
 
 
 # ---------------------------------------------------------------------------
+# history_extreme_note — "highest since ..." milestone for the blurb
+# ---------------------------------------------------------------------------
+
+def _synth_history(end_key, days, price, overrides=None):
+    """`days` daily statewide readings ending at end_key, all at `price`."""
+    from datetime import timedelta
+    end = s.history_key_date(end_key)
+    hist = {}
+    for i in range(days):
+        d = end - timedelta(days=i)
+        hist[d.strftime("%m/%d/%y")] = {"statewide": {"regular": price}}
+    for k, v in (overrides or {}).items():
+        hist[k] = {"statewide": {"regular": v}}
+    return hist
+
+
+def test_extreme_note_highest_since_named_date():
+    hist = _synth_history("06/03/26", 90, 3.50, overrides={"04/20/26": 4.05})
+    assert s.history_extreme_note(hist, 4.00, "06/04/26") == "the highest since April 20"
+
+
+def test_extreme_note_alltime_high_names_tracking_span():
+    hist = _synth_history("06/03/26", 90, 3.50)
+    assert s.history_extreme_note(hist, 4.00, "06/04/26") == \
+        "the highest in WPR's 3 months of tracking"
+
+
+def test_extreme_note_quiet_when_milestone_is_recent_or_history_thin():
+    # Yesterday was higher, and lower days are 2 days back — nothing to say.
+    hist = _synth_history("06/03/26", 90, 3.50, overrides={"06/03/26": 4.05})
+    assert s.history_extreme_note(hist, 4.00, "06/04/26") == ""
+    # Under 60 days of history: stay quiet even at an all-time high.
+    hist = _synth_history("06/03/26", 30, 3.50)
+    assert s.history_extreme_note(hist, 4.00, "06/04/26") == ""
+
+
+def test_build_summary_includes_extreme_clause():
+    data = {
+        "price_date": "06/04/26",
+        "statewide": {"current_avg": {"regular": 4.00}},
+        "metros": {"Wausau": _city(4.0), "Madison": _city(3.9)},
+    }
+    hist = _synth_history("06/03/26", 90, 3.50)
+    blurb = s.build_summary(data, hist)["blurb"]
+    assert "according to GasBuddy — the highest in WPR's 3 months of tracking." in blurb
+    # And without history the clause is simply absent (legacy behavior).
+    assert "months of tracking" not in s.build_summary(data)["blurb"]
+
+
+# ---------------------------------------------------------------------------
 # detect_notable_move — the story nudge
 # ---------------------------------------------------------------------------
 
