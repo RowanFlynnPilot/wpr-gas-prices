@@ -7,10 +7,13 @@ on:
     # — because GasBuddy's Cloudflare hard-403s this datacenter IP but trusts a
     # residential one.
     #
-    # These times are deliberately clear of the local runs so the two never race to
-    # push. Local 7am/7pm Central lands at 12:00/00:00 UTC (CDT) or 13:00/01:00 UTC
-    # (CST); 15:00 and 03:00 UTC stay ~2h clear of all four, in either season.
-    # Cron is fixed UTC and ignores DST, so local times drift an hour seasonally.
+    # These times are nominally clear of the local runs (local 7am/7pm Central =
+    # 12:00/00:00 UTC in CDT, 13:00/01:00 in CST; 15:00/03:00 misses all four),
+    # but GitHub cron drifts by HOURS under load (observed 6-12h, Aug 2026), so
+    # collisions WILL happen despite the separation. Both runners tolerate them:
+    # this job retries its push with -X ours, and the local script self-heals a
+    # stuck rebase and retries with -X theirs. Cron is fixed UTC and ignores
+    # DST, so local times also drift an hour seasonally.
     - cron: '0 15 * * *'   # 10am CDT / 9am CST
     - cron: '0 3 * * *'    # 10pm CDT / 9pm CST
   workflow_dispatch:
@@ -85,7 +88,16 @@ jobs:
             echo "No price changes detected, skipping commit."
           else
             git commit -m "Update gas prices — $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git push
+            # The local runner may have pushed while this job scraped (cron
+            # drift makes that a normal event). Its data is fresher and richer
+            # (residential IP, full GasBuddy), so on a collision origin wins:
+            # -X ours during a rebase favors origin/main, and our commit keeps
+            # only what doesn't conflict.
+            if ! git push; then
+              echo "Push rejected — rebasing onto origin (origin wins conflicts) and retrying."
+              git pull --rebase -X ours origin main
+              git push
+            fi
           fi
 
       - name: Alert on scrape failure

@@ -47,6 +47,37 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $ProjectRoot
 
+# -- Failure alerting -----------------------------------------------------------
+# Task Scheduler swallows this script's console output, so a fatal exit here is
+# invisible (the runner once died silently for two days on a stuck rebase).
+# Fatal paths file/refresh one GitHub issue -- the same place CI failures
+# surface -- and a healthy run closes it. Best-effort: alerting must never mask
+# the real failure.
+$AlertTitle = "Local gas-price runner failing"
+function Publish-FailureAlert {
+    param([string]$Reason)
+    try {
+        if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
+        $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm'
+        $body = "The local Task Scheduler run failed at $stamp Central.`n`n$Reason`n`nRuns will keep failing until this is fixed; the CI backup usually covers AAA + EIA only. See scripts/update-gas-prices.ps1. This issue closes itself after a healthy local run."
+        $existing = gh issue list --state open --search "$AlertTitle in:title" --json number --jq ".[0].number"
+        if ($existing) { gh issue comment $existing --body $body | Out-Null }
+        else { gh issue create --title $AlertTitle --body $body | Out-Null }
+        Write-Host "[alert] Filed failure alert on GitHub." -ForegroundColor Yellow
+    } catch {
+        Write-Host "[warn] Could not file failure alert: $_" -ForegroundColor Yellow
+    }
+}
+function Close-FailureAlert {
+    try {
+        if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
+        $existing = gh issue list --state open --search "$AlertTitle in:title" --json number --jq ".[0].number"
+        if ($existing) {
+            gh issue close $existing --comment "Healthy local run at $(Get-Date -Format 'yyyy-MM-dd HH:mm') Central." | Out-Null
+        }
+    } catch { }
+}
+
 Write-Host ""
 Write-Host "-- update-gas-prices.ps1 -------------------------------------------" -ForegroundColor Cyan
 Write-Host "Project: $ProjectRoot"
@@ -57,10 +88,12 @@ Write-Host ""
 $Python = ".\.venv\Scripts\python.exe"
 if (-not (Test-Path $Python)) {
     Write-Host "[error] Python venv not found at $Python" -ForegroundColor Red
+    Publish-FailureAlert "Python venv not found at $Python."
     exit 2
 }
 if (-not (Test-Path .\scrape_gas_prices.py)) {
     Write-Host "[error] scrape_gas_prices.py not found in $ProjectRoot" -ForegroundColor Red
+    Publish-FailureAlert "scrape_gas_prices.py not found in $ProjectRoot."
     exit 2
 }
 
@@ -68,6 +101,7 @@ $Branch = (git rev-parse --abbrev-ref HEAD).Trim()
 if ($Branch -ne "main") {
     Write-Host "[error] On branch '$Branch', not 'main'. Refusing to publish." -ForegroundColor Red
     Write-Host "        Switch to main before scheduling this task." -ForegroundColor Red
+    Publish-FailureAlert "Repo is on branch '$Branch', not 'main'."
     exit 2
 }
 
@@ -77,13 +111,35 @@ if (-not $env:EIA_API_KEY) {
     Write-Host "[warn] EIA_API_KEY not set. EIA trend/context will be skipped." -ForegroundColor Yellow
 }
 
+# -- Recover from a previous run's interrupted rebase ---------------------------
+# GitHub's cron drifts by hours under load (observed 6-12h, Aug 2026), so the CI
+# backup can push mid-run despite the nominal schedule separation. If a past
+# run's rebase was left half-done, every later run would die at the pull below
+# (this dead-ended the runner for two days once). Abort it: the commit it was
+# replaying is regenerated data, and the -X theirs pull below re-lands it.
+if ((Test-Path .git\rebase-merge) -or (Test-Path .git\rebase-apply)) {
+    Write-Host "[git] Interrupted rebase found. Aborting it..." -ForegroundColor Yellow
+    git rebase --abort
+    if ((Test-Path .git\rebase-merge) -or (Test-Path .git\rebase-apply)) {
+        git rebase --quit
+    }
+}
+
 # -- Sync with origin before scraping ------------------------------------------
 # git writes informational output to stderr; don't redirect it in PowerShell or it
 # surfaces as ErrorRecords.
+# -X ours: during a rebase "ours" is origin/main. Conflicts here only happen
+# when a past run left a data commit it never pushed -- that data is stale by
+# definition, so origin wins and the leftover commit shrinks to whatever
+# doesn't conflict (usually nothing). The scrape below regenerates everything
+# regardless. Automation can't produce real code conflicts -- CI never edits
+# source files.
 Write-Host "[git] Pulling latest from origin/main..." -ForegroundColor DarkGray
-git pull --rebase origin main
+git pull --rebase -X ours origin main
 if ($LASTEXITCODE -ne 0) {
+    git rebase --abort
     Write-Host "[error] Could not pull cleanly. Resolve manually before publishing." -ForegroundColor Red
+    Publish-FailureAlert "git pull --rebase failed; the run was skipped."
     exit 1
 }
 
@@ -93,6 +149,7 @@ Write-Host "[scrape] Running scrape_gas_prices.py (~8-10 min: rate-limit batchin
 & $Python .\scrape_gas_prices.py --output docs\gas_prices.json
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[error] Scraper exited $LASTEXITCODE." -ForegroundColor Red
+    Publish-FailureAlert "scrape_gas_prices.py exited $LASTEXITCODE."
     exit 1
 }
 
@@ -165,6 +222,7 @@ git diff --staged --quiet
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "[done] No changes to publish." -ForegroundColor Green
+    Close-FailureAlert
     exit 0
 }
 
@@ -188,17 +246,23 @@ if ($LASTEXITCODE -ne 0) {
 
 git push origin main
 if ($LASTEXITCODE -ne 0) {
-    # The CI backup job may have pushed while we were scraping. Rebase onto it and
-    # retry once; a second failure is a real conflict worth looking at by hand.
+    # The CI backup job may have pushed while we were scraping (its cron drifts
+    # by hours, so this is a normal event, not an anomaly). Rebase onto it with
+    # -X theirs -- our data commit is minutes old and should win any collision
+    # on the generated files -- and retry once. If even that fails, abort the
+    # rebase so the NEXT run starts clean instead of inheriting a stuck state.
     Write-Host "[warn] Push rejected. Rebasing onto origin/main and retrying..." -ForegroundColor Yellow
-    git pull --rebase origin main
+    git pull --rebase -X theirs origin main
     if ($LASTEXITCODE -ne 0) {
+        git rebase --abort
         Write-Host "[error] Rebase failed. Resolve manually." -ForegroundColor Red
+        Publish-FailureAlert "Post-push rebase failed; today's data was scraped but not published."
         exit 1
     }
     git push origin main
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[error] git push failed after retry." -ForegroundColor Red
+        Publish-FailureAlert "git push failed after a rebase retry; today's data was scraped but not published."
         exit 1
     }
 }
@@ -207,4 +271,5 @@ Write-Host ""
 Write-Host "[done] Published. Pages will redeploy in about a minute." -ForegroundColor Green
 Write-Host "       https://rowanflynnpilot.github.io/wpr-gas-prices/"
 Write-Host ""
+Close-FailureAlert
 exit 0
