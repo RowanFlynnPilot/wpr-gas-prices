@@ -145,6 +145,9 @@
   .wpr-trends-stat-feature .wpr-trends-stat-label { color:var(--accent-dark); }
   .wpr-trends-stat-value { font-family:'Playfair Display',Georgia,serif; font-size:18px; font-weight:700; }
   .wpr-trends-stat-sub { display:block; font-size:8.5px; color:var(--ink-light); margin-top:2px; font-weight:600; }
+  .wpr-trends-legend { display:flex; justify-content:center; gap:16px; padding:2px 0 6px; font-size:10px; color:var(--ink-light); font-weight:600; }
+  .wpr-trends-legend-item { display:flex; align-items:center; gap:5px; }
+  .wpr-trends-legend-swatch { display:inline-block; width:14px; height:3px; border-radius:2px; }
   .wpr-trends-svg { width:100%; height:auto; }
   .wpr-trends-empty { text-align:center; padding:40px 10px; color:var(--ink-faint); font-style:italic; font-size:13px; }
   .wpr-chart-axis-label { font-size:9px; fill:var(--ink-faint); font-family:'DM Sans',sans-serif; }
@@ -228,6 +231,18 @@
     entries.sort((a, b) => a.date - b.date);
     eiaCache[fuel] = entries;
     return entries;
+  }
+
+  // Wisconsin statewide daily series from our own history file — overlaid on the
+  // EIA Midwest weekly benchmark in the Trends chart.
+  function getWIEntries(fuel) {
+    if (!historyData) return null;
+    const out = [];
+    for (const k of historyKeysSorted()) {
+      const v = historyData[k]?.statewide?.[fuel];
+      if (typeof v === 'number') out.push({ date: new Date(historyKeyTime(k)), price: v });
+    }
+    return out.length >= 2 ? out : null;
   }
 
   // ── Helpers ──
@@ -701,15 +716,29 @@
     const minP = Math.min(...prices);
     const maxP = Math.max(...prices);
 
+    // Wisconsin overlay: our own daily statewide history, clipped to the chart's
+    // date window. Daily points on a weekly axis need time-based x, not index-based.
+    const t0 = cutoff[0].date.getTime();
+    const t1 = cutoff[cutoff.length - 1].date.getTime();
+    const span = (t1 - t0) || 1;
+    const wiAll = getWIEntries(activeFuel);
+    const wi = wiAll ? wiAll.filter(e => e.date.getTime() >= t0 && e.date.getTime() <= t1) : [];
+    const hasWI = wi.length >= 2;
+
     // Chart dimensions
     const W = 600, H = 280;
     const padL = 48, padR = 16, padT = 20, padB = 40;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
+    const xOf = t => padL + ((t - t0) / span) * chartW;
 
-    // Y-axis: only 4 ticks max for a cleaner look
-    const niceMin = Math.floor(minP * 20) / 20;
-    const niceMax = Math.ceil(maxP * 20) / 20;
+    // Y-axis: only 4 ticks max for a cleaner look. The domain covers both series
+    // (the min/max annotations and stat tiles stay EIA-only).
+    const wiPrices = wi.map(e => e.price);
+    const domainMin = wiPrices.length ? Math.min(minP, ...wiPrices) : minP;
+    const domainMax = wiPrices.length ? Math.max(maxP, ...wiPrices) : maxP;
+    const niceMin = Math.floor(domainMin * 20) / 20;
+    const niceMax = Math.ceil(domainMax * 20) / 20;
     const niceRange = niceMax - niceMin || 0.05;
     const yTicks = [];
     const rawStep = niceRange / 3;
@@ -719,11 +748,17 @@
     }
 
     // Build points
-    const points = cutoff.map((e, i) => {
-      const x = padL + (i / (cutoff.length - 1)) * chartW;
+    const points = cutoff.map(e => {
+      const x = xOf(e.date.getTime());
       const y = padT + (1 - (e.price - niceMin) / niceRange) * chartH;
       return { x, y, price: e.price, date: e.date };
     });
+
+    const wiPath = hasWI ? wi.map((e, i) => {
+      const x = xOf(e.date.getTime());
+      const y = padT + (1 - (e.price - niceMin) / niceRange) * chartH;
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join('') : '';
 
     const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
     const areaPath = linePath + `L${points[points.length-1].x.toFixed(1)},${padT + chartH}L${points[0].x.toFixed(1)},${padT + chartH}Z`;
@@ -785,10 +820,16 @@
 
     const rangeLabel = trendRange === 26 ? '6 Month' : '12 Month';
 
+    const legend = hasWI ? `
+      <div class="wpr-trends-legend">
+        <span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch" style="background:var(--accent)"></span>Midwest · EIA weekly</span>
+        <span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch" style="background:var(--ink-mid)"></span>Wisconsin · GasBuddy daily</span>
+      </div>` : '';
+
     return `
       <div class="wpr-trends-stats">
         <div class="wpr-trends-stat wpr-trends-stat-feature">
-          <span class="wpr-trends-stat-label">Latest</span>
+          <span class="wpr-trends-stat-label">${hasWI ? 'Midwest Latest' : 'Latest'}</span>
           <span class="wpr-trends-stat-value"><span class="wpr-dollar">$</span>${lastPt.price.toFixed(3)}</span>
         </div>
         <div class="wpr-trends-stat">
@@ -809,8 +850,9 @@
           <span class="wpr-trends-stat-sub" style="color:${changeColor}">${absChange} ${baseLabel}</span>
         </div>
       </div>
+      ${legend}
       <svg viewBox="0 0 ${W} ${H}" class="wpr-trends-svg" role="img"
-           aria-label="Line chart of ${fuelLabel(activeFuel)} gas price over the ${rangeLabel}, overall change ${changeSign}${changePct}%.">
+           aria-label="Line chart of ${fuelLabel(activeFuel)} gas price over the ${rangeLabel}${hasWI ? ', Midwest benchmark and Wisconsin daily average' : ''}, overall change ${changeSign}${changePct}%.">
         <title>${fuelLabel(activeFuel)} price trend — ${rangeLabel}</title>
         <defs>
           <linearGradient id="wprTrendArea" x1="0" y1="0" x2="0" y2="1">
@@ -821,6 +863,7 @@
         ${grid}
         <path d="${areaPath}" fill="url(#wprTrendArea)"/>
         <line x1="${padL}" y1="${lastPt.y.toFixed(1)}" x2="${W - padR}" y2="${lastPt.y.toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,3" opacity="0.45"/>
+        ${hasWI ? `<path d="${wiPath}" fill="none" stroke="var(--ink-mid)" stroke-width="1.5" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
         <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
         <circle cx="${minPt.x.toFixed(1)}" cy="${minPt.y.toFixed(1)}" r="3.5" fill="var(--down)" stroke="#fff" stroke-width="1.5"/>
         <text x="${minPt.x.toFixed(1)}" y="${(minPt.y + 15).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--down)" font-family="'Source Sans 3',sans-serif">$${minP.toFixed(2)}</text>
@@ -861,6 +904,11 @@
 
     const rangeLabel = ranges.find(r => r.weeks === trendRange)?.label || '6 Month';
     const fuelName = fuelLabel(activeFuel);
+    const hasWI = !!getWIEntries(activeFuel);
+    const title = hasWI ? `${fuelName} · ${rangeLabel}` : `Midwest Region · ${fuelName} · ${rangeLabel}`;
+    const note = hasWI
+      ? 'The Wisconsin line is WPR&#8217;s own daily statewide tracking via GasBuddy; the Midwest line is the U.S. EIA&#8217;s weekly regional benchmark (hover it for values).'
+      : 'Regional benchmark from the U.S. EIA — broader than the Wisconsin prices on the other tabs.';
 
     return `
       <div class="wpr-gas-fuel-row wpr-trends-btn-row">
@@ -869,8 +917,8 @@
         ${rangeBtns}
       </div>
       <div class="wpr-trends-chart-wrap">
-        <div class="wpr-trends-title">Midwest Region · ${fuelName} · ${rangeLabel}</div>
-        <div class="wpr-trends-note">Regional benchmark from the U.S. EIA — broader than the Wisconsin prices on the other tabs.</div>
+        <div class="wpr-trends-title">${title}</div>
+        <div class="wpr-trends-note">${note}</div>
         ${chartContent}
       </div>
     `;
