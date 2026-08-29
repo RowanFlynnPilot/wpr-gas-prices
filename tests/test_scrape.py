@@ -169,6 +169,20 @@ def test_merge_noop_without_previous():
     assert list(data["metros"]) == ["Wausau"]
 
 
+def test_merge_carries_neighbors_forward_only_when_missing():
+    prev_nb = {"as_of": "06/01/26", "states": {"MN": {"name": "Minnesota",
+                                                      "current": {"regular": 3.5}}}}
+    data = {"metros": {"Wausau": _city(4.0)}, "statewide": {}, "neighbors": {}}
+    s.merge_with_previous(data, {"metros": {}, "neighbors": prev_nb})
+    assert data["neighbors"] == prev_nb
+
+    fresh_nb = {"as_of": "06/02/26", "states": {"MN": {"name": "Minnesota",
+                                                       "current": {"regular": 3.6}}}}
+    data = {"metros": {"Wausau": _city(4.0)}, "statewide": {}, "neighbors": fresh_nb}
+    s.merge_with_previous(data, {"metros": {}, "neighbors": prev_nb})
+    assert data["neighbors"] == fresh_nb
+
+
 # ---------------------------------------------------------------------------
 # update_history
 # ---------------------------------------------------------------------------
@@ -426,6 +440,7 @@ def test_main_writes_status_and_strips_run_health(tmp_path, monkeypatch):
 
     monkeypatch.setattr(s, "scrape_gasbuddy", fake_scrape)
     monkeypatch.setattr(s, "scrape_aaa", lambda: {})
+    monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
@@ -450,6 +465,7 @@ def test_main_reports_failure_when_scrape_raises(tmp_path, monkeypatch):
 
     monkeypatch.setattr(s, "scrape_gasbuddy", boom)
     monkeypatch.setattr(s, "scrape_aaa", lambda: {})
+    monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
@@ -493,6 +509,7 @@ def test_main_refreshes_aaa_when_gasbuddy_fails(tmp_path, monkeypatch):
 
     monkeypatch.setattr(s, "scrape_gasbuddy", boom)
     monkeypatch.setattr(s, "scrape_aaa", lambda: dict(_AAA_FRESH))
+    monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
@@ -516,6 +533,27 @@ def test_main_refreshes_aaa_when_gasbuddy_fails(tmp_path, monkeypatch):
     assert status["aaa_only"] is True
 
 
+def test_publish_aaa_only_refreshes_neighbors_when_fetched(tmp_path):
+    out = tmp_path / "gas_prices.json"
+    previous = {
+        "source": "GasBuddy", "price_date": "07/27/26",
+        "statewide": {"current_avg": {"regular": 3.823}},
+        "metros": {"Wausau": _city(3.9)},
+        "neighbors": {"as_of": "07/27/26", "states": {"MN": {"name": "Minnesota",
+                                                             "current": {"regular": 3.5}}}},
+    }
+    fresh_nb = {"as_of": "08/01/26", "states": {"MN": {"name": "Minnesota",
+                                                       "current": {"regular": 3.6}}}}
+    assert s.publish_aaa_only(str(out), dict(_AAA_FRESH), previous, fresh_nb) is True
+    live = json.loads(out.read_text(encoding="utf-8"))
+    assert live["neighbors"] == fresh_nb
+
+    # An empty neighbors fetch keeps the carried-forward block instead.
+    assert s.publish_aaa_only(str(out), dict(_AAA_FRESH), previous, {}) is True
+    live = json.loads(out.read_text(encoding="utf-8"))
+    assert live["neighbors"]["as_of"] == "07/27/26"
+
+
 def test_main_leaves_file_untouched_when_gasbuddy_and_aaa_both_fail(tmp_path, monkeypatch):
     out = tmp_path / "gas_prices.json"
     previous = {"source": "GasBuddy", "price_date": "07/27/26",
@@ -529,6 +567,7 @@ def test_main_leaves_file_untouched_when_gasbuddy_and_aaa_both_fail(tmp_path, mo
 
     monkeypatch.setattr(s, "scrape_gasbuddy", boom)
     monkeypatch.setattr(s, "scrape_aaa", lambda: {})
+    monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
@@ -559,6 +598,7 @@ def test_main_refreshes_aaa_when_every_city_comes_back_empty(tmp_path, monkeypat
                        "failed_cities": ["Wausau"]},
     })
     monkeypatch.setattr(s, "scrape_aaa", lambda: dict(_AAA_FRESH))
+    monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
@@ -594,6 +634,7 @@ def test_fresh_aaa_overrides_carried_forward_aaa(tmp_path, monkeypatch):
         "run_health": {"cities_total": 22, "cities_fresh": 22, "failed_cities": []},
     })
     monkeypatch.setattr(s, "scrape_aaa", lambda: dict(_AAA_FRESH))
+    monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])

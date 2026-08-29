@@ -66,6 +66,10 @@ GASBUDDY_HOME    = "https://www.gasbuddy.com/home"
 GASBUDDY_GRAPHQL = "https://www.gasbuddy.com/graphql"
 AAA_URL          = "https://gasprices.aaa.com/?state=WI"
 
+# States bordering Wisconsin, for the widget's "across the border" strip.
+# AAA serves every state from the same plainly-rendered page (?state=XX).
+NEIGHBOR_STATES = {"MN": "Minnesota", "IA": "Iowa", "IL": "Illinois", "MI": "Michigan"}
+
 # Entry pages tried when hunting for the CSRF token. Cloudflare's bot rules are
 # per-route, so a block on /home doesn't always mean the site is unreachable.
 GASBUDDY_ENTRY_URLS = [GASBUDDY_HOME, "https://www.gasbuddy.com/"]
@@ -341,6 +345,36 @@ def scrape_aaa() -> dict:
     else:
         log.warning("  AAA: could not parse statewide table")
     return aaa
+
+
+def scrape_neighbors() -> dict:
+    """Fetch AAA current averages for the four states bordering Wisconsin.
+
+    Powers the widget's "across the border" strip. Same plain-requests path as
+    scrape_aaa() and equally independent of GasBuddy. Best-effort per state;
+    returns {} if nothing parsed, so merge_with_previous() carries the last
+    good block forward.
+    """
+    log.info("Scraping AAA for neighboring states (%s)...", ", ".join(NEIGHBOR_STATES))
+    states: dict = {}
+    for code, name in NEIGHBOR_STATES.items():
+        try:
+            resp = requests.get(f"https://gasprices.aaa.com/?state={code}",
+                                headers=BROWSER_HEADERS, timeout=20)
+            resp.raise_for_status()
+            current = parse_aaa(resp.text).get("current")
+            if current:
+                states[code] = {"name": name,
+                                "current": {k: round(v, 3) for k, v in current.items()}}
+            else:
+                log.warning("  AAA %s: could not parse state table", code)
+        except Exception as e:
+            log.warning("  AAA %s fetch failed: %s", code, e)
+        time.sleep(1)
+    if not states:
+        return {}
+    log.info("  Neighbors: %s", {c: s["current"].get("regular") for c, s in states.items()})
+    return {"as_of": datetime.now(timezone.utc).strftime("%m/%d/%y"), "states": states}
 
 
 # ---------------------------------------------------------------------------
@@ -727,9 +761,12 @@ def merge_with_previous(data: dict, previous_data: dict) -> None:
         return
 
     # Carry forward AAA's statewide trend if this run couldn't fetch it (its `as_of`
-    # date stays from the previous run, so staleness is visible).
+    # date stays from the previous run, so staleness is visible). Same deal for the
+    # neighboring-state block.
     if not data.get("aaa") and previous_data.get("aaa"):
         data["aaa"] = previous_data["aaa"]
+    if not data.get("neighbors") and previous_data.get("neighbors"):
+        data["neighbors"] = previous_data["neighbors"]
 
     if "metros" not in previous_data:
         return
@@ -752,13 +789,15 @@ def merge_with_previous(data: dict, previous_data: dict) -> None:
         recalculate_statewide(data)
 
 
-def publish_aaa_only(output_path: str, aaa: dict, previous_data: dict) -> bool:
-    """Refresh just the AAA trend inside an existing gas_prices.json.
+def publish_aaa_only(output_path: str, aaa: dict, previous_data: dict,
+                     neighbors: dict | None = None) -> bool:
+    """Refresh just the AAA-sourced blocks inside an existing gas_prices.json.
 
     Used when the GasBuddy scrape is blocked. The station-derived fields
     (`statewide`, `metros`, `price_date`, `scraped_at`) are left exactly as they
     were, so the widget's freshness label keeps telling the truth about them, while
-    the statewide trend — which AAA can still supply — updates normally.
+    the statewide trend — which AAA can still supply — updates normally. The
+    neighboring-state block rides along when it was fetched.
 
     The summary blurb is rebuilt too: it quotes AAA's trend legs, so leaving it
     behind would contradict the refreshed AAA panel. Its headline stays explicitly
@@ -771,6 +810,8 @@ def publish_aaa_only(output_path: str, aaa: dict, previous_data: dict) -> bool:
 
     updated = dict(previous_data)
     updated["aaa"] = aaa
+    if neighbors:
+        updated["neighbors"] = neighbors
     summary = build_summary(updated)
     if summary:
         updated["summary"] = summary
@@ -866,8 +907,10 @@ def main() -> None:
             previous_data = {}
 
     # AAA runs first, on its own connection, so a GasBuddy block can never freeze
-    # the statewide trend (see scrape_aaa / publish_aaa_only).
+    # the statewide trend (see scrape_aaa / publish_aaa_only). Neighbors ride the
+    # same plain-requests path.
     aaa = scrape_aaa()
+    neighbors = scrape_neighbors()
 
     gb_success = False
     aaa_only = False
@@ -876,6 +919,7 @@ def main() -> None:
         data = scrape_gasbuddy()
         run_health = data.pop("run_health", None)  # transient — not persisted in gas_prices.json
         data["aaa"] = aaa  # empty dict → merge_with_previous carries the last one forward
+        data["neighbors"] = neighbors
 
         fresh_count = len(data.get("metros", {}))
         merge_with_previous(data, previous_data)
@@ -902,11 +946,11 @@ def main() -> None:
             # rate-limited). Same outcome as a hard failure: keep the station prices,
             # still publish AAA.
             log.warning("No fresh city data — preserving station prices unchanged")
-            aaa_only = publish_aaa_only(args.output, aaa, previous_data)
+            aaa_only = publish_aaa_only(args.output, aaa, previous_data, neighbors)
 
     except Exception:
         log.exception("GasBuddy scrape failed — publishing AAA trend and EIA data")
-        aaa_only = publish_aaa_only(args.output, aaa, previous_data)
+        aaa_only = publish_aaa_only(args.output, aaa, previous_data, neighbors)
 
     eia_updated = fetch_eia_data(out_dir)
     fetch_eia_context(out_dir)

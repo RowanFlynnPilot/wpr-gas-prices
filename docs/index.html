@@ -85,6 +85,7 @@
   .wpr-state-range-labels { display:flex; justify-content:space-between; font-size:10px; color:var(--ink-faint); margin-top:3px; }
   .wpr-state-section-label { font-size:9px; text-transform:uppercase; letter-spacing:0.8px; color:var(--ink-faint); font-weight:700; text-align:center; padding:2px 14px 0; }
   .wpr-ctx-strip { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 20px; padding:10px 14px 2px; margin:8px 12px 0; border-top:1px solid var(--rule-light); }
+  .wpr-ctx-strip-flush { border-top:none; margin-top:0; padding-top:4px; }
   .wpr-ctx-item { display:flex; align-items:baseline; gap:6px; }
   .wpr-ctx-label { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-faint); font-weight:700; }
   .wpr-ctx-value { font-family:'Playfair Display',Georgia,serif; font-size:15px; font-weight:700; }
@@ -505,6 +506,33 @@
     return items.length ? `<div class="wpr-ctx-strip" title="Source: U.S. EIA">${items.join('')}</div>` : '';
   }
 
+  // Neighboring-state comparison (AAA vs AAA, so it's apples-to-apples with the
+  // Wisconsin AAA current average, not the GasBuddy hero number).
+  function renderNeighborStrip() {
+    const states = data?.neighbors?.states;
+    const wiCur = data?.aaa?.current?.[activeFuel];
+    if (!states) return '';
+    const items = [];
+    for (const code of ['MN', 'IA', 'IL', 'MI']) {
+      const st = states[code];
+      const p = st?.current?.[activeFuel];
+      if (p == null) continue;
+      let rel = '';
+      if (wiCur != null) {
+        const diff = p - wiCur;
+        const cents = Math.round(Math.abs(diff) * 100);
+        const cls = diff > 0.005 ? 'up-color' : diff < -0.005 ? 'down-color' : 'flat-color';
+        const sign = diff > 0.005 ? '+' : diff < -0.005 ? '−' : '±';
+        rel = `<span class="wpr-ctx-rel ${cls}">${sign}${cents}¢</span>`;
+      }
+      items.push(`<span class="wpr-ctx-item" title="${st.name}"><span class="wpr-ctx-label">${code}</span><span class="wpr-ctx-value">${fmt(p)}</span>${rel}</span>`);
+    }
+    if (!items.length) return '';
+    return `
+      <div class="wpr-state-section-label">Across the border · vs Wisconsin avg · via AAA</div>
+      <div class="wpr-ctx-strip wpr-ctx-strip-flush">${items.join('')}</div>`;
+  }
+
   // ── Statewide Tab ──
   function renderStatewide() {
     const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
@@ -618,6 +646,7 @@
         </select>
       </div>
       ${compareSection}
+      ${renderNeighborStrip()}
       ${renderContextStrip()}
     `;
   }
