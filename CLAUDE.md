@@ -23,14 +23,24 @@ twice-daily update runs on Rowan's machine via Windows Task Scheduler:
 | When | 7am + 7pm **Central** (Task Scheduler `WPRGasPrices-Update`) | 15:00 + 03:00 **UTC** |
 | Gets | Everything: GasBuddy stations/metros, AAA, EIA, digest PNG | AAA + EIA + digest only (GasBuddy usually blocked) |
 
-The two schedules are deliberately **~2h clear of each other in either DST season**
-so they never race to push. Local 7am/7pm Central = 12:00/00:00 UTC (CDT) or
-13:00/01:00 UTC (CST); CI at 15:00/03:00 UTC misses all four. If you change either
-schedule, re-check that separation. The local script also `pull --rebase`s before
-scraping and retries once on a rejected push, as a second line of defence.
+The two schedules are nominally ~2h clear of each other in either DST season, **but
+that separation cannot be relied on**: GitHub's cron drifts by hours under load
+(observed 6–12h in Aug 2026, when a drifted CI push collided with the local 7pm run,
+left a rebase half-done, and silently killed every local run for two days). Both
+runners therefore treat push races as normal events rather than anomalies:
+
+- The **local script** aborts any leftover rebase at startup, pulls with `-X ours`
+  (a stale unpushed data commit loses to origin), and retries a rejected push with
+  `-X theirs` (the just-scraped commit wins). Only generated data files ever
+  conflict — CI never edits source.
+- **CI** retries a rejected push with `-X ours` (the local runner's data is fresher
+  and richer, so origin wins).
 
 The local script refuses to run off `main` (it publishes), warns when `EIA_API_KEY`
-is unset, and reports the run's health from `docs/scrape_status.json`.
+is unset, and reports the run's health from `docs/scrape_status.json`. Any fatal
+exit files a **"Local gas-price runner failing"** GitHub issue (best-effort, via
+`gh`), auto-closed by the next healthy run — Task Scheduler swallows console
+output, so this is the only way local failures surface.
 
 > **Keep `update-gas-prices.ps1` pure ASCII.** PowerShell 5.1 reads BOM-less scripts
 > as ANSI, where a UTF-8 em-dash (`E2 80 94`) decodes to a smart quote and silently
@@ -74,6 +84,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
    - Carried forward by `merge_with_previous()` only if AAA itself fails.
    - Our own `gas_prices_history.json` still backs the GasBuddy day-over-day deltas
      on the hero and per-metro rows (same-source, clean).
+   - `scrape_neighbors()` fetches the same AAA page for **MN, IA, IL, MI**
+     (`NEIGHBOR_STATES`) → `data["neighbors"]`, powering the Statewide tab's
+     "Across the border" strip. Best-effort per state, carried forward when
+     unreachable, refreshed by `publish_aaa_only()` during GasBuddy blocks.
 3. **EIA API** (`api.eia.gov/v2`) — weekly Midwest (PADD 2, `duoarea=R20`) trend
    series for the chart, plus national reg-gas avg (`duoarea=NUS`) and WTI crude
    (`RWTC`) for the context strip. Requires `EIA_API_KEY`; **skipped silently if unset**.
@@ -134,6 +148,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
     "current":   { "regular": 0.0, "mid_grade": 0.0, "premium": 0.0, "diesel": 0.0 },
     "yesterday": { ... }, "week_ago": { ... }, "month_ago": { ... }, "year_ago": { ... }
   },
+  "neighbors": {                                // AAA current averages for bordering states
+    "as_of": "mm/dd/yy",                        // (or {} / carried-forward)
+    "states": { "MN": { "name": "Minnesota", "current": { "regular": 0.0, ... } }, ... }
+  },
   "metros": {
     "Wausau": {
       "current_avg": { ... }, "low": { ... }, "high": { ... },
@@ -173,6 +191,20 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Newsroom blurb.** `build_summary()` writes a quotable `summary` blurb into
   `gas_prices.json` each run; the Statewide tab shows it with a Copy button. Headline
   average is GasBuddy; the trend ("down 26¢ from a week ago … per AAA") is AAA-internal.
+  `history_extreme_note()` appends a milestone clause ("— the highest since June 4")
+  from our own history when today's figure is the most extreme reading in 30+ days;
+  it stays quiet below 60 days of history or when the milestone is recent.
+- **Story nudge on notable moves.** `detect_notable_move()` flags statewide regular
+  moves past `NOTABLE_DAY_MOVE` (5¢ vs yesterday) or `NOTABLE_WEEK_MOVE` (10¢ vs a
+  week ago), AAA-internal, into `scrape_status.json` with a ready-to-quote sentence.
+  Both runners then file one **"Fuel Watch: notable gas-price move"** issue (same
+  title, so they dedup each other). An open issue suppresses repeats; closing it
+  re-arms the nudge. It is explicitly a story heads-up, not an error alert.
+- **Trends tab overlays Wisconsin on the Midwest.** `getWIEntries()` reads the daily
+  statewide series from `gas_prices_history.json` and draws it over the EIA weekly
+  benchmark. The chart x-axis is **time-based, not index-based** — required for
+  daily and weekly points to align; don't revert it. Stat tiles and min/max
+  annotations stay EIA-only; the y-domain covers both series.
 - **Statewide trend = AAA.** `parse_aaa()`/`scrape_aaa()` populate `data["aaa"]`; the
   Statewide "over time" bars and the blurb's trend both read it. The hero "vs
   yesterday" stays GasBuddy-history (same source as the hero number).
@@ -202,10 +234,12 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   actually is the prior day; otherwise they name the date ("vs Jul 24").
 - **History cap.** `gas_prices_history.json` is trimmed to the most recent 400 days,
   oldest-first **by parsed date**.
-- **Cron is fixed UTC, not Central.** The backup workflow runs at `15:00` and `03:00`
-  UTC. GitHub Actions cron ignores DST, so local times drift: 10 AM / 10 PM during
-  CDT, 9 AM / 9 PM during CST. Don't describe the *workflow* schedule as a fixed
-  Central time — only the local Task Scheduler runs are true 7am/7pm Central.
+- **Cron is fixed UTC, not Central — and it drifts.** The backup workflow runs at
+  `15:00` and `03:00` UTC. GitHub Actions cron ignores DST, so local times drift
+  seasonally: 10 AM / 10 PM during CDT, 9 AM / 9 PM during CST. Worse, GitHub runs
+  scheduled jobs **hours late under load** (observed 6–12h), so never design
+  anything that assumes the CI and local runs can't overlap — they can and do (see
+  "Where the update actually runs").
 - **Output is validated before write.** `validate_output()` raises if the assembled
   data is missing keys or has an implausible statewide regular avg; the live file is
   preserved on failure (caught like any scrape error).
@@ -219,7 +253,8 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   is written — it never lands in the live file. `write_status()` always seeds
   `cities_fresh`/`cities_total`/`failed_cities` so a scrape that aborts before
   reaching any city reports `0/22` rather than `?/?`, and records `aaa_updated` /
-  `aaa_only` so the alert can say whether the statewide trend still refreshed.
+  `aaa_only` (so the alert can say whether the statewide trend still refreshed) and
+  `notable_move` (the story nudge, see above).
 - **Parsing is extracted for testability.** `parse_station_results()`,
   `extract_cheapest_stations()`, `parse_aaa()`, `build_summary()`,
   `history_key_date()`, `normalize_history_keys()`, and `latest_eia_value()` are pure
@@ -240,7 +275,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   URL (`.../wpr-gas-prices/digest.png`) the newsletter `<img>`-embeds. The renderer
   waits for `body[data-ready]` (set after the card's fetch/render) so it never races
   the data. It's an **image for email**, not a data cache. Keep `digest.html` fonts
-  non-blocking and the `data-ready` signal intact.
+  non-blocking and the `data-ready` signal intact. The card also draws a 30-day
+  statewide sparkline from `gas_prices_history.json`; that fetch lives inside the
+  same `Promise.all` as the data fetch, so `data-ready` still means "everything
+  drawn" — keep it there.
   - **Re-renders on both daily runs.** The Node / Playwright / render / commit steps
     carry `if: ${{ !cancelled() }}` so a hard scraper failure can't skip the digest —
     AAA and EIA may have refreshed even when GasBuddy didn't. The PNG only *commits*

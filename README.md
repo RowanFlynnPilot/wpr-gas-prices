@@ -35,7 +35,9 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
 2. **AAA** — Wisconsin's statewide price trend (today / yesterday / week / month /
    year, all fuels), from AAA's public state page. GasBuddy gives the live station
    detail; AAA gives the historical trend. AAA is fetched **independently**, so it
-   keeps updating even on days GasBuddy can't be reached.
+   keeps updating even on days GasBuddy can't be reached. The same AAA pages also
+   supply the widget's **"Across the border"** strip (Minnesota, Iowa, Illinois,
+   Michigan vs. Wisconsin).
 3. **EIA** (U.S. Energy Information Administration) — weekly Midwest fuel-price
    trends, plus the U.S. national average and WTI crude for context. Requires a free
    `EIA_API_KEY`; if it's missing, this part is simply skipped and everything else
@@ -55,10 +57,20 @@ Why local? GasBuddy blocks GitHub's servers but not a home internet connection. 
 block is what froze the widget for five days in July 2026. Running from your machine
 avoids it entirely and costs nothing.
 
-**GitHub Actions still runs as a backup** (10am and 10pm Central-ish). If your laptop
-is off or you're away, it keeps AAA, the EIA data and the newsletter image refreshing,
-and still opens an issue if something's wrong. You just won't get new *station-level*
-prices until your machine runs again.
+**GitHub Actions still runs as a backup** (10am and 10pm Central-ish — GitHub's
+scheduler can run hours late, and both runners are built to tolerate colliding with
+each other). If your laptop is off or you're away, it keeps AAA, the EIA data and the
+newsletter image refreshing, and still opens an issue if something's wrong. You just
+won't get new *station-level* prices until your machine runs again.
+
+If the **local** run itself fails (stuck git state, scraper error, push failure), it
+also opens a GitHub issue — "Local gas-price runner failing" — and closes it again
+after the next healthy run, so a silent Task Scheduler death can't go unnoticed.
+
+**Story nudges:** when the statewide average moves enough to be newsworthy (5¢+ in a
+day or 10¢+ in a week, per AAA), a GitHub issue titled **"Fuel Watch: notable
+gas-price move"** appears with a ready-to-quote sentence. It's a heads-up, not an
+error — close it after reading and it will fire again on the next notable move.
 
 To run it by hand at any time:
 
