@@ -146,3 +146,30 @@ jobs:
           else
             gh issue create --title "$TITLE" --body "$BODY"
           fi
+
+      # A story nudge, not an error alert: the scraper flags statewide regular
+      # moves past the thresholds in detect_notable_move() (5c/day, 10c/week,
+      # AAA-internal). One open issue = the newsroom has been nudged; it is not
+      # re-commented while open, and closing it re-arms the nudge. The local
+      # runner files the identical issue title, so the two dedup each other.
+      - name: Nudge on notable price move
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="Fuel Watch: notable gas-price move"
+          [ -f docs/scrape_status.json ] || exit 0
+          TEXT=$(python -c "import json;m=json.load(open('docs/scrape_status.json')).get('notable_move');print(m['text'] if m else '')")
+          if [ -z "$TEXT" ]; then
+            echo "No notable move."
+            exit 0
+          fi
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "Nudge issue #$EXISTING already open; not repeating."
+            exit 0
+          fi
+          BODY=$(printf '%s\n' \
+            "$TEXT" "" \
+            "This is a story nudge, not an error — the widget and newsletter digest already show the new numbers, and the widget's Copy button has a quotable blurb. Close this issue after reading; it will fire again on the next notable move." )
+          gh issue create --title "$TITLE" --body "$BODY"

@@ -842,6 +842,47 @@ def validate_output(data: dict) -> None:
         raise ValueError(f"statewide regular avg out of plausible range: {reg!r}")
 
 
+# Statewide regular-gas moves big enough to be a story (dollars). Day compares
+# AAA current vs yesterday; week compares AAA current vs a week ago.
+NOTABLE_DAY_MOVE  = 0.05
+NOTABLE_WEEK_MOVE = 0.10
+
+
+def detect_notable_move(aaa: dict) -> dict | None:
+    """Flag a statewide regular-gas move big enough to be worth a story.
+
+    AAA-internal comparisons (current vs yesterday / week ago), so a GasBuddy
+    block can't distort it — and an AAA outage simply yields None rather than a
+    stale repeat. Returns the larger qualifying move with a ready-to-quote
+    sentence, or None. Pure/testable. Consumed from scrape_status.json by both
+    runners, which nudge the newsroom via a GitHub issue.
+    """
+    cur = (aaa or {}).get("current", {}).get("regular")
+    if cur is None:
+        return None
+    best = None
+    for period, key, threshold, phrase in [
+        ("day", "yesterday", NOTABLE_DAY_MOVE, "since yesterday"),
+        ("week", "week_ago", NOTABLE_WEEK_MOVE, "in the past week"),
+    ]:
+        prev = aaa.get(key, {}).get("regular")
+        if prev is None:
+            continue
+        delta = cur - prev
+        if abs(delta) < threshold:
+            continue
+        if best is None or abs(delta) > abs(best["delta"]):
+            cents = round(abs(delta) * 100)
+            verb = "jumped" if delta > 0 else "dropped"
+            best = {
+                "period": period,
+                "delta": round(delta, 3),
+                "text": (f"Wisconsin regular {verb} {cents}¢ {phrase} "
+                         f"(AAA statewide: ${prev:.2f} -> ${cur:.2f})."),
+            }
+    return best
+
+
 def is_degraded(run_health: dict | None) -> bool:
     """A run is 'degraded' if fewer than half the cities scraped fresh — the file is
     still written (stale-preservation fills the gaps), but it warrants an alert."""
@@ -853,7 +894,8 @@ def is_degraded(run_health: dict | None) -> bool:
 
 
 def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | None,
-                 eia_updated: bool, aaa_updated: bool, aaa_only: bool) -> None:
+                 eia_updated: bool, aaa_updated: bool, aaa_only: bool,
+                 notable_move: dict | None = None) -> None:
     """Always-written per-run heartbeat consumed by the failure-alert workflow step.
 
     Not committed (gitignored) — it is read in-job, after the scraper, to decide
@@ -866,6 +908,9 @@ def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | Non
         "eia_updated":      eia_updated,
         "aaa_updated":      aaa_updated,
         "aaa_only":         aaa_only,
+        # A statewide move big enough to be a story (see detect_notable_move),
+        # or None. Both runners read this to nudge the newsroom.
+        "notable_move":     notable_move,
         # Defaults so the alert step always has real numbers to report: when the
         # scrape aborts before reaching any city, run_health is None and the honest
         # count is 0 of all cities — not "?/?".
@@ -956,7 +1001,8 @@ def main() -> None:
     fetch_eia_context(out_dir)
 
     write_status(out_dir, gasbuddy_success=gb_success, run_health=run_health,
-                 eia_updated=eia_updated, aaa_updated=bool(aaa), aaa_only=aaa_only)
+                 eia_updated=eia_updated, aaa_updated=bool(aaa), aaa_only=aaa_only,
+                 notable_move=detect_notable_move(aaa))
 
     if not gb_success:
         log.warning("GasBuddy scrape failed; AAA %s, EIA data updated.",

@@ -420,6 +420,37 @@ def test_build_summary_metro_clause_ranks_plausible_incl_stale():
 
 
 # ---------------------------------------------------------------------------
+# detect_notable_move — the story nudge
+# ---------------------------------------------------------------------------
+
+def test_detect_notable_move_week_jump():
+    aaa = {"current": {"regular": 3.97}, "week_ago": {"regular": 3.85}}
+    move = s.detect_notable_move(aaa)
+    assert move["period"] == "week"
+    assert move["delta"] == 0.12
+    assert "jumped 12¢ in the past week" in move["text"]
+    assert "$3.85 -> $3.97" in move["text"]
+
+
+def test_detect_notable_move_bigger_day_drop_beats_qualifying_week():
+    aaa = {"current": {"regular": 3.60},
+           "yesterday": {"regular": 3.72},
+           "week_ago": {"regular": 3.70}}
+    move = s.detect_notable_move(aaa)
+    assert move["period"] == "day"
+    assert move["delta"] == -0.12
+    assert "dropped 12¢ since yesterday" in move["text"]
+
+
+def test_detect_notable_move_none_below_thresholds_or_without_aaa():
+    aaa = {"current": {"regular": 3.90}, "yesterday": {"regular": 3.87},
+           "week_ago": {"regular": 3.82}}
+    assert s.detect_notable_move(aaa) is None
+    assert s.detect_notable_move({}) is None
+    assert s.detect_notable_move(None) is None
+
+
+# ---------------------------------------------------------------------------
 # main() integration (offline — scrape_gasbuddy / fetch_eia_data stubbed)
 # ---------------------------------------------------------------------------
 

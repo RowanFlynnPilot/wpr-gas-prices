@@ -167,6 +167,25 @@ if (Test-Path .\docs\scrape_status.json) {
     } else {
         Write-Host "[warn] GasBuddy and AAA both unreachable. Nothing new to publish." -ForegroundColor Yellow
     }
+
+    # Story nudge: the scraper flags statewide moves past its thresholds (see
+    # detect_notable_move). One open issue means the newsroom has already been
+    # nudged; closing it re-arms the nudge. Same title as the CI step, so the
+    # two runners dedup each other. Best-effort.
+    if ($status.notable_move -and $status.notable_move.text) {
+        Write-Host "[news] $($status.notable_move.text)" -ForegroundColor Cyan
+        try {
+            if (Get-Command gh -ErrorAction SilentlyContinue) {
+                $newsTitle = "Fuel Watch: notable gas-price move"
+                $open = gh issue list --state open --search "$newsTitle in:title" --json number --jq ".[0].number"
+                if (-not $open) {
+                    $newsBody = "$($status.notable_move.text)`n`nThis is a story nudge, not an error - the widget and newsletter digest already show the new numbers, and the widget's Copy button has a quotable blurb. Close this issue after reading; it will fire again on the next notable move."
+                    gh issue create --title $newsTitle --body $newsBody | Out-Null
+                    Write-Host "[news] Filed story nudge on GitHub." -ForegroundColor Cyan
+                }
+            }
+        } catch { }
+    }
 }
 
 # -- Re-render the newsletter digest PNG ---------------------------------------
