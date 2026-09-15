@@ -331,14 +331,24 @@
   }
 
   // ── Render ──
-  // Tell the embedding page our current height so the iframe can auto-fit (F4).
+  // Tell the embedding page our current height so the iframe can auto-fit
+  // (docs/embed.js listens). Posts now AND on the next frame: background tabs
+  // never run requestAnimationFrame, so a rAF-only post leaves a WordPress page
+  // opened in a background tab stuck at the iframe's fallback height.
+  function sendHeight() {
+    const h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+    if (h > 0) window.parent.postMessage({ type: 'wpr-gas-height', height: h }, '*');
+  }
   function postHeight() {
     if (window.parent === window) return; // not embedded
-    requestAnimationFrame(() => {
-      const h = Math.ceil(document.documentElement.getBoundingClientRect().height);
-      window.parent.postMessage({ type: 'wpr-gas-height', height: h }, '*');
-    });
+    sendHeight();
+    requestAnimationFrame(sendHeight);
   }
+  // embed.js pings when it attaches: this iframe can finish rendering before the
+  // host page's async script is listening, and would otherwise never re-post.
+  window.addEventListener('message', e => {
+    if (e.source === window.parent && e.data === 'wpr-gas-height?') postHeight();
+  });
 
   // Tiny inline trend line for a metro row, from recent history (F5).
   function metroSparkline(name, fuel) {

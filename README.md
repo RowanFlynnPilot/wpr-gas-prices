@@ -135,37 +135,30 @@ scraper paces itself to respect GasBuddy's rate limits). A green check means
 
 ### 6. Embed on the WPR website
 
-In WordPress, add a **Custom HTML** block where the widget should appear:
+In WordPress, add a **Custom HTML** block where the widget should appear.
+
+**Full widget** (720px, tabs, trends chart):
 
 ```html
-<div style="max-width:720px;margin:0 auto;">
-  <iframe
-    id="wpr-gas-iframe"
-    src="https://rowanflynnpilot.github.io/wpr-gas-prices/"
-    width="100%"
-    height="560"
-    frameborder="0"
-    style="border:none;border-radius:6px;overflow:hidden;width:100%;"
-    title="Wisconsin Gas Prices"
-    loading="lazy"
-  ></iframe>
-</div>
-<script>
-  // Auto-resize the iframe to fit the widget (height varies by tab).
-  window.addEventListener('message', function (e) {
-    if (e.origin !== 'https://rowanflynnpilot.github.io') return;
-    if (e.data && e.data.type === 'wpr-gas-height' && e.data.height) {
-      var f = document.getElementById('wpr-gas-iframe');
-      if (f) f.style.height = e.data.height + 'px';
-    }
-  });
-</script>
+<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="width:100%;max-width:720px;height:900px;border:0;display:block;margin:0 auto;"></iframe>
+<script async src="https://rowanflynnpilot.github.io/wpr-gas-prices/embed.js"></script>
 ```
 
-> The `height="560"` is just an initial value; the `<script>` resizes the iframe to
-> the exact widget height as the reader switches tabs. If your WordPress setup strips
-> `<script>` from Custom HTML blocks, the widget still works — it just keeps the fixed
-> height (set it tall enough for the Price Trends tab, ~600px).
+**Compact widget** (360px, for sidebars and narrow spots):
+
+```html
+<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/index-compact.html" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="width:100%;max-width:360px;height:600px;border:0;display:block;margin:0 auto;"></iframe>
+<script async src="https://rowanflynnpilot.github.io/wpr-gas-prices/embed.js"></script>
+```
+
+> **Never paste an embed with inline `<script>` code.** WPR's WordPress security
+> layer rejects the save and the editor shows *"Updating failed. The response is not
+> a valid JSON response."* These snippets only *load* a script (`embed.js`, served
+> from this repo), which saves fine. `embed.js` resizes each iframe to the exact
+> widget height as readers switch tabs; one include covers every gas widget on a
+> page, so both snippets can sit on the same page. The `height` in each snippet is
+> only the starting size — if a WordPress role ever strips the script tag, the
+> widget still works at that fixed height.
 
 ### 7. Newsletter image (email digest)
 

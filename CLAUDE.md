@@ -108,6 +108,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
+| `docs/embed.js` | Host-side iframe autosize loaded by the WordPress embed snippets | Rarely — keep script-free snippets working |
 | `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
 | `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
 | `scripts/update-gas-prices.ps1` | **Primary** twice-daily runner (Windows Task Scheduler, local) | Yes |
@@ -265,10 +266,15 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows
   a quiet "temporarily unavailable" state (no stale baked-in snapshot). The header
   shows a relative "Updated Nh ago" that turns amber past ~26h.
-- **Iframe auto-resize contract.** The widget posts `{type:'wpr-gas-height',height}`
-  to `window.parent` on every render/resize; the WordPress embed snippet (in the
-  README) listens and resizes the iframe. JSON fetches are cache-busted in 10-min
-  buckets, and fonts load non-blocking — keep these when editing `index.html`.
+- **Iframe auto-resize contract.** Both widgets post `{type:'wpr-gas-height',height}`
+  to `window.parent` on every render/resize — synchronously *and* on the next frame
+  (background tabs never run `requestAnimationFrame`) — and re-post when pinged
+  with `'wpr-gas-height?'`. The host side is **`docs/embed.js`**, which the README
+  snippets load via `<script async src>`; it trusts only its own serving origin and
+  matches messages to iframes by `e.source`. **Never give WPR a snippet with an
+  inline `<script>` body**: their WordPress rejects the save ("Updating failed. The
+  response is not a valid JSON response."). JSON fetches are cache-busted in 10-min
+  buckets, and fonts load non-blocking — keep these when editing either widget.
 - **Newsletter digest image.** Email can't embed the live widget, so the update
   workflow renders `docs/digest.html` (a self-contained card reading the same JSON)
   to `docs/digest.png` via Playwright/Chromium, then commits it — served at a stable
