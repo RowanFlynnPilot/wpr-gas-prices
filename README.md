@@ -140,25 +140,33 @@ In WordPress, add a **Custom HTML** block where the widget should appear.
 **Full widget** (720px, tabs, trends chart):
 
 ```html
-<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="width:100%;max-width:720px;height:900px;border:0;display:block;margin:0 auto;"></iframe>
-<script async src="https://rowanflynnpilot.github.io/wpr-gas-prices/embed.js"></script>
+<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="display:block;width:100%;max-width:720px;height:clamp(930px, calc(1960px - 159vw), 1400px);margin:0 auto;border:0;"></iframe>
 ```
 
 **Compact widget** (360px, for sidebars and narrow spots):
 
 ```html
-<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/index-compact.html" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="width:100%;max-width:360px;height:600px;border:0;display:block;margin:0 auto;"></iframe>
-<script async src="https://rowanflynnpilot.github.io/wpr-gas-prices/embed.js"></script>
+<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/index-compact.html" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="display:block;width:100%;max-width:360px;height:610px;margin:0 auto;border:0;"></iframe>
 ```
 
-> **Never paste an embed with inline `<script>` code.** WPR's WordPress security
-> layer rejects the save and the editor shows *"Updating failed. The response is not
-> a valid JSON response."* These snippets only *load* a script (`embed.js`, served
-> from this repo), which saves fine. `embed.js` resizes each iframe to the exact
-> widget height as readers switch tabs; one include covers every gas widget on a
-> page, so both snippets can sit on the same page. The `height` in each snippet is
-> only the starting size — if a WordPress role ever strips the script tag, the
-> widget still works at that fixed height.
+Both were tested on wausaupilotandreview.com (Sept 2026): they save without error and
+render in a post on the live theme.
+
+> **Never put any `<script>` tag in a WPR embed — not even `<script src>`.**
+> Cloudflare's firewall in front of wausaupilotandreview.com blocks the save request
+> for any post containing one, and WordPress shows *"Updating failed. The response is
+> not a valid JSON response."* That's what caused the intermittent JSON errors.
+> So these snippets are bare iframes with no script:
+>
+> - The **compact** widget is 599px tall at every width, so it gets a fixed 610px.
+> - The **full** widget grows taller as screens get narrower. The `clamp()` height is
+>   930px on desktop and grows to ~1360px on phones. It was measured to fit the
+>   default Statewide tab at 375, 430, 500 and 720px wide. Taller tabs (By Metro Area)
+>   scroll inside the frame.
+>
+> `docs/embed.js` can resize the frame to the exact height on every tab, but it needs
+> a `<script src>` tag. It only becomes usable if the site admin adds a Cloudflare
+> WAF exception for logged-in post saves.
 
 ### 7. Newsletter image (email digest)
 
