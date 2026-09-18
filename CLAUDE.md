@@ -269,7 +269,8 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   cities. The workflow's "Alert on scrape failure" step reads it and opens (or
   auto-closes) one GitHub issue. It alerts on **failure** (0 fresh) *and* on a
   **degraded** run — `is_degraded()` flags when fewer than half the cities scraped
-  fresh (rest carried forward as stale); the file is still written either way.
+  fresh **or** when the run was cut short by the rate limit (a 14/22 rate-limited run
+  called itself healthy on 2026-09-17); the file is still written either way.
   `run_health` is assembled in `scrape_gasbuddy()` and popped before `gas_prices.json`
   is written — it never lands in the live file. `write_status()` always seeds
   `cities_fresh`/`cities_total`/`failed_cities` so a scrape that aborts before

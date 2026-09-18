@@ -829,3 +829,9 @@ def test_scrape_gasbuddy_stops_at_the_first_rate_limit(monkeypatch):
     assert health["rate_limited"] is True
     assert health["cities_fresh"] == 1
     assert len(health["failed_cities"]) == len(s.CITIES) - 1
+
+
+def test_rate_limited_run_counts_as_degraded_even_when_most_cities_landed():
+    """14/22 with the run cut short is not a healthy run — it alerts."""
+    assert s.is_degraded({"cities_total": 22, "cities_fresh": 14, "rate_limited": True}) is True
+    assert s.is_degraded({"cities_total": 22, "cities_fresh": 14, "rate_limited": False}) is False

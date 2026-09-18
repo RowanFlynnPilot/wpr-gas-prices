@@ -984,10 +984,18 @@ def detect_notable_move(aaa: dict) -> dict | None:
 
 
 def is_degraded(run_health: dict | None) -> bool:
-    """A run is 'degraded' if fewer than half the cities scraped fresh — the file is
-    still written (stale-preservation fills the gaps), but it warrants an alert."""
+    """A run is 'degraded' when fewer than half the cities scraped fresh, or when it
+    was cut short by GasBuddy's rate limit. The file is still written (stale
+    preservation fills the gaps), but either case warrants an alert.
+
+    Rate limiting counts even when most cities got through: the 2026-09-17 evening
+    run stopped at 14/22 and reported itself healthy, which is exactly the silent
+    quality drop the alerting exists to catch.
+    """
     if not run_health:
         return False
+    if run_health.get("rate_limited"):
+        return True
     total = run_health.get("cities_total", 0)
     fresh = run_health.get("cities_fresh", 0)
     return total > 0 and fresh < total / 2
