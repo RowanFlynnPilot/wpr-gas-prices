@@ -48,29 +48,35 @@ stale, so the widget never shows blank cities.
 
 ### Where it runs
 
-The update runs **on your own machine**, twice a day, at **7am and 7pm Central**.
-Windows Task Scheduler (`WPRGasPrices-Update`) runs `scripts/update-gas-prices.ps1`,
-which scrapes, re-renders the newsletter image, and pushes. The site updates a minute
-or so later.
+The update runs **in the cloud**, twice a day, on GitHub Actions. It scrapes every
+source, re-renders the newsletter image and publishes; the site updates a minute or so
+later. Nothing on your machine has to be awake for it.
 
-Why local? GasBuddy blocks GitHub's servers but not a home internet connection. That
-block is what froze the widget for five days in July 2026. Running from your machine
-avoids it entirely and costs nothing.
+Your machine is the **standby**. Windows Task Scheduler (`WPRGasPrices-Update`) still
+starts `scripts/update-gas-prices.ps1` at 7am and 7pm Central, but it now looks at the
+published data first and exits in a second or two when that data is fresh. It only
+does the full scrape when the cloud run hasn't delivered — data older than 10 hours,
+or cities missing.
 
-**GitHub Actions still runs as a backup** (10am and 10pm Central-ish — GitHub's
-scheduler can run hours late, and both runners are built to tolerate colliding with
-each other). If your laptop is off or you're away, it keeps AAA, the EIA data and the
-newsletter image refreshing, and still opens an issue if something's wrong. You just
-won't get new *station-level* prices until your machine runs again.
+Why the standby exists: GasBuddy used to block GitHub's servers, which froze the
+widget for five days in July 2026, and a home connection got through. That block has
+been gone since mid-August. Running both anyway meant scraping four times a day, and
+on September 17 GasBuddy rate-limited the home connection — the 7pm run got only 4 of
+22 cities. The standby arrangement keeps the fallback without the extra load, and
+switches over on its own if the cloud run ever stops delivering.
 
-If the **local** run itself fails (stuck git state, scraper error, push failure), it
-also opens a GitHub issue — "Local gas-price runner failing" — and closes it again
-after the next healthy run, so a silent Task Scheduler death can't go unnoticed.
+If a run is anything less than healthy — a scraper error, a failed push, or a
+*partial* scrape where most cities fell back to carried-forward prices — a GitHub
+issue is opened ("Local gas-price runner failing" for your machine, "Gas scraper needs
+attention" for the cloud run), and closed again after the next healthy run. Task
+Scheduler hides the console, so the issue is how a local problem reaches you.
 
 **Story nudges:** when the statewide average moves enough to be newsworthy (5¢+ in a
 day or 10¢+ in a week, per AAA), a GitHub issue titled **"Fuel Watch: notable
-gas-price move"** appears with a ready-to-quote sentence. It's a heads-up, not an
-error — close it after reading and it will fire again on the next notable move.
+gas-price move"** appears with a ready-to-quote sentence. If it's still open when a
+*different* move happens, the new figure is added as a comment, so a bigger move can
+never be swallowed by an unread issue. It's a heads-up, not an error — close it when
+you're done with it.
 
 To run it by hand at any time:
 

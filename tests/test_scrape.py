@@ -724,3 +724,108 @@ def test_fresh_aaa_overrides_carried_forward_aaa(tmp_path, monkeypatch):
     live = json.loads(out.read_text(encoding="utf-8"))
     assert live["aaa"]["as_of"] == "08/01/26"
     assert live["aaa"]["current"]["regular"] == 3.97
+
+
+# ---------------------------------------------------------------------------
+# Rate-limit handling — Retry-After + the IP-wide circuit breaker
+# ---------------------------------------------------------------------------
+
+class _Resp:
+    """Minimal stand-in for a curl_cffi response."""
+
+    def __init__(self, status, headers=None, body=None):
+        self.status_code = status
+        self.headers = headers or {}
+        self._body = body or {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._body
+
+
+class _Session:
+    """Replays a queued list of responses and counts the requests made."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+        self.calls = 0
+
+    def post(self, *a, **kw):
+        self.calls += 1
+        return self._responses.pop(0) if self._responses else _Resp(200, body={})
+
+
+_ONE_STATION = {"data": {"locationBySearchTerm": {"stations": {"results": [
+    {"name": "Kwik Trip", "address": {"line1": "1 Main St", "locality": "Wausau"},
+     "prices": [{"fuelProduct": "regular_gas", "credit": {"price": "3.59"}}]},
+]}}}}
+
+
+def test_retry_after_prefers_the_server_header():
+    assert s.retry_after_seconds("441", 0) == 441
+    assert s.retry_after_seconds(" 30 ", 2) == 30
+
+
+def test_retry_after_falls_back_to_backoff_when_absent_or_unparseable():
+    assert s.retry_after_seconds(None, 0) == 8
+    assert s.retry_after_seconds(None, 2) == 24
+    # HTTP-date form and junk both fall through to the backoff for that attempt
+    assert s.retry_after_seconds("Wed, 21 Oct 2026 07:28:00 GMT", 1) == 16
+    assert s.retry_after_seconds("0", 1) == 16
+
+
+def test_long_retry_after_raises_immediately_without_retrying(monkeypatch):
+    """A multi-minute ban must not be retried into — that's what kept it alive."""
+    slept = []
+    monkeypatch.setattr(s.time, "sleep", lambda n: slept.append(n))
+    sess = _Session([_Resp(429, {"Retry-After": "441"})])
+    with pytest.raises(s.RateLimited) as exc:
+        s.scrape_city_graphql(sess, "Wausau", "Wausau, WI", {})
+    assert exc.value.retry_after == 441
+    assert sess.calls == 1     # no retry
+    assert slept == []         # and no waiting
+
+
+def test_short_window_is_waited_out_then_succeeds(monkeypatch):
+    slept = []
+    monkeypatch.setattr(s.time, "sleep", lambda n: slept.append(n))
+    sess = _Session([_Resp(429, {"Retry-After": "5"}), _Resp(200, body=_ONE_STATION)])
+    data = s.scrape_city_graphql(sess, "Wausau", "Wausau, WI", {})
+    assert data["current_avg"]["regular"] == 3.59
+    assert slept == [5]
+
+
+def test_exhausted_retries_become_rate_limited(monkeypatch):
+    monkeypatch.setattr(s.time, "sleep", lambda n: None)
+    sess = _Session([_Resp(429, {"Retry-After": "5"})] * 3)
+    with pytest.raises(s.RateLimited):
+        s.scrape_city_graphql(sess, "Wausau", "Wausau, WI", {})
+    assert sess.calls == 3
+
+
+def test_scrape_gasbuddy_stops_at_the_first_rate_limit(monkeypatch):
+    """One 429 ends the run: the limit is per-IP, so the other 21 cities would
+    only feed the window. Whatever was already scraped is kept."""
+    monkeypatch.setattr(s.time, "sleep", lambda n: None)
+    monkeypatch.setattr(s, "establish_session", lambda: (object(), "token"))
+    seen = []
+
+    def fake_city(session, city_name, search_term, headers):
+        seen.append(city_name)
+        if len(seen) == 1:
+            return {"current_avg": {"regular": 3.5}, "low": {"regular": 3.5},
+                    "high": {"regular": 3.5}, "station_count": {"regular": 4}}
+        raise s.RateLimited(441)
+
+    monkeypatch.setattr(s, "scrape_city_graphql", fake_city)
+    data = s.scrape_gasbuddy()
+
+    assert len(seen) == 2                      # stopped at the first RateLimited
+    assert list(data["metros"]) == [seen[0]]   # the good city survives
+    health = data["run_health"]
+    assert health["rate_limited"] is True
+    assert health["cities_fresh"] == 1
+    assert len(health["failed_cities"]) == len(s.CITIES) - 1

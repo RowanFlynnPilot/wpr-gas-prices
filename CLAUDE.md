@@ -13,15 +13,22 @@ serves it, and a WordPress page embeds the widget via `<iframe>`. No servers.
 
 ## Where the update actually runs (read this first)
 
-**The primary runner is local, not CI.** GasBuddy's Cloudflare hard-403s the GitHub
-Actions datacenter IP for days at a stretch but trusts a residential one, so the
-twice-daily update runs on Rowan's machine via Windows Task Scheduler:
+**CI is the primary runner again; local is standby.** This flipped twice. GasBuddy's
+Cloudflare used to hard-403 the GitHub Actions IP, which is why the local runner
+exists — but CI has scraped all 22 cities on every run since mid-August 2026, and
+running both meant four full scrapes a day across two IPs. On 2026-09-17 GasBuddy
+rate-limited the residential IP for exactly that reason (HTTP 429, `Retry-After: 441`,
+4/22 cities). The local runner now **checks first and exits when the published data is
+already fresh** (`$FreshHours = 10`, plus every metro non-stale):
 
-| | Primary (local) | Backup (GitHub Actions) |
+| | Primary (GitHub Actions) | Standby (local) |
 |---|---|---|
-| What | `scripts/update-gas-prices.ps1` | `.github/workflows/update-gas-prices.yml` |
-| When | 7am + 7pm **Central** (Task Scheduler `WPRGasPrices-Update`) | 15:00 + 03:00 **UTC** |
-| Gets | Everything: GasBuddy stations/metros, AAA, EIA, digest PNG | AAA + EIA + digest only (GasBuddy usually blocked) |
+| What | `.github/workflows/update-gas-prices.yml` | `scripts/update-gas-prices.ps1` |
+| When | 15:00 + 03:00 **UTC** (drifts hours — see below) | 7am + 7pm **Central** (Task Scheduler `WPRGasPrices-Update`) |
+| Does | Full scrape: GasBuddy stations/metros, AAA, EIA, digest PNG | The same, but **only if** CI's data is >10h old or has stale metros |
+
+Nothing needs switching if CI starts failing: `scraped_at` stops advancing (or cities
+come back stale), the freshness gate opens, and the local run takes over by itself.
 
 The two schedules are nominally ~2h clear of each other in either DST season, **but
 that separation cannot be relied on**: GitHub's cron drifts by hours under load
@@ -37,10 +44,12 @@ runners therefore treat push races as normal events rather than anomalies:
   and richer, so origin wins).
 
 The local script refuses to run off `main` (it publishes), warns when `EIA_API_KEY`
-is unset, and reports the run's health from `docs/scrape_status.json`. Any fatal
-exit files a **"Local gas-price runner failing"** GitHub issue (best-effort, via
-`gh`), auto-closed by the next healthy run — Task Scheduler swallows console
-output, so this is the only way local failures surface.
+is unset, and reports the run's health from `docs/scrape_status.json`. A fatal exit
+**or any run short of healthy** (degraded, AAA-only, both sources down) files a
+**"Local gas-price runner failing"** GitHub issue (best-effort, via `gh`),
+auto-closed by the next healthy run — Task Scheduler swallows console output, so
+this is the only way local failures surface. A degraded local run used to exit 0 in
+silence, which is how 2026-09-17 went unnoticed until someone saw the window.
 
 > **Keep `update-gas-prices.ps1` pure ASCII.** PowerShell 5.1 reads BOM-less scripts
 > as ANSI, where a UTF-8 em-dash (`E2 80 94`) decodes to a smart quote and silently
@@ -104,14 +113,14 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `requirements.txt` | `requests`, `curl_cffi` (pinned) | Rarely |
 | `requirements-dev.txt` | Adds `pytest` for the test suite | Rarely |
 | `tests/test_scrape.py` | Unit tests for the pure (no-network) scraper logic | Yes — when changing logic |
-| `.github/workflows/update-gas-prices.yml` | Cron schedule (fixed UTC 12:00 & 17:00 — see note) + failure alerting | To change timing |
+| `.github/workflows/update-gas-prices.yml` | **Primary** twice-daily run (cron 15:00 + 03:00 UTC) + failure alerting + story nudge | To change timing |
 | `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/embed.js` | Host-side iframe autosize; unusable on WPR until Cloudflare allows `<script src>` in post saves | Rarely |
 | `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
 | `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
-| `scripts/update-gas-prices.ps1` | **Primary** twice-daily runner (Windows Task Scheduler, local) | Yes |
+| `scripts/update-gas-prices.ps1` | **Standby** local runner (Task Scheduler); scrapes only when CI's data is stale | Yes |
 | `package.json` / `package-lock.json` | Node deps for the digest renderer (Playwright only) | Rarely |
 | `docs/digest.png` | Baked newsletter image (twice-daily) at a stable Pages URL | **Never by hand** — CI owns it |
 | `docs/wpr-logo.jpg` | WPR logo asset used by the digest card | Rarely |
@@ -175,11 +184,19 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 
 ## Behaviors worth knowing before editing
 
-- **Rate limiting is deliberate.** GasBuddy throttles datacenter IPs
-  (GitHub Actions / Azure) to ~7 requests/min. The scraper runs cities in **batches
-  of 7**: 60s wait before batch 1, 90s between batches, 5s between cities, plus a
-  429-retry with backoff. Don't "optimize" these delays away — that's what makes the
-  Actions run succeed. (22 cities ⇒ 4 batches, ~8–10 min per run.)
+- **Rate limiting is deliberate.** GasBuddy throttles to ~7 requests/min. The
+  scraper runs cities in **batches of 7**: 60s wait before batch 1, 90s between
+  batches, 5s between cities. Don't "optimize" these delays away — they're what make
+  a run succeed. (22 cities ⇒ 4 batches, ~8–10 min per run.)
+- **A 429 is obeyed, not fought.** GasBuddy's Cloudflare sends `Retry-After`
+  (observed 441s). `retry_after_seconds()` prefers that header over the old fixed
+  8/16/24s backoff, which retried *inside* the ban window every time — each retry
+  failed and re-triggered the rolling window, turning a transient limit into a
+  22-minute run that got 4/22 cities (2026-09-17). Waits longer than
+  `RATE_LIMIT_MAX_WAIT` (120s) raise `RateLimited` instead, and `scrape_gasbuddy()`
+  then **stops the whole run** — the limit is per-IP, so the remaining cities would
+  only feed the window. Cities already scraped are kept, the rest are carried
+  forward, and `run_health["rate_limited"]` says why.
 - **Cheapest stations.** `extract_cheapest_stations()` keeps the 8 lowest-priced
   named stations per city (by regular) with their address + all fuel prices, stored
   under `metros[city].stations`. The Metro tab makes each city row expandable to show
@@ -198,9 +215,12 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Story nudge on notable moves.** `detect_notable_move()` flags statewide regular
   moves past `NOTABLE_DAY_MOVE` (5¢ vs yesterday) or `NOTABLE_WEEK_MOVE` (10¢ vs a
   week ago), AAA-internal, into `scrape_status.json` with a ready-to-quote sentence.
-  Both runners then file one **"Fuel Watch: notable gas-price move"** issue (same
-  title, so they dedup each other). An open issue suppresses repeats; closing it
-  re-arms the nudge. It is explicitly a story heads-up, not an error alert.
+  Both runners keep one **"Fuel Watch: notable gas-price move"** issue (same title,
+  so they dedup each other): they open it when none is present, and **comment on it
+  when the move changes**, staying quiet when it's the same move. That last part
+  matters — the first design just skipped while an issue was open, so #52 (a 10¢
+  drop, opened Sep 1) silently swallowed a 33¢/gal jump two weeks later. It is
+  explicitly a story heads-up, not an error alert.
 - **Trends tab overlays Wisconsin on the Midwest.** `getWIEntries()` reads the daily
   statewide series from `gas_prices_history.json` and draws it over the EIA weekly
   benchmark. The chart x-axis is **time-based, not index-based** — required for

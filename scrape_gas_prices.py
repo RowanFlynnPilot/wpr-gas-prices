@@ -60,6 +60,11 @@ FUEL_MAP = {
 }
 
 PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "Milwaukee"]
+
+# Longest 429 wait we will sit through before giving up on the whole run. Short
+# windows are worth waiting out; a multi-minute ban is not, and retrying into it
+# only refreshes it (see retry_after_seconds).
+RATE_LIMIT_MAX_WAIT = 120
 DEFAULT_OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "gas_prices.json")
 
 GASBUDDY_HOME    = "https://www.gasbuddy.com/home"
@@ -235,10 +240,44 @@ def extract_cheapest_stations(results: list, limit: int = 8) -> list:
     return stations[:limit]
 
 
+class RateLimited(Exception):
+    """GasBuddy's Cloudflare rate limit is in force for this IP.
+
+    The limit is per-IP and per-endpoint, not per-city, so one city hitting it
+    means every remaining city would too — the caller stops rather than working
+    through the rest. Carries the server's requested wait so the log can say how
+    long the door is shut.
+    """
+
+    def __init__(self, retry_after: int):
+        super().__init__(f"rate limited for {retry_after}s")
+        self.retry_after = retry_after
+
+
+def retry_after_seconds(header: str | None, attempt: int) -> int:
+    """How long to wait after a 429: the server's own Retry-After when it sends
+    one, else exponential backoff. Pure/testable.
+
+    GasBuddy's Cloudflare does send it (observed 441s on 2026-09-17). The old
+    fixed 8/16/24s backoff therefore retried *inside* the ban window every time:
+    each retry was guaranteed to fail and kept re-triggering the rolling window,
+    which turned a transient limit into a 22-minute run that scraped 4/22 cities.
+    """
+    if header:
+        try:
+            seconds = int(float(header.strip()))
+            if seconds > 0:
+                return seconds
+        except (TypeError, ValueError):
+            pass  # Retry-After may be an HTTP-date; fall back to backoff
+    return 8 * (attempt + 1)
+
+
 def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict) -> dict | None:
     """Query GasBuddy GraphQL for a single city and return structured price data.
 
-    Retries once on HTTP 429 (rate limit) with a backoff delay.
+    Waits out a short HTTP 429 (the server's Retry-After when present);
+    raises RateLimited when the wait is longer than RATE_LIMIT_MAX_WAIT.
     """
     payload = {
         "operationName": "LocationBySearchTerm",
@@ -249,7 +288,9 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
         try:
             resp = session.post(GASBUDDY_GRAPHQL, json=payload, headers=headers, timeout=20)
             if resp.status_code == 429:
-                wait = 8 * (attempt + 1)
+                wait = retry_after_seconds(resp.headers.get("Retry-After"), attempt)
+                if wait > RATE_LIMIT_MAX_WAIT:
+                    raise RateLimited(wait)
                 log.warning("  %s: 429 rate limited — waiting %ds (attempt %d/3)",
                             city_name, wait, attempt + 1)
                 time.sleep(wait)
@@ -257,12 +298,15 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
             resp.raise_for_status()
             body = resp.json()
             break
+        except RateLimited:
+            raise           # IP-wide: the caller aborts, it isn't this city's problem
         except Exception as e:
             log.warning("  %s: request failed — %s", city_name, e)
             return None
     else:
-        log.warning("  %s: all attempts rate-limited", city_name)
-        return None
+        # Three waits inside the window and still throttled: treat it as the
+        # IP-wide limit it is instead of burning the remaining cities on it.
+        raise RateLimited(RATE_LIMIT_MAX_WAIT)
 
     try:
         results = body["data"]["locationBySearchTerm"]["stations"]["results"]
@@ -439,7 +483,10 @@ def scrape_gasbuddy() -> dict:
     city_items = list(CITIES.items())
     batch_size = 7
 
+    rate_limited = False
     for batch_num, batch_start in enumerate(range(0, len(city_items), batch_size)):
+        if rate_limited:
+            break
         batch = city_items[batch_start: batch_start + batch_size]
         if batch_num == 0:
             log.info("Batch 1/%d: waiting 60s for rate-limit window...",
@@ -450,7 +497,17 @@ def scrape_gasbuddy() -> dict:
             time.sleep(90)
 
         for i, (city_name, search_term) in enumerate(batch):
-            data = scrape_city_graphql(session, city_name, search_term, headers)
+            try:
+                data = scrape_city_graphql(session, city_name, search_term, headers)
+            except RateLimited as e:
+                # Per-IP, so the remaining cities would only feed the window that
+                # is already shut. Keep what we have; stale-preservation fills the
+                # rest and the run is reported as degraded.
+                log.error("GasBuddy is rate-limiting this IP (retry after %ds) — stopping "
+                          "after %d/%d cities rather than retrying into the ban",
+                          e.retry_after, len(metros), len(CITIES))
+                rate_limited = True
+                break
             if data:
                 metros[city_name] = data
             else:
@@ -485,6 +542,7 @@ def scrape_gasbuddy() -> dict:
             "cities_total":  len(CITIES),
             "cities_fresh":  len(metros),
             "failed_cities": sorted(c for c in CITIES if c not in metros),
+            "rate_limited":  rate_limited,
         },
     }
 
@@ -959,6 +1017,7 @@ def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | Non
         "cities_total":     len(CITIES),
         "cities_fresh":     0,
         "failed_cities":    sorted(CITIES),
+        "rate_limited":     False,
     }
     if run_health:
         status.update(run_health)

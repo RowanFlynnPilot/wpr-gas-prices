@@ -3,21 +3,20 @@
     Scrape gas prices, re-render the newsletter digest, commit, and push.
 
 .DESCRIPTION
-    Runs the full update from your residential IP, which GasBuddy's Cloudflare
-    trusts. The GitHub Actions datacenter IP is hard-403'd on the CSRF fetch for
-    days at a stretch, which is what froze the widget at 07/27 prices for five days
-    in mid-2026. Running locally sidesteps the IP-reputation problem entirely and is
-    the only way to keep per-station and per-metro data fresh without a paid proxy.
+    A standby runner from your residential IP, scheduled twice a day (7am / 7pm
+    Central) by Windows Task Scheduler.
 
-    Intended to be run by Windows Task Scheduler twice a day (7am / 7pm Central),
-    mirroring marathon-meetings\scripts\refresh-transcripts.ps1.
+    It was the PRIMARY when GasBuddy's Cloudflare hard-403'd the GitHub Actions IP
+    (that block froze the widget at 07/27 prices for five days in mid-2026). CI has
+    since scraped all 22 cities reliably, so this script now checks first and exits
+    when the published data is already fresh -- scraping on top of CI is what got
+    this IP rate-limited on 2026-09-17. It still takes over whenever CI stops
+    delivering, and that needs no intervention: the freshness check notices.
 
-    The GitHub Actions cron stays enabled as a backup: if this machine is off or
-    travelling, CI still refreshes AAA + EIA, re-renders the digest, and alerts.
-    CI is scheduled clear of these runs so the two never race to push.
-
-    Steps: pull --rebase -> scrape -> render digest PNG -> commit -> push (with one
-    rebase-and-retry if CI pushed underneath us).
+    Steps: recover any stuck rebase -> pull --rebase -> exit early if the data is
+    already fresh -> scrape -> render digest PNG -> commit -> push (with one
+    rebase-and-retry if CI pushed underneath us). Anything short of a healthy run
+    files a GitHub issue, since Task Scheduler swallows this console output.
 
     NOTE: keep this file pure ASCII. PowerShell 5.1 reads BOM-less scripts as ANSI,
     where a UTF-8 em-dash decodes to a smart quote and silently terminates strings.
@@ -59,7 +58,7 @@ function Publish-FailureAlert {
     try {
         if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
         $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm'
-        $body = "The local Task Scheduler run failed at $stamp Central.`n`n$Reason`n`nRuns will keep failing until this is fixed; the CI backup usually covers AAA + EIA only. See scripts/update-gas-prices.ps1. This issue closes itself after a healthy local run."
+        $body = "The local Task Scheduler run at $stamp Central did not complete cleanly.`n`n$Reason`n`nSee scripts/update-gas-prices.ps1. This issue closes itself after the next healthy local run."
         $existing = gh issue list --state open --search "$AlertTitle in:title" --json number --jq ".[0].number"
         if ($existing) { gh issue comment $existing --body $body | Out-Null }
         else { gh issue create --title $AlertTitle --body $body | Out-Null }
@@ -143,6 +142,34 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# -- Skip the scrape when CI has already published fresh data -------------------
+# This script was written when GasBuddy's Cloudflare hard-403'd the GitHub Actions
+# IP, so local was the only way to get station data. That changed: CI has scraped
+# all 22 cities on every run since mid-August. Scraping anyway meant four full
+# scrapes a day across two IPs, and on 2026-09-17 GasBuddy rate-limited this one
+# (HTTP 429, Retry-After 441s, only 4/22 cities). Running only when the published
+# file is actually stale or incomplete makes this a real backup and halves this
+# IP's footprint. The condition is self-correcting: if CI stops delivering,
+# scraped_at stops advancing (or cities come back stale) and this run goes ahead.
+$FreshHours = 10
+if (Test-Path .\docs\gas_prices.json) {
+    try {
+        $published  = Get-Content .\docs\gas_prices.json -Raw | ConvertFrom-Json
+        $ageHours   = ([datetimeoffset]::UtcNow - [datetimeoffset]::Parse($published.scraped_at)).TotalHours
+        $metroProps = @($published.metros.PSObject.Properties)
+        $staleCount = @($metroProps | Where-Object { $_.Value.stale }).Count
+        if ($ageHours -lt $FreshHours -and $staleCount -eq 0) {
+            Write-Host ("[skip] Published data is {0:N1}h old with all {1} metros fresh - nothing to do." -f $ageHours, $metroProps.Count) -ForegroundColor Green
+            Write-Host "       (This runner scrapes only when the data is older than $FreshHours h or has stale metros.)"
+            Close-FailureAlert
+            exit 0
+        }
+        Write-Host ("[run] Published data is {0:N1}h old with {1} stale metro(s) - scraping." -f $ageHours, $staleCount) -ForegroundColor Cyan
+    } catch {
+        Write-Host "[warn] Could not read published freshness; scraping anyway. $_" -ForegroundColor Yellow
+    }
+}
+
 # -- Scrape --------------------------------------------------------------------
 Write-Host ""
 Write-Host "[scrape] Running scrape_gas_prices.py (~8-10 min: rate-limit batching)" -ForegroundColor Cyan
@@ -158,14 +185,21 @@ if ($LASTEXITCODE -ne 0) {
 if (Test-Path .\docs\scrape_status.json) {
     $status = Get-Content .\docs\scrape_status.json -Raw | ConvertFrom-Json
     $fresh = "$($status.cities_fresh)/$($status.cities_total)"
+    # Task Scheduler swallows this console output, so anything short of a healthy
+    # run also files the GitHub issue - a degraded run used to exit 0 in silence
+    # and was only noticed because someone happened to see the window.
+    $rateNote = if ($status.rate_limited) { " GasBuddy rate-limited this IP and the run stopped early rather than retrying into the ban." } else { "" }
     if ($status.gasbuddy_success -and -not $status.degraded) {
         Write-Host "[ok] Healthy run. $fresh cities fresh." -ForegroundColor Green
     } elseif ($status.gasbuddy_success) {
         Write-Host "[warn] Degraded run: only $fresh cities fresh; rest carried forward." -ForegroundColor Yellow
+        Publish-FailureAlert "Degraded run: only $fresh cities scraped fresh; the rest were carried forward, so the statewide average is mostly stale.$rateNote"
     } elseif ($status.aaa_only) {
         Write-Host "[warn] GasBuddy unreachable even locally. AAA trend refreshed, station prices held." -ForegroundColor Yellow
+        Publish-FailureAlert "GasBuddy was unreachable from this machine ($fresh cities fresh). The AAA statewide trend refreshed; station and metro prices are carried forward.$rateNote"
     } else {
         Write-Host "[warn] GasBuddy and AAA both unreachable. Nothing new to publish." -ForegroundColor Yellow
+        Publish-FailureAlert "Neither GasBuddy nor AAA could be reached; nothing new was published.$rateNote"
     }
 
     # Story nudge: the scraper flags statewide moves past its thresholds (see
@@ -177,9 +211,19 @@ if (Test-Path .\docs\scrape_status.json) {
         try {
             if (Get-Command gh -ErrorAction SilentlyContinue) {
                 $newsTitle = "Fuel Watch: notable gas-price move"
+                $moveText = $status.notable_move.text
                 $open = gh issue list --state open --search "$newsTitle in:title" --json number --jq ".[0].number"
-                if (-not $open) {
-                    $newsBody = "$($status.notable_move.text)`n`nThis is a story nudge, not an error - the widget and newsletter digest already show the new numbers, and the widget's Copy button has a quotable blurb. Close this issue after reading; it will fire again on the next notable move."
+                if ($open) {
+                    # An open nudge must never swallow a later move: issue 52 sat
+                    # open from Sep 1 and suppressed a 33c/gal jump two weeks on.
+                    # Comment when the move has changed; stay quiet when it hasn't.
+                    $last = gh issue view $open --json body,comments --jq "((.comments | last | .body) // .body)"
+                    if ($last -notlike "*$moveText*") {
+                        gh issue comment $open --body "$moveText`n`nUpdated $(Get-Date -Format 'yyyy-MM-dd HH:mm') Central - the move has changed since this issue was opened." | Out-Null
+                        Write-Host "[news] Updated the open story nudge (#$open)." -ForegroundColor Cyan
+                    }
+                } else {
+                    $newsBody = "$moveText`n`nThis is a story nudge, not an error - the widget and newsletter digest already show the new numbers, and the widget's Copy button has a quotable blurb. Close this issue after reading; it will fire again on the next notable move."
                     gh issue create --title $newsTitle --body $newsBody | Out-Null
                     Write-Host "[news] Filed story nudge on GitHub." -ForegroundColor Cyan
                 }
