@@ -67,6 +67,20 @@ function Publish-FailureAlert {
         Write-Host "[warn] Could not file failure alert: $_" -ForegroundColor Yellow
     }
 }
+# gh gets its body from a UTF-8 file, never as an argument: PowerShell 5.1 encodes
+# native-command arguments with the console codepage, so a cent sign in the price
+# blurb reaches GitHub as mojibake. --body-file is read as UTF-8 by gh.
+function Publish-GhBody {
+    param([string]$Body, [string[]]$GhArgs)
+    $tmp = [IO.Path]::GetTempFileName()
+    try {
+        [IO.File]::WriteAllText($tmp, $Body, (New-Object Text.UTF8Encoding($false)))
+        & gh @GhArgs --body-file $tmp | Out-Null
+    } finally {
+        Remove-Item $tmp -ErrorAction SilentlyContinue
+    }
+}
+
 function Close-FailureAlert {
     try {
         if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { return }
@@ -154,7 +168,7 @@ if ($LASTEXITCODE -ne 0) {
 $FreshHours = 10
 if (Test-Path .\docs\gas_prices.json) {
     try {
-        $published  = Get-Content .\docs\gas_prices.json -Raw | ConvertFrom-Json
+        $published  = Get-Content .\docs\gas_prices.json -Raw -Encoding UTF8 | ConvertFrom-Json
         $ageHours   = ([datetimeoffset]::UtcNow - [datetimeoffset]::Parse($published.scraped_at)).TotalHours
         $metroProps = @($published.metros.PSObject.Properties)
         $staleCount = @($metroProps | Where-Object { $_.Value.stale }).Count
@@ -183,7 +197,9 @@ if ($LASTEXITCODE -ne 0) {
 # -- Report what the run actually achieved -------------------------------------
 # docs/scrape_status.json is the scraper's per-run heartbeat (gitignored).
 if (Test-Path .\docs\scrape_status.json) {
-    $status = Get-Content .\docs\scrape_status.json -Raw | ConvertFrom-Json
+    # -Encoding UTF8: PS 5.1 otherwise reads this as ANSI and the blurb's cent
+    # sign arrives as "Ac" mojibake (it reached issue #52 that way once).
+    $status = Get-Content .\docs\scrape_status.json -Raw -Encoding UTF8 | ConvertFrom-Json
     $fresh = "$($status.cities_fresh)/$($status.cities_total)"
     # Task Scheduler swallows this console output, so anything short of a healthy
     # run also files the GitHub issue - a degraded run used to exit 0 in silence
@@ -219,12 +235,13 @@ if (Test-Path .\docs\scrape_status.json) {
                     # Comment when the move has changed; stay quiet when it hasn't.
                     $last = gh issue view $open --json body,comments --jq "((.comments | last | .body) // .body)"
                     if ($last -notlike "*$moveText*") {
-                        gh issue comment $open --body "$moveText`n`nUpdated $(Get-Date -Format 'yyyy-MM-dd HH:mm') Central - the move has changed since this issue was opened." | Out-Null
+                        $body = "$moveText`n`nUpdated $(Get-Date -Format 'yyyy-MM-dd HH:mm') Central - the move has changed since this issue was opened."
+                        Publish-GhBody -Body $body -GhArgs @('issue', 'comment', $open)
                         Write-Host "[news] Updated the open story nudge (#$open)." -ForegroundColor Cyan
                     }
                 } else {
                     $newsBody = "$moveText`n`nThis is a story nudge, not an error - the widget and newsletter digest already show the new numbers, and the widget's Copy button has a quotable blurb. Close this issue after reading; it will fire again on the next notable move."
-                    gh issue create --title $newsTitle --body $newsBody | Out-Null
+                    Publish-GhBody -Body $newsBody -GhArgs @('issue', 'create', '--title', $newsTitle)
                     Write-Host "[news] Filed story nudge on GitHub." -ForegroundColor Cyan
                 }
             }
