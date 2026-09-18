@@ -75,8 +75,9 @@ Scheduler hides the console, so the issue is how a local problem reaches you.
 day or 10¢+ in a week, per AAA), a GitHub issue titled **"Fuel Watch: notable
 gas-price move"** appears with a ready-to-quote sentence. If it's still open when a
 *different* move happens, the new figure is added as a comment, so a bigger move can
-never be swallowed by an unread issue. It's a heads-up, not an error — close it when
-you're done with it.
+never be swallowed by an unread issue. Closing it means you're done with that move —
+it won't come back for the same one, only for the next new move. It's a heads-up, not
+an error.
 
 To run it by hand at any time:
 

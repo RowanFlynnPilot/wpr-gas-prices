@@ -67,6 +67,21 @@ function Publish-FailureAlert {
         Write-Host "[warn] Could not file failure alert: $_" -ForegroundColor Yellow
     }
 }
+# Everything written on an issue (body + every comment), reduced to letters and
+# digits. Matching on that key means a move still counts as "already reported"
+# after a human reply pushes it down the thread, or after one encoding hop turns
+# its cent sign into mojibake.
+function Get-IssueThreadKey {
+    param([string]$Number)
+    try {
+        $issue = gh issue view $Number --json body,comments | ConvertFrom-Json
+        $text  = $issue.body + ' ' + (($issue.comments | ForEach-Object { $_.body }) -join ' ')
+        return ($text -replace '[^a-zA-Z0-9]', '')
+    } catch {
+        return ''
+    }
+}
+
 # gh gets its body from a UTF-8 file, never as an argument: PowerShell 5.1 encodes
 # native-command arguments with the console codepage, so a cent sign in the price
 # blurb reaches GitHub as mojibake. --body-file is read as UTF-8 by gh.
@@ -228,18 +243,32 @@ if (Test-Path .\docs\scrape_status.json) {
             if (Get-Command gh -ErrorAction SilentlyContinue) {
                 $newsTitle = "Fuel Watch: notable gas-price move"
                 $moveText = $status.notable_move.text
+                # Compare on letters and digits only: a cent sign that survived one
+                # encoding hop as mojibake must still count as the same move.
+                $moveKey = ($moveText -replace '[^a-zA-Z0-9]', '')
                 $open = gh issue list --state open --search "$newsTitle in:title" --json number --jq ".[0].number"
                 if ($open) {
                     # An open nudge must never swallow a later move: issue 52 sat
                     # open from Sep 1 and suppressed a 33c/gal jump two weeks on.
                     # Comment when the move has changed; stay quiet when it hasn't.
-                    $last = gh issue view $open --json body,comments --jq "((.comments | last | .body) // .body)"
-                    if ($last -notlike "*$moveText*") {
+                    if ((Get-IssueThreadKey $open) -notlike "*$moveKey*") {
                         $body = "$moveText`n`nUpdated $(Get-Date -Format 'yyyy-MM-dd HH:mm') Central - the move has changed since this issue was opened."
                         Publish-GhBody -Body $body -GhArgs @('issue', 'comment', $open)
                         Write-Host "[news] Updated the open story nudge (#$open)." -ForegroundColor Cyan
                     }
                 } else {
+                    # A closed nudge means the newsroom is done with THAT move. The
+                    # same week-over-week jump keeps qualifying for days, so don't
+                    # raise it again just because the issue was closed.
+                    $lastClosed = gh issue list --state closed --search "$newsTitle in:title" --limit 1 --json number --jq ".[0].number"
+                    if ($lastClosed) {
+                        if ((Get-IssueThreadKey $lastClosed) -like "*$moveKey*") {
+                            Write-Host "[news] Same move was already nudged and closed (#$lastClosed); staying quiet." -ForegroundColor DarkGray
+                            $moveText = $null
+                        }
+                    }
+                }
+                if ($moveText -and -not $open) {
                     $newsBody = "$moveText`n`nThis is a story nudge, not an error - the widget and newsletter digest already show the new numbers, and the widget's Copy button has a quotable blurb. Close this issue after reading; it will fire again on the next notable move."
                     Publish-GhBody -Body $newsBody -GhArgs @('issue', 'create', '--title', $newsTitle)
                     Write-Host "[news] Filed story nudge on GitHub." -ForegroundColor Cyan

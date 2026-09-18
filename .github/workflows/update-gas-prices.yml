@@ -167,19 +167,32 @@ jobs:
             echo "No notable move."
             exit 0
           fi
+          # Everything written on an issue, reduced to letters and digits: a move
+          # still counts as reported after a human reply pushes it down the thread,
+          # or after one encoding hop turns its cent sign into mojibake.
+          thread_key() { gh issue view "$1" --json body,comments --jq '[.body] + (.comments | map(.body)) | join(" ")' | tr -cd '[:alnum:]'; }
+          KEY=$(printf '%s' "$TEXT" | tr -cd '[:alnum:]')
+
           EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
           if [ -n "$EXISTING" ]; then
             # An open nudge must never swallow a later move: issue #52 sat open
             # from Sep 1 and suppressed a 33c/gal jump two weeks later. Comment
             # when the move has changed; stay quiet when it is the same one.
-            LAST=$(gh issue view "$EXISTING" --json body,comments --jq '((.comments | last | .body) // .body)')
-            if printf '%s' "$LAST" | grep -qF "$TEXT"; then
+            if thread_key "$EXISTING" | grep -qF "$KEY"; then
               echo "Nudge #$EXISTING already reports this move; not repeating."
             else
               NOTE="Updated $(date -u +'%Y-%m-%d %H:%M UTC') — the move has changed since this issue was opened."
               gh issue comment "$EXISTING" --body "$(printf '%s\n\n%s' "$TEXT" "$NOTE")"
               echo "Updated open nudge #$EXISTING with the current move."
             fi
+            exit 0
+          fi
+
+          # A closed nudge means the newsroom is done with THAT move, and the same
+          # week-over-week jump keeps qualifying for days. Don't raise it again.
+          LAST_CLOSED=$(gh issue list --state closed --search "$TITLE in:title" --limit 1 --json number --jq '.[0].number')
+          if [ -n "$LAST_CLOSED" ] && thread_key "$LAST_CLOSED" | grep -qF "$KEY"; then
+            echo "Same move was already nudged and closed (#$LAST_CLOSED); staying quiet."
             exit 0
           fi
           BODY=$(printf '%s\n' \

@@ -216,11 +216,17 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   moves past `NOTABLE_DAY_MOVE` (5¢ vs yesterday) or `NOTABLE_WEEK_MOVE` (10¢ vs a
   week ago), AAA-internal, into `scrape_status.json` with a ready-to-quote sentence.
   Both runners keep one **"Fuel Watch: notable gas-price move"** issue (same title,
-  so they dedup each other): they open it when none is present, and **comment on it
-  when the move changes**, staying quiet when it's the same move. That last part
-  matters — the first design just skipped while an issue was open, so #52 (a 10¢
-  drop, opened Sep 1) silently swallowed a 33¢/gal jump two weeks later. It is
-  explicitly a story heads-up, not an error alert.
+  so they dedup each other), and decide by comparing the move against everything
+  already written on the issue — normalized to letters and digits, so a human reply
+  or an encoding hop can't hide it:
+  - **Open issue, move changed** → comment the new figure. The first design just
+    skipped while an issue was open, so #52 (a 10¢ drop, opened Sep 1) silently
+    swallowed a 33¢/gal jump two weeks later.
+  - **Open issue, same move** → stay quiet.
+  - **No open issue, but the most recent closed one already carries this move** →
+    stay quiet. A closed nudge means the newsroom is done with *that* move, and a
+    week-over-week jump keeps qualifying for days.
+  It is explicitly a story heads-up, not an error alert.
 - **Trends tab overlays Wisconsin on the Midwest.** `getWIEntries()` reads the daily
   statewide series from `gas_prices_history.json` and draws it over the EIA weekly
   benchmark. The chart x-axis is **time-based, not index-based** — required for
