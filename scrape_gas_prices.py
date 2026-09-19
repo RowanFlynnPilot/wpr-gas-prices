@@ -205,6 +205,32 @@ def parse_station_results(results: list) -> dict | None:
     return city_data
 
 
+# Tokens that stay upper-case when an ALL-CAPS address is tidied: compass points,
+# and the highway designators Wisconsin addresses actually use.
+_ADDRESS_KEEP_UPPER = {"N", "S", "E", "W", "NE", "NW", "SE", "SW", "US", "WI", "CTH", "STH", "USH"}
+
+
+def tidy_address_part(text: str) -> str:
+    """Title-case one address field, but only when GasBuddy sent it in ALL CAPS.
+
+    Station owners type these in by hand, so most arrive fine ("423 N 17th Ave")
+    and are left untouched; the shouting ones ("401 STATE RD") are the exception.
+    Not str.title(): that turns "17TH" into "17Th" and "N" is already right.
+    Pure/testable.
+    """
+    if not text or text != text.upper() or not any(c.isalpha() for c in text):
+        return text
+    words = []
+    for word in text.split(" "):
+        if word in _ADDRESS_KEEP_UPPER:
+            words.append(word)
+        elif word[:1].isdigit():
+            words.append(word.lower())      # 17TH -> 17th
+        else:
+            words.append(word.capitalize())
+    return " ".join(words)
+
+
 def extract_cheapest_stations(results: list, limit: int = 8) -> list:
     """Cheapest `limit` named stations by regular price, each with its address and
     available fuel prices. Pure function (no network) for unit-testing.
@@ -229,8 +255,8 @@ def extract_cheapest_stations(results: list, limit: int = 8) -> list:
         if "regular" not in prices:
             continue
         addr = st.get("address") or {}
-        address = ", ".join(x for x in [(addr.get("line1") or "").strip(),
-                                        (addr.get("locality") or "").strip()] if x)
+        address = ", ".join(x for x in [tidy_address_part((addr.get("line1") or "").strip()),
+                                        tidy_address_part((addr.get("locality") or "").strip())] if x)
         entry = {"name": name, "prices": prices}
         if address:
             entry["address"] = address

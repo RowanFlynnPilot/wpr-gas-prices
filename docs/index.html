@@ -72,6 +72,7 @@
   .wpr-state-card-feature .wpr-state-card-value { font-size:30px; }
   .wpr-state-card-sub { font-size:10px; margin-top:4px; color:var(--ink-light); }
   .wpr-pin { font-size:7px; vertical-align:middle; margin-right:3px; }
+  .wpr-state-card-station { font-size:9px; color:var(--ink-faint); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .wpr-state-range { padding:20px 18px 14px; }
   .wpr-state-range-bar { background:var(--rule-light); border-radius:10px; height:10px; position:relative; margin:4px 0; }
   .wpr-state-range-fill { background:linear-gradient(90deg,var(--down),var(--accent),var(--up)); border-radius:10px; height:100%; position:absolute; left:0; width:100%; opacity:0.9; }
@@ -97,6 +98,12 @@
   .wpr-state-city-select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-pale); }
   .wpr-state-city-label { font-size:10px; color:var(--ink-faint); text-align:center; margin-bottom:3px; }
 
+  .wpr-sort-row { display:flex; justify-content:flex-end; align-items:center; gap:2px; padding:0 14px; }
+  .wpr-sort-label { font-size:9px; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-faint); font-weight:700; margin-right:4px; }
+  .wpr-sort-btn { font-family:'DM Sans',sans-serif; font-size:11px; font-weight:500; color:var(--ink-light); background:none; border:none; border-bottom:1.5px solid transparent; padding:3px 6px; cursor:pointer; transition:color 0.12s, border-color 0.12s; }
+  .wpr-sort-btn:hover { color:var(--accent); }
+  .wpr-sort-btn:focus-visible { outline:2px solid var(--accent-light); outline-offset:1px; border-radius:3px; }
+  .wpr-sort-btn.active { color:var(--accent-dark); font-weight:700; border-bottom-color:var(--accent); }
   .wpr-metro-list { padding:8px 14px 14px; }
   .wpr-metro-item { margin-bottom:6px; }
   .wpr-metro-card { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--rule-light); border-radius:var(--radius); background:#fff; box-shadow:0 1px 3px rgba(20,50,45,0.05); transition:border-color 0.12s, box-shadow 0.12s; }
@@ -119,6 +126,8 @@
   .wpr-metro-station-info { display:flex; flex-direction:column; min-width:0; }
   .wpr-metro-station-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .wpr-metro-station-addr { font-size:10px; color:var(--ink-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  a.wpr-metro-station-addr { text-decoration:none; }
+  a.wpr-metro-station-addr:hover, a.wpr-metro-station-addr:focus-visible { color:var(--accent-dark); text-decoration:underline; outline:none; }
   .wpr-metro-station-price { font-family:'Playfair Display',Georgia,serif; font-size:15px; font-weight:700; color:var(--accent-dark); flex-shrink:0; }
   .up-color { color:var(--up); } .down-color { color:var(--down); } .flat-color { color:var(--neutral); }
 
@@ -163,10 +172,24 @@
 
   @media (max-width:520px) {
     .wpr-gas-hero-value { font-size:30px; }
-    .wpr-state-grid { grid-template-columns:1fr; }
+    /* Phones keep the three cards side by side. Stacking them cost ~280px of
+       scroll to repeat a state average the header already shows. */
+    .wpr-state-grid { grid-template-columns:1fr 1.12fr 1fr; gap:6px; padding:12px 10px 8px; }
+    .wpr-state-card { padding:10px 4px; }
+    .wpr-state-card-label { font-size:8px; letter-spacing:0.4px; margin-bottom:4px; }
+    .wpr-state-card-value { font-size:17px; }
+    .wpr-state-card-feature .wpr-state-card-value { font-size:21px; }
+    .wpr-state-card-sub { font-size:9px; }
+    /* All four fuels on one row; "Diesel" used to wrap onto a line of its own. */
+    .wpr-gas-fuel-row { gap:5px; padding:12px 8px 8px; flex-wrap:nowrap; }
+    .wpr-gas-fuel-btn { padding:6px 11px; font-size:11.5px; white-space:nowrap; }
+    .wpr-trends-btn-row { flex-wrap:wrap; }
+    .wpr-trends-btn-divider { display:none; }  /* the range buttons wrap to their own row here */
     .wpr-metro-price { font-size:18px; }
     .wpr-metro-spark { display:none; }
-    .wpr-trends-stats { flex-direction:column; }
+    .wpr-trends-stats { gap:5px; }
+    .wpr-trends-stat { min-width:0; flex:1 1 30%; padding:7px 6px; }
+    .wpr-trends-stat-value { font-size:16px; }
   }
 </style>
 </head>
@@ -181,6 +204,8 @@
     <a href="https://www.gasbuddy.com/gasprices/wisconsin" style="color:var(--accent)">GasBuddy</a>.
   </div>
 </noscript>
+<!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
+<script src="./widget-logic.js?v=1"></script>
 <script>
 (function() {
   'use strict';
@@ -201,6 +226,7 @@
   let activeTab = 'statewide';
   let selectedCity = '';
   let expandedCity = '';
+  let metroSort = 'featured';
   const widget = document.getElementById('gasWidget');
 
   // ── EIA ──
@@ -258,76 +284,26 @@
   function fuelLabel(k) {
     return { regular:'Regular', mid_grade:'Mid-Grade', premium:'Premium', diesel:'Diesel' }[k] || k;
   }
-  function delta(c, p) {
-    if (c == null || p == null) return { text: '—', cls: 'flat-color' };
-    const diff = c - p;
-    const sign = diff > 0 ? '+' : '';
-    const cls = diff > 0.001 ? 'up-color' : diff < -0.001 ? 'down-color' : 'flat-color';
-    const arrow = diff > 0.001 ? '▲' : diff < -0.001 ? '▼' : '—';
-    return { text: `${arrow} ${sign}${diff.toFixed(3)}`, cls };
+  // Pure logic lives in widget-logic.js (tested by tests/widget-logic.test.mjs);
+  // these bind it to this widget's state. Without it nothing below can run, so
+  // fail the same honest way a missing data file does.
+  if (!self.WprGasLogic) {
+    widget.innerHTML = '<div class="wpr-gas-unavailable">Live gas prices are temporarily unavailable.<br>Please check back shortly.</div>';
+    return;
   }
-
-  // History keys are 'm/d/yy' and older ones aren't zero-padded, so a plain string
-  // sort interleaves months and years (it once put March last, ahead of July).
-  // Always order these by parsed date.
-  function historyKeyTime(k) {
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(k);
-    return m ? Date.UTC(2000 + +m[3], +m[1] - 1, +m[2]) : NaN;
-  }
-  function historyKeysSorted() {
-    return Object.keys(historyData || {})
-      .filter(k => !isNaN(historyKeyTime(k)))
-      .sort((a, b) => historyKeyTime(a) - historyKeyTime(b));
-  }
-
-  // Most recent prior reading for a series, plus the date it came from. Runs can
-  // miss days, so the caller labels the delta with the real gap rather than
-  // assuming it is yesterday.
-  function previousReading(key, fuel) {
-    if (!historyData) return null;
-    const keys = historyKeysSorted();
-    const todayKey = data?.price_date;
-    for (let i = keys.length - 1; i >= 0; i--) {
-      if (keys[i] === todayKey) continue;
-      const v = historyData[keys[i]]?.[key]?.[fuel];
-      if (typeof v === 'number') return { price: v, key: keys[i] };
-    }
-    return null;
-  }
-
-  // "vs yesterday" only when it really is yesterday; otherwise name the date.
-  function comparisonLabel(prevKey) {
-    const todayT = historyKeyTime(data?.price_date || '');
-    const prevT = historyKeyTime(prevKey || '');
-    if (isNaN(todayT) || isNaN(prevT)) return 'vs previous';
-    const days = Math.round((todayT - prevT) / 864e5);
-    if (days === 1) return 'vs yesterday';
-    const d = new Date(prevT);
-    const md = `${d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${d.getUTCDate()}`;
-    return `vs ${md}`;
-  }
+  const L = self.WprGasLogic;
+  const esc = L.esc;
+  const delta = L.delta;
+  const historyKeyTime = L.historyKeyTime;
+  const historyKeysSorted = () => L.sortedHistoryKeys(historyData);
+  const previousReading = (key, fuel) => L.previousReading(historyData, data?.price_date, key, fuel);
+  const comparisonLabel = prevKey => L.comparisonLabel(data?.price_date, prevKey);
+  const freshnessLabel = () => L.freshness(data.scraped_at, data.price_date, Date.now());
 
   // A period's statewide value from AAA's table (today/yesterday/week/month/year).
   // AAA is the statewide-trend source; GasBuddy stays the live station/metro source.
   function aaaPeriodValue(periodKey, fuel) {
     return data?.aaa?.[periodKey]?.[fuel] ?? null;
-  }
-
-  function findExtremeCities(fuel) {
-    const metros = data?.metros || {};
-    let lowCity = null, lowPrice = Infinity;
-    let highCity = null, highPrice = -Infinity;
-    for (const [name, m] of Object.entries(metros)) {
-      const avg = m?.current_avg?.[fuel];
-      if (avg != null) {
-        if (avg < lowPrice) { lowPrice = avg; lowCity = name; }
-        if (avg > highPrice) { highPrice = avg; highCity = name; }
-      }
-    }
-    return {
-      lowCity: lowPrice < Infinity ? lowCity : null,
-      highCity: highPrice > -Infinity ? highCity : null,
-    };
   }
 
   // ── Render ──
@@ -373,22 +349,6 @@
     const trend = pts[pts.length - 1] - pts[0];
     const color = trend > 0.001 ? 'var(--up)' : trend < -0.001 ? 'var(--down)' : 'var(--neutral)';
     return `<svg class="wpr-metro-spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${fuelLabel(fuel)} ${pts.length}-point trend for ${name}"><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
-  }
-
-  // Relative "updated N ago" label; flips to amber (stale) past ~26h.
-  function freshnessLabel() {
-    let ts = data.scraped_at ? new Date(data.scraped_at) : null;
-    if (!ts || isNaN(ts)) {
-      const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(data.price_date || '');
-      if (m) ts = new Date(2000 + (+m[3]), (+m[1]) - 1, +m[2]);
-    }
-    if (!ts || isNaN(ts)) return { text: `Updated ${data.price_date || ''}`, stale: false, title: '' };
-    const hours = (Date.now() - ts.getTime()) / 36e5;
-    let rel;
-    if (hours < 1) rel = 'just now';
-    else if (hours < 24) rel = `${Math.max(1, Math.round(hours))}h ago`;
-    else { const days = Math.round(hours / 24); rel = `${days} day${days === 1 ? '' : 's'} ago`; }
-    return { text: `Updated ${rel}`, stale: hours > 26, title: ts.toLocaleString() };
   }
 
   // Quiet error state when live data can't be loaded (F3).
@@ -472,6 +432,9 @@
         if (btn.dataset.fuel) { activeFuel = btn.dataset.fuel; render(); }
         if (btn.dataset.range) { trendRange = parseInt(btn.dataset.range); eiaCache = {}; render(); }
       });
+    });
+    widget.querySelectorAll('.wpr-sort-btn').forEach(btn => {
+      btn.addEventListener('click', () => { metroSort = btn.dataset.sort; render(); });
     });
     const citySelect = widget.querySelector('#citySelect');
     if (citySelect) {
@@ -565,7 +528,13 @@
     const avg = sw?.current_avg?.[activeFuel];
     const low = sw?.low?.[activeFuel];
     const high = sw?.high?.[activeFuel];
-    const { lowCity, highCity } = findExtremeCities(activeFuel);
+    // Station-level extremes, with the city each station is actually in. (These
+    // cards once borrowed the city from the AVERAGES and named the wrong place.)
+    const ends = L.extremeStations(data?.metros, activeFuel);
+    const endSub = (end, cls) => end
+      ? `<div class="wpr-state-card-sub"><span class="wpr-pin ${cls}">●</span>${esc(end.city)}</div>`
+        + (end.name ? `<div class="wpr-state-card-station">${esc(end.name)}</div>` : '')
+      : '';
 
     const metros = data?.metros || {};
     const cityNames = Object.keys(metros).sort();
@@ -581,7 +550,7 @@
     const middleVs = (selectedCity && cityPrice != null && avg != null) ? delta(cityPrice, avg) : null;
 
     const cityOptions = cityNames.map(n =>
-      `<option value="${n}" ${selectedCity === n ? 'selected' : ''}>${n}</option>`
+      `<option value="${esc(n)}" ${selectedCity === n ? 'selected' : ''}>${esc(n)}</option>`
     ).join('');
 
     // ── Temporal: today vs past — AAA's statewide table (internally consistent) ──
@@ -616,9 +585,9 @@
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
       <div class="wpr-state-grid">
         <div class="wpr-state-card">
-          <div class="wpr-state-card-label">Lowest</div>
+          <div class="wpr-state-card-label">Cheapest station</div>
           <div class="wpr-state-card-value" style="color:var(--down)">${fmt(low)}</div>
-          ${lowCity ? `<div class="wpr-state-card-sub"><span class="wpr-pin down-color">●</span>${lowCity}</div>` : ''}
+          ${endSub(ends.low, 'down-color')}
         </div>
         <div class="wpr-state-card wpr-state-card-feature">
           <div class="wpr-state-card-label">${middleLabel}</div>
@@ -628,9 +597,9 @@
             : '<div class="wpr-state-card-sub">statewide average</div>'}
         </div>
         <div class="wpr-state-card">
-          <div class="wpr-state-card-label">Highest</div>
+          <div class="wpr-state-card-label">Priciest station</div>
           <div class="wpr-state-card-value" style="color:var(--up)">${fmt(high)}</div>
-          ${highCity ? `<div class="wpr-state-card-sub"><span class="wpr-pin up-color">●</span>${highCity}</div>` : ''}
+          ${endSub(ends.high, 'up-color')}
         </div>
       </div>
       <div class="wpr-state-range">
@@ -669,8 +638,10 @@
     ).join('');
 
     const metros = data.metros || {};
-    const priority = data.priority_metros || [];
-    const allNames = [...priority, ...Object.keys(metros).filter(n => !priority.includes(n))];
+    const allNames = L.sortMetroNames(metros, data.priority_metros, activeFuel, metroSort);
+    const sortBtns = [['featured', 'Featured'], ['cheapest', 'Cheapest first'], ['az', 'A–Z']].map(([mode, label]) =>
+      `<button type="button" aria-pressed="${metroSort === mode}" class="wpr-sort-btn ${metroSort === mode ? 'active' : ''}" data-sort="${mode}">${label}</button>`
+    ).join('');
 
     let cards = allNames.map(name => {
       const m = metros[name];
@@ -694,8 +665,8 @@
       const stationRows = stations.map((st, i) => `
         <div class="wpr-metro-station">
           <div class="wpr-metro-station-info">
-            <span class="wpr-metro-station-name">${st.name}</span>
-            ${st.address ? `<span class="wpr-metro-station-addr">${st.address}</span>` : ''}
+            <span class="wpr-metro-station-name">${esc(st.name)}</span>
+            ${st.address ? `<a class="wpr-metro-station-addr" href="${esc(L.mapsUrl(st))}" target="_blank" rel="noopener" title="Open in Google Maps">${esc(st.address)} <span aria-hidden="true">↗</span></a>` : ''}
           </div>
           <span class="wpr-metro-station-price${i === 0 ? ' down-color' : ''}">${fmt(st.prices[activeFuel])}</span>
         </div>`).join('');
@@ -703,9 +674,9 @@
       return `
         <div class="wpr-metro-item">
           <div class="wpr-metro-card ${isWausau ? 'highlight' : ''}${canExpand ? ' clickable' : ''}${isExpanded ? ' expanded' : ''}"
-               ${canExpand ? `data-city="${name}" role="button" tabindex="0" aria-expanded="${isExpanded}"` : ''}>
+               ${canExpand ? `data-city="${esc(name)}" role="button" tabindex="0" aria-expanded="${isExpanded}"` : ''}>
             <div>
-              <div class="wpr-metro-name">${name}</div>
+              <div class="wpr-metro-name">${esc(name)}</div>
               <div class="wpr-metro-range">${rangeText}</div>
             </div>
             <div class="wpr-metro-right">
@@ -717,7 +688,7 @@
           </div>
           ${isExpanded ? `
             <div class="wpr-metro-stations">
-              <div class="wpr-metro-stations-head">Cheapest ${fuelLabel(activeFuel)} near ${name} · via GasBuddy</div>
+              <div class="wpr-metro-stations-head">Cheapest ${fuelLabel(activeFuel)} near ${esc(name)} · via GasBuddy</div>
               ${stationRows}
             </div>` : ''}
         </div>`;
@@ -725,6 +696,7 @@
 
     return `
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
+      <div class="wpr-sort-row" role="group" aria-label="Sort metro areas"><span class="wpr-sort-label">Sort</span>${sortBtns}</div>
       <div class="wpr-metro-list">${cards}</div>
     `;
   }
@@ -951,7 +923,7 @@
     const hasWI = !!getWIEntries(activeFuel);
     const title = hasWI ? `${fuelName} · ${rangeLabel}` : `Midwest Region · ${fuelName} · ${rangeLabel}`;
     const note = hasWI
-      ? 'The Wisconsin line is WPR&#8217;s own daily statewide tracking via GasBuddy; the Midwest line is the U.S. EIA&#8217;s weekly regional benchmark (hover it for values).'
+      ? 'The Wisconsin line is WPR&#8217;s own daily statewide tracking via GasBuddy; the Midwest line is the U.S. EIA&#8217;s weekly regional benchmark (tap or hover it for values).'
       : 'Regional benchmark from the U.S. EIA — broader than the Wisconsin prices on the other tabs.';
 
     return `

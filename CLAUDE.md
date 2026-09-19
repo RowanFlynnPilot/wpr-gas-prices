@@ -117,6 +117,8 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
+| `docs/widget-logic.js` | Pure logic shared by both widgets (deltas, history ordering, station extremes, sorting, escaping) | Yes — with its tests; bump `?v=` in both widgets |
+| `tests/widget-logic.test.mjs` | Node tests for that file — evaluates the exact script the browser loads | Yes — when changing widget logic |
 | `docs/embed.js` | Host-side iframe autosize; unusable on WPR until Cloudflare allows `<script src>` in post saves | Rarely |
 | `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
 | `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
@@ -290,6 +292,20 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   logic. **Tests must not hit the network** — the `main()` tests stub `scrape_aaa`
   alongside `scrape_gasbuddy` and the EIA fetchers; if the suite suddenly takes
   seconds instead of ~0.5s, something is making a real request.
+- **Widget logic is shared and tested.** Anything that computes (rather than draws)
+  lives in `docs/widget-logic.js`, loaded by both widgets as `widget-logic.js?v=N` and
+  tested by `npm run test:widget` (Node's built-in runner; CI job `widget-logic`). It
+  exists because an untested inline helper labelled the state's cheapest/priciest
+  **station** price with the city that had the lowest/highest **average** — wrong for
+  5 of 8 fuel/extreme pairs the day it was caught. `extremeStations()` takes the city
+  from the same `low`/`high` field as the price. Bump `?v=` in **both** widgets when
+  the module's API changes: Pages caches it for ten minutes, and a new `index.html`
+  must not meet a stale copy. If the file fails to load, the widgets show the same
+  quiet "unavailable" state as a missing data file.
+- **Scraped text is escaped.** Station and city names reach the DOM through
+  `L.esc()`; station addresses are tidied in the scraper (`tidy_address_part()` —
+  title-cases a field only when GasBuddy sent it in ALL CAPS) and link to a Google
+  Maps search (`L.mapsUrl()`).
 - **Widget fails honestly.** If `gas_prices.json` can't be fetched, the widget shows
   a quiet "temporarily unavailable" state (no stale baked-in snapshot). The header
   shows a relative "Updated Nh ago" that turns amber past ~26h.
@@ -303,9 +319,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   the editor reports it as "Updating failed. The response is not a valid JSON
   response." The README snippets are therefore **bare iframes**: compact fixed at
   610px (it's 599px at every width), full at
-  `clamp(930px, calc(1960px - 159vw), 1400px)` (measured to fit the Statewide tab at
-  375/430/500/720px). If you change either widget's default-tab height, re-measure
-  and re-tune those numbers. embed.js only becomes usable if the site admin adds a
+  `clamp(960px, calc(1640px - 131vw), 1300px)` (re-measured 2026-09-19 after the phone
+  layout got shorter: Statewide tab is 1193/1108/1078/989/956/919/901px at frame
+  widths 288/328/343/398/468/600/720). If you change either widget's default-tab
+  height, re-measure and re-tune those numbers — pages embedded earlier still carry
+  the older, taller clamp, which is harmless but leaves blank space on phones. embed.js only becomes usable if the site admin adds a
   Cloudflare exception for logged-in post saves. JSON fetches are cache-busted in
   10-min buckets, and fonts load non-blocking — keep these when editing either widget.
 - **Newsletter digest image.** Email can't embed the live widget, so the update
@@ -331,6 +349,9 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 ```bash
 # install
 pip install -r requirements.txt
+
+# widget logic tests (Node built-in runner, no install needed)
+npm run test:widget
 
 # run the scraper (writes to docs/gas_prices.json by default)
 python scrape_gas_prices.py

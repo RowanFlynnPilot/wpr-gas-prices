@@ -147,7 +147,7 @@ In WordPress, add a **Custom HTML** block where the widget should appear.
 **Full widget** (720px, tabs, trends chart):
 
 ```html
-<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="display:block;width:100%;max-width:720px;height:clamp(930px, calc(1960px - 159vw), 1400px);margin:0 auto;border:0;"></iframe>
+<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/" title="Wisconsin Gas Prices from Wausau Pilot &amp; Review" style="display:block;width:100%;max-width:720px;height:clamp(960px, calc(1640px - 131vw), 1300px);margin:0 auto;border:0;"></iframe>
 ```
 
 **Compact widget** (360px, for sidebars and narrow spots):
@@ -167,9 +167,13 @@ render in a post on the live theme.
 >
 > - The **compact** widget is 599px tall at every width, so it gets a fixed 610px.
 > - The **full** widget grows taller as screens get narrower. The `clamp()` height is
->   930px on desktop and grows to ~1360px on phones. It was measured to fit the
->   default Statewide tab at 375, 430, 500 and 720px wide. Taller tabs (By Metro Area)
->   scroll inside the frame.
+>   960px on desktop and grows to ~1150px on phones. It was measured (Sept 19, 2026)
+>   to fit the default Statewide tab from 320px-wide phones up to the 720px article
+>   column. Taller tabs (By Metro Area) scroll inside the frame.
+> - Pages embedded before Sept 19, 2026 use an older, taller height
+>   (`clamp(930px, calc(1960px - 159vw), 1400px)`). It still works; it just leaves
+>   about 200px of blank space under the widget on phones until the block is
+>   re-pasted with the code above.
 >
 > `docs/embed.js` can resize the frame to the exact height on every tab, but it needs
 > a `<script src>` tag. It only becomes usable if the site admin adds a Cloudflare

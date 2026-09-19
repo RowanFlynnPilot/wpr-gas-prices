@@ -835,3 +835,31 @@ def test_rate_limited_run_counts_as_degraded_even_when_most_cities_landed():
     """14/22 with the run cut short is not a healthy run — it alerts."""
     assert s.is_degraded({"cities_total": 22, "cities_fresh": 14, "rate_limited": True}) is True
     assert s.is_degraded({"cities_total": 22, "cities_fresh": 14, "rate_limited": False}) is False
+
+
+# ---------------------------------------------------------------------------
+# tidy_address_part — calm down ALL-CAPS station addresses
+# ---------------------------------------------------------------------------
+
+def test_tidy_address_titlecases_only_shouting_fields():
+    assert s.tidy_address_part("401 STATE RD") == "401 State Rd"
+    assert s.tidy_address_part("WAUSAU") == "Wausau"
+    # Already-fine input is left exactly alone
+    assert s.tidy_address_part("423 N 17th Ave") == "423 N 17th Ave"
+    assert s.tidy_address_part("McDonald St") == "McDonald St"
+
+
+def test_tidy_address_keeps_compass_points_highways_and_ordinals():
+    assert s.tidy_address_part("1811 N 17TH AVE") == "1811 N 17th Ave"
+    assert s.tidy_address_part("W5490 CTH A") == "W5490 CTH A"
+    assert s.tidy_address_part("2200 US HIGHWAY 51") == "2200 US Highway 51"
+
+
+def test_tidy_address_passes_through_empty_and_numeric():
+    assert s.tidy_address_part("") == ""
+    assert s.tidy_address_part("54401") == "54401"
+
+
+def test_extract_cheapest_stations_tidies_the_address():
+    results = [_named("BP", 4.19, line1="401 STATE RD", locality="HATLEY")]
+    assert s.extract_cheapest_stations(results)[0]["address"] == "401 State Rd, Hatley"

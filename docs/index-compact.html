@@ -240,6 +240,8 @@
   </div>
 </noscript>
 
+<!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
+<script src="./widget-logic.js?v=1"></script>
 <script>
 (function() {
   'use strict';
@@ -263,52 +265,22 @@
     if (p == null) return '—';
     return '<span class="wpr-dollar">$</span>' + p.toFixed(3);
   }
-  function delta(c, p) {
-    if (c == null || p == null) return { text: '—', cls: 'flat-color' };
-    const diff = c - p;
-    const sign = diff > 0 ? '+' : '';
-    const cls = diff > 0.001 ? 'up-color' : diff < -0.001 ? 'down-color' : 'flat-color';
-    const arrow = diff > 0.001 ? '▲' : diff < -0.001 ? '▼' : '—';
-    return { text: `${arrow} ${sign}${diff.toFixed(3)}`, cls };
-  }
   function fuelLabel(k) {
     return { regular: 'Regular', mid_grade: 'Mid-Grade', premium: 'Premium', diesel: 'Diesel' }[k] || k;
   }
 
-  // History keys are 'm/d/yy' and older ones aren't zero-padded, so a plain string
-  // sort interleaves months and years. Always order these by parsed date.
-  // Kept in sync with index.html.
-  function historyKeyTime(k) {
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(k);
-    return m ? Date.UTC(2000 + +m[3], +m[1] - 1, +m[2]) : NaN;
+  // Pure logic is shared with index.html via widget-logic.js (tested by
+  // tests/widget-logic.test.mjs); these bind it to this widget's state.
+  if (!self.WprGasLogic) {
+    widget.innerHTML = '<div class="wpr-c-unavailable">Live prices are temporarily unavailable.<br>Please check back shortly.</div>';
+    return;
   }
-
-  // Most recent prior reading, plus the date it came from — runs can miss days, so
-  // the caller names the real comparison rather than assuming yesterday.
-  function previousReading(key, fuel) {
-    if (!historyData) return null;
-    const keys = Object.keys(historyData)
-      .filter(k => !isNaN(historyKeyTime(k)))
-      .sort((a, b) => historyKeyTime(a) - historyKeyTime(b));
-    const todayKey = data && data.price_date;
-    for (let i = keys.length - 1; i >= 0; i--) {
-      if (keys[i] === todayKey) continue;
-      const v = historyData[keys[i]]?.[key]?.[fuel];
-      if (typeof v === 'number') return { price: v, key: keys[i] };
-    }
-    return null;
-  }
-
-  // "vs yesterday" only when it really is yesterday; otherwise name the date.
-  function comparisonLabel(prevKey) {
-    const todayT = historyKeyTime((data && data.price_date) || '');
-    const prevT = historyKeyTime(prevKey || '');
-    if (isNaN(todayT) || isNaN(prevT)) return 'vs previous';
-    const days = Math.round((todayT - prevT) / 864e5);
-    if (days === 1) return 'vs yesterday';
-    const d = new Date(prevT);
-    return `vs ${d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${d.getUTCDate()}`;
-  }
+  const L = self.WprGasLogic;
+  const esc = L.esc;
+  const delta = L.delta;
+  const previousReading = (key, fuel) => L.previousReading(historyData, data && data.price_date, key, fuel);
+  const comparisonLabel = prevKey => L.comparisonLabel(data && data.price_date, prevKey);
+  const freshnessLabel = () => L.freshness(data.scraped_at, data.price_date, Date.now());
 
   // Tell the embedding page our current height so the iframe can auto-fit
   // (docs/embed.js listens). Posts now AND on the next frame: background tabs
@@ -328,21 +300,6 @@
   window.addEventListener('message', e => {
     if (e.source === window.parent && e.data === 'wpr-gas-height?') postHeight();
   });
-
-  function freshnessLabel() {
-    let ts = data.scraped_at ? new Date(data.scraped_at) : null;
-    if (!ts || isNaN(ts)) {
-      const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(data.price_date || '');
-      if (m) ts = new Date(2000 + (+m[3]), (+m[1]) - 1, +m[2]);
-    }
-    if (!ts || isNaN(ts)) return { text: `Updated ${data.price_date || ''}`, stale: false, title: '' };
-    const hours = (Date.now() - ts.getTime()) / 36e5;
-    let rel;
-    if (hours < 1) rel = 'just now';
-    else if (hours < 24) rel = `${Math.max(1, Math.round(hours))}h ago`;
-    else { const days = Math.round(hours / 24); rel = `${days} day${days === 1 ? '' : 's'} ago`; }
-    return { text: `Updated ${rel}`, stale: hours > 26, title: ts.toLocaleString() };
-  }
 
   function renderError() {
     widget.innerHTML = `
@@ -387,7 +344,7 @@
       const isWausau = name === 'Wausau';
       return `
         <div class="wpr-c-metro-row ${isWausau ? 'highlight' : ''}">
-          <span class="wpr-c-metro-name">${name}</span>
+          <span class="wpr-c-metro-name">${esc(name)}</span>
           <div class="wpr-c-metro-right">
             <span class="wpr-c-metro-price">${fmt(mp)}</span>
             <span class="wpr-c-metro-delta ${md.cls}">${md.text}</span>
@@ -409,7 +366,7 @@
       </div>
       <div class="wpr-c-fuels">${fuelBtns}</div>
       <div class="wpr-c-metro-list">${metroRows}</div>
-      <a href="${FULL_PAGE_URL}" target="_blank" class="wpr-c-cta">View full dashboard & trends →</a>
+      <a href="${FULL_PAGE_URL}" target="_blank" rel="noopener" class="wpr-c-cta">View full dashboard & trends →</a>
       <div class="wpr-c-footer">
         <span>Data via <a href="https://www.gasbuddy.com/gasprices/wisconsin" target="_blank" rel="noopener">GasBuddy</a></span>
         <span>WPR</span>

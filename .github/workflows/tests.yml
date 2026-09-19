@@ -6,6 +6,8 @@ on:
       - 'scrape_gas_prices.py'
       - 'tests/**'
       - 'requirements*.txt'
+      - 'docs/widget-logic.js'
+      - 'package.json'
       - '.github/workflows/tests.yml'
   pull_request:
   workflow_dispatch:
@@ -27,3 +29,19 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+  # The widgets' pure logic (docs/widget-logic.js) runs under Node's built-in test
+  # runner — no dependencies to install, so no npm ci and no Playwright download.
+  widget-logic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run widget logic tests
+        run: npm run test:widget
