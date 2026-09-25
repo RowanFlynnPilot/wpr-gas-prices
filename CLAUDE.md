@@ -353,9 +353,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   waits for `body[data-ready]` (set after the card's fetch/render) so it never races
   the data. It's an **image for email**, not a data cache. Keep `digest.html` fonts
   non-blocking and the `data-ready` signal intact. The card also draws a 30-day
-  statewide sparkline from `gas_prices_history.json`; that fetch lives inside the
-  same `Promise.all` as the data fetch, so `data-ready` still means "everything
-  drawn" — keep it there.
+  statewide sparkline from `gas_prices_history.json` and a home-heating line from
+  `eia_heating.json` (propane + heating oil, year-ago change, off-season caption;
+  it loads `widget-logic.js` for the season logic and omits the line if either
+  fails). Those fetches live inside the same `Promise.all` as the data fetch, so
+  `data-ready` still means "everything drawn" — keep them there.
   - **Re-renders on both daily runs.** The Node / Playwright / render / commit steps
     carry `if: ${{ !cancelled() }}` so a hard scraper failure can't skip the digest —
     AAA and EIA may have refreshed even when GasBuddy didn't. The PNG only *commits*
