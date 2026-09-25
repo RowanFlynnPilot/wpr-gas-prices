@@ -321,6 +321,7 @@ $Tracked = @(
     'docs/gas_prices_history.json',
     'docs/eia_weekly.json',
     'docs/eia_context.json',
+    'docs/eia_heating.json',
     'docs/digest.png'
 )
 foreach ($f in $Tracked) {

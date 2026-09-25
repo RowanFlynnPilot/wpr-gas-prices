@@ -121,8 +121,70 @@
     return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
   }
 
+  // ── Home Heating tab (EIA weekly propane / heating oil, monthly natural gas) ──
+  // Survey weeks run October–March; a "season" is named by its starting year, and
+  // the boundary is July so a late-March point and the next October's point never
+  // share one. ISO dates ('2026-03-30') and months ('2026-06') both parse.
+  const MS_DAY = 864e5;
+  function isoTime(date) {
+    const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(date || '');
+    return m ? Date.UTC(+m[1], +m[2] - 1, m[3] ? +m[3] : 1) : NaN;
+  }
+  function seasonOf(date) {
+    const m = /^(\d{4})-(\d{2})/.exec(date || '');
+    if (!m) return null;
+    const y = +m[1], mo = +m[2];
+    return mo >= 7 ? y : y - 1;
+  }
+  function seasonLabel(startYear) {
+    return `${startYear}–${String(startYear + 1).slice(-2)}`;
+  }
+
+  // Latest reading plus the comparisons the newsroom quotes. `yearAgo` is the
+  // reading nearest 52 weeks earlier, within ±10 days, so a skipped survey week
+  // doesn't silently compare against a different month. `inSeason` is whether the
+  // latest reading is recent (≤ 21 days), i.e. the survey is currently running.
+  function heatingSummary(series, nowMs) {
+    if (!Array.isArray(series) || !series.length) return null;
+    const pts = series.filter(p => p && typeof p.price === 'number' && !isNaN(isoTime(p.date)))
+      .sort((a, b) => isoTime(a.date) - isoTime(b.date));
+    if (!pts.length) return null;
+    const latest = pts[pts.length - 1];
+    const t = isoTime(latest.date);
+    const prev = pts.length > 1 ? pts[pts.length - 2] : null;
+    const target = t - 364 * MS_DAY;
+    let yearAgo = null;
+    for (const p of pts) {
+      const gap = Math.abs(isoTime(p.date) - target);
+      if (gap <= 10 * MS_DAY && (!yearAgo || gap < Math.abs(isoTime(yearAgo.date) - target))) yearAgo = p;
+    }
+    return {
+      latest, prev, yearAgo,
+      inSeason: nowMs - t <= 21 * MS_DAY,
+      season: seasonOf(latest.date),
+    };
+  }
+
+  // Points for one season, with `day` = days since 1 October of that season so two
+  // winters can share an x-axis.
+  function seasonPoints(series, startYear) {
+    const oct1 = Date.UTC(startYear, 9, 1);
+    return (series || [])
+      .filter(p => p && typeof p.price === 'number' && seasonOf(p.date) === startYear)
+      .map(p => ({ day: Math.round((isoTime(p.date) - oct1) / MS_DAY), price: p.price, date: p.date }))
+      .sort((a, b) => a.day - b.day);
+  }
+
+  // "$828" style cost of a delivery. A 500-gallon propane tank is filled to 80%,
+  // so the everyday "fill the tank" number is 400 gallons.
+  function fillCost(pricePerGallon, gallons) {
+    if (typeof pricePerGallon !== 'number' || typeof gallons !== 'number') return null;
+    return Math.round(pricePerGallon * gallons);
+  }
+
   self.WprGasLogic = {
     FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
+    isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
   };
 })();

@@ -621,6 +621,76 @@ def fetch_eia_data(out_dir: str) -> bool:
     return False
 
 
+# Wisconsin residential heating fuels, for the widget's Home Heating tab.
+# Propane and heating oil come from EIA's State Heating Oil and Propane Program:
+# a weekly dealer survey that runs October through March only. Natural gas is
+# EIA's monthly delivered-to-residential price, published ~3 months late.
+HEATING_SERIES = {
+    "propane":     {"path": "petroleum/pri/wfr",  "frequency": "weekly",
+                    "facets": {"duoarea": "SWI", "product": "EPLLPA", "process": "PRS"}, "length": 320},
+    "heating_oil": {"path": "petroleum/pri/wfr",  "frequency": "weekly",
+                    "facets": {"duoarea": "SWI", "product": "EPD2F", "process": "PRS"}, "length": 320},
+    "natural_gas": {"path": "natural-gas/pri/sum", "frequency": "monthly",
+                    "facets": {"duoarea": "SWI", "process": "PRS"}, "length": 36},
+}
+
+
+def parse_eia_rows(rows: list) -> list:
+    """EIA v2 data rows -> [{"date", "price"}] sorted ascending, junk dropped. Pure."""
+    out = []
+    for row in rows or []:
+        period, val = row.get("period"), row.get("value")
+        if not period or val is None:
+            continue
+        try:
+            out.append({"date": period, "price": float(val)})
+        except (ValueError, TypeError):
+            continue
+    out.sort(key=lambda e: e["date"])
+    return out
+
+
+def fetch_eia_heating(out_dir: str) -> bool:
+    """Fetch Wisconsin residential propane, heating oil and natural gas prices.
+
+    Writes docs/eia_heating.json. Each series is independent: if EIA renames one
+    code the others still land, and a series that fails is simply absent so the
+    widget carries on without it. Returns True if the file was written.
+    """
+    api_key = os.environ.get("EIA_API_KEY", "")
+    if not api_key:
+        return False
+
+    log.info("Fetching EIA Wisconsin heating-fuel prices...")
+    result: dict = {}
+    for name, spec in HEATING_SERIES.items():
+        params = {"api_key": api_key, "frequency": spec["frequency"], "data[0]": "value",
+                  "sort[0][column]": "period", "sort[0][direction]": "desc",
+                  "length": spec["length"]}
+        for facet, value in spec["facets"].items():
+            params[f"facets[{facet}][]"] = value
+        try:
+            resp = requests.get(f"https://api.eia.gov/v2/{spec['path']}/data/", params=params, timeout=30)
+            resp.raise_for_status()
+            series = parse_eia_rows(resp.json().get("response", {}).get("data", []))
+            if series:
+                result[name] = series
+                log.info("  %s: %d points, latest %s = %s", name, len(series),
+                         series[-1]["date"], series[-1]["price"])
+            else:
+                log.warning("  %s: no data returned", name)
+        except Exception:
+            log.exception("  EIA heating fetch failed for %s", name)
+
+    if not result:
+        return False
+    result["fetched_at"] = datetime.now(timezone.utc).isoformat()
+    with open(os.path.join(out_dir, "eia_heating.json"), "w", encoding="utf-8") as f:
+        json.dump(result, f, separators=(",", ":"), ensure_ascii=False)
+    log.info("Wrote EIA heating data to %s", os.path.join(out_dir, "eia_heating.json"))
+    return True
+
+
 def latest_eia_value(rows: list) -> tuple | None:
     """Most recent (period, value) from EIA data rows. Pure/testable."""
     best = None
@@ -1134,6 +1204,7 @@ def main() -> None:
 
     eia_updated = fetch_eia_data(out_dir)
     fetch_eia_context(out_dir)
+    fetch_eia_heating(out_dir)
 
     write_status(out_dir, gasbuddy_success=gb_success, run_health=run_health,
                  eia_updated=eia_updated, aaa_updated=bool(aaa), aaa_only=aaa_only,

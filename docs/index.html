@@ -166,12 +166,34 @@
   .wpr-chart-hover-group:hover .wpr-chart-dot { opacity:1 !important; }
   .wpr-chart-hover-group:hover .wpr-chart-tooltip { opacity:1 !important; }
 
+  /* Home Heating tab */
+  .wpr-heat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 14px 4px; }
+  .wpr-heat-card { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:14px 14px 12px; box-shadow:0 1px 3px rgba(20,50,45,0.05); min-width:0; }
+  .wpr-heat-card-label { font-size:9px; text-transform:uppercase; letter-spacing:0.7px; color:var(--ink-faint); font-weight:700; }
+  .wpr-heat-card-value { font-family:'Playfair Display',Georgia,serif; font-size:28px; font-weight:700; line-height:1.05; margin-top:4px; }
+  .wpr-heat-card-unit { font-family:'DM Sans',sans-serif; font-size:11px; font-weight:400; color:var(--ink-faint); margin-left:2px; }
+  .wpr-heat-card-asof { font-size:10px; color:var(--ink-faint); margin-top:2px; }
+  .wpr-heat-card-empty { font-size:12px; color:var(--ink-faint); font-style:italic; padding:14px 0; }
+  .wpr-heat-card-row { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--ink-light); margin-top:7px; }
+  .wpr-heat-card-row b { font-weight:600; text-align:right; }
+  .wpr-heat-fill { margin-top:9px; padding-top:9px; border-top:1px solid var(--rule-light); font-size:11px; color:var(--ink-mid); line-height:1.45; }
+  .wpr-heat-fill strong { font-family:'Playfair Display',Georgia,serif; font-size:16px; color:var(--accent-dark); }
+  .wpr-heat-banner { margin:10px 14px 0; padding:9px 12px; background:#fdf6e7; border:1px solid #e8cf9a; border-radius:4px; font-size:11.5px; line-height:1.5; color:#7a5b1e; }
+  .wpr-heat-note { text-align:center; font-size:10px; color:var(--ink-faint); padding:2px 18px 12px; line-height:1.45; }
+  .wpr-trends-legend-dashed { background:none; border-top:2px dashed var(--ink-light); height:0; }
+  .wpr-chart-hit:hover { fill:var(--accent-pale); }
+
   .wpr-gas-footer { padding:8px 14px; border-top:1px solid var(--rule); display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--ink-faint); background:var(--paper-warm); }
   .wpr-gas-footer a { color:var(--accent); text-decoration:none; font-weight:500; }
   .wpr-gas-footer a:hover { text-decoration:underline; }
 
   @media (max-width:520px) {
     .wpr-gas-hero-value { font-size:30px; }
+    .wpr-gas-tab { font-size:12px; padding:10px 2px; }
+    .wpr-heat-card { padding:11px 10px 10px; }
+    .wpr-heat-card-value { font-size:22px; }
+    .wpr-heat-card-row { flex-direction:column; gap:1px; }
+    .wpr-heat-card-row b { text-align:left; }
     /* Phones keep the three cards side by side. Stacking them cost ~280px of
        scroll to repeat a state average the header already shows. */
     .wpr-state-grid { grid-template-columns:1fr 1.12fr 1fr; gap:6px; padding:12px 10px 8px; }
@@ -205,7 +227,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=1"></script>
+<script src="./widget-logic.js?v=2"></script>
 <script>
 (function() {
   'use strict';
@@ -214,6 +236,7 @@
   const HISTORY_URL = './gas_prices_history.json';
   const EIA_DATA_URL = './eia_weekly.json';
   const EIA_CONTEXT_URL = './eia_context.json';
+  const EIA_HEATING_URL = './eia_heating.json';
   // Cache-bust in 10-min buckets so the GitHub Pages CDN doesn't serve stale JSON.
   const cacheBust = () => '?t=' + Math.floor(Date.now() / 600000);
 
@@ -222,6 +245,8 @@
   let data = null;
   let historyData = null;
   let contextData = null;
+  let heatingData = null;
+  let heatingFuel = 'propane';
   let activeFuel = 'regular';
   let activeTab = 'statewide';
   let selectedCity = '';
@@ -407,18 +432,22 @@
         <button type="button" role="tab" aria-selected="${activeTab === 'statewide'}" class="wpr-gas-tab ${activeTab === 'statewide' ? 'active' : ''}" data-tab="statewide">Statewide</button>
         <button type="button" role="tab" aria-selected="${activeTab === 'metro'}" class="wpr-gas-tab ${activeTab === 'metro' ? 'active' : ''}" data-tab="metro">By Metro Area</button>
         <button type="button" role="tab" aria-selected="${activeTab === 'trends'}" class="wpr-gas-tab ${activeTab === 'trends' ? 'active' : ''}" data-tab="trends">Price Trends</button>
+        <button type="button" role="tab" aria-selected="${activeTab === 'heating'}" class="wpr-gas-tab ${activeTab === 'heating' ? 'active' : ''}" data-tab="heating">Home Heating</button>
       </div>
     `;
 
     html += '<div role="tabpanel" aria-live="polite">';
     if (activeTab === 'statewide') html += renderStatewide();
     else if (activeTab === 'metro') html += renderMetro();
+    else if (activeTab === 'heating') html += renderHeating();
     else html += renderTrends();
     html += '</div>';
 
     const trendsSampleNote = (activeTab === 'trends' && usingSampleData) ? ' · <em style="color:var(--accent)">sample data</em>' : '';
     const sourceCredit = activeTab === 'trends'
       ? `Midwest region data via <a href="https://www.eia.gov/petroleum/gasdiesel/" target="_blank" rel="noopener">U.S. Energy Information Administration</a>${trendsSampleNote}`
+      : activeTab === 'heating'
+      ? `Heating fuel data via <a href="https://www.eia.gov/petroleum/heatingoilpropane/" target="_blank" rel="noopener">U.S. Energy Information Administration</a>`
       : `Data via <a href="https://www.gasbuddy.com/gasprices/wisconsin" target="_blank" rel="noopener">GasBuddy</a>`;
 
     html += `<div class="wpr-gas-footer"><span>${sourceCredit}</span><span>Wausau Pilot &amp; Review</span></div>`;
@@ -431,6 +460,7 @@
       btn.addEventListener('click', () => {
         if (btn.dataset.fuel) { activeFuel = btn.dataset.fuel; render(); }
         if (btn.dataset.range) { trendRange = parseInt(btn.dataset.range); eiaCache = {}; render(); }
+        if (btn.dataset.heat) { heatingFuel = btn.dataset.heat; render(); }
       });
     });
     widget.querySelectorAll('.wpr-sort-btn').forEach(btn => {
@@ -940,17 +970,162 @@
     `;
   }
 
+  // ── Home Heating Tab ──
+  // Wisconsin residential propane and heating oil from EIA's weekly State Heating
+  // Oil and Propane Program survey (October–March), plus monthly natural gas.
+  // Statewide dealer averages — there is no per-city or per-station equivalent of
+  // GasBuddy for these fuels, so the tab says so rather than implying a local quote.
+  const HEATING_FUELS = {
+    propane:     { label: 'Propane',     tank: 'a 500-gallon tank (filled to 80%, about 400 gallons)', gallons: 400 },
+    heating_oil: { label: 'Heating oil', tank: 'a typical 275-gallon tank', gallons: 275 },
+  };
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function longIsoDate(iso) {
+    const t = L.isoTime(iso);
+    if (isNaN(t)) return iso || '';
+    const d = new Date(t);
+    return `${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+  }
+  function monthYear(ym) {
+    const t = L.isoTime(ym);
+    if (isNaN(t)) return ym || '';
+    const d = new Date(t);
+    return `${d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })} ${d.getUTCFullYear()}`;
+  }
+  // "4¢ higher than a year ago" / "$1.34 higher than a year ago" — whole cents below a
+  // dollar, dollars at or above (matches the blurb's money()). `unit` suffixes the
+  // amount for per-Mcf figures.
+  function centsClause(cur, ref, phrase, unit = '') {
+    if (typeof cur !== 'number' || typeof ref !== 'number') return '';
+    const diff = cur - ref, cents = Math.round(Math.abs(diff) * 100);
+    if (cents === 0) return `even with ${phrase}`;
+    const amount = cents >= 100 ? `$${(cents / 100).toFixed(2)}` : `${cents}¢`;
+    return `${amount}${unit} ${diff > 0 ? 'higher' : 'lower'} than ${phrase}`;
+  }
+
+  function renderHeatingCard(key) {
+    const spec = HEATING_FUELS[key];
+    const sum = L.heatingSummary(heatingData?.[key], Date.now());
+    if (!sum) {
+      return `<div class="wpr-heat-card"><div class="wpr-heat-card-label">${spec.label}</div>
+        <div class="wpr-heat-card-empty">No data available</div></div>`;
+    }
+    const cur = sum.latest.price;
+    // Week-over-week only within the same season — October's first reading must
+    // not be compared against the previous March.
+    const sameSeasonPrev = sum.prev && L.seasonOf(sum.prev.date) === sum.season ? sum.prev : null;
+    const wk = sameSeasonPrev ? delta(cur, sameSeasonPrev.price) : null;
+    const yr = sum.yearAgo ? centsClause(cur, sum.yearAgo.price, 'a year ago') : '';
+    const yrCls = !sum.yearAgo ? '' : cur > sum.yearAgo.price + 0.005 ? 'up-color' : cur < sum.yearAgo.price - 0.005 ? 'down-color' : 'flat-color';
+    const fill = L.fillCost(cur, spec.gallons);
+    const fillYr = sum.yearAgo ? L.fillCost(sum.yearAgo.price, spec.gallons) : null;
+    const fillDiff = fill != null && fillYr != null ? fill - fillYr : null;
+    return `
+      <div class="wpr-heat-card">
+        <div class="wpr-heat-card-label">${spec.label} · residential</div>
+        <div class="wpr-heat-card-value">${fmt(cur)}<span class="wpr-heat-card-unit">/gal</span></div>
+        <div class="wpr-heat-card-asof">Week of ${longIsoDate(sum.latest.date)}</div>
+        <div class="wpr-heat-card-row"><span>vs previous week</span><b class="${wk ? wk.cls : 'flat-color'}">${wk ? wk.text : 'first reading of the season'}</b></div>
+        <div class="wpr-heat-card-row"><span>vs a year ago</span><b class="${yrCls}">${yr || '—'}</b></div>
+        ${fill != null ? `<div class="wpr-heat-fill">Filling ${spec.tank}: <strong>$${fill.toLocaleString('en-US')}</strong>${fillDiff ? ` <span class="${fillDiff > 0 ? 'up-color' : 'down-color'}">(${fillDiff > 0 ? '+' : '−'}$${Math.abs(fillDiff).toLocaleString('en-US')} vs last year)</span>` : ''}</div>` : ''}
+      </div>`;
+  }
+
+  // This winter's line over last winter's, both on a days-since-October-1 axis.
+  function buildSeasonChart(series, fuelLabel) {
+    const sum = L.heatingSummary(series, Date.now());
+    if (!sum) return '<div class="wpr-trends-empty">No data available.</div>';
+    const cur = L.seasonPoints(series, sum.season);
+    const prev = L.seasonPoints(series, sum.season - 1);
+    if (cur.length + prev.length < 2) return '<div class="wpr-trends-empty">Not enough data yet this season.</div>';
+
+    const W = 600, H = 250, padL = 48, padR = 16, padT = 20, padB = 34;
+    const chartW = W - padL - padR, chartH = H - padT - padB;
+    const DAYS = 190;  // 1 Oct → ~8 Apr
+    const all = [...cur, ...prev].map(p => p.price);
+    const niceMin = Math.floor(Math.min(...all) * 10) / 10, niceMax = Math.ceil(Math.max(...all) * 10) / 10;
+    const niceRange = niceMax - niceMin || 0.1;
+    const x = day => padL + Math.min(Math.max(day, 0), DAYS) / DAYS * chartW;
+    const y = price => padT + (1 - (price - niceMin) / niceRange) * chartH;
+    const path = pts => pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.day).toFixed(1)},${y(p.price).toFixed(1)}`).join('');
+
+    let grid = '';
+    const step = niceRange / 4 <= 0.1 ? 0.1 : niceRange / 4 <= 0.25 ? 0.25 : 0.5;
+    for (let v = niceMin; v <= niceMax + 0.001; v += step) {
+      grid += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" stroke="#e8e5de" stroke-width="0.5"/>`
+        + `<text x="${padL - 6}" y="${y(v) + 3.5}" text-anchor="end" class="wpr-chart-axis-label" style="font-family:'Source Sans 3',sans-serif">$${v.toFixed(2)}</text>`;
+    }
+    let xLabels = '';
+    [['Oct', 0], ['Nov', 31], ['Dec', 61], ['Jan', 92], ['Feb', 123], ['Mar', 151]].forEach(([m, d]) => {
+      xLabels += `<text x="${x(d + 15)}" y="${H - 8}" text-anchor="middle" class="wpr-chart-axis-label">${m}</text>`;
+    });
+    const dots = pts => pts.map(p =>
+      `<circle cx="${x(p.day).toFixed(1)}" cy="${y(p.price).toFixed(1)}" r="6" fill="transparent" class="wpr-chart-hit"><title>${longIsoDate(p.date)}: $${p.price.toFixed(3)}</title></circle>`).join('');
+    const last = cur[cur.length - 1];
+    return `
+      <div class="wpr-trends-legend">
+        <span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch" style="background:var(--accent)"></span>${L.seasonLabel(sum.season)}${sum.inSeason ? ' (this winter)' : ''}</span>
+        ${prev.length ? `<span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch wpr-trends-legend-dashed"></span>${L.seasonLabel(sum.season - 1)}</span>` : ''}
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" class="wpr-trends-svg" role="img"
+           aria-label="${fuelLabel} price this winter compared with last winter, October through March.">
+        <title>${fuelLabel} — ${L.seasonLabel(sum.season)} vs ${L.seasonLabel(sum.season - 1)}</title>
+        ${grid}
+        ${prev.length > 1 ? `<path d="${path(prev)}" fill="none" stroke="var(--ink-light)" stroke-width="1.6" stroke-dasharray="4,3" opacity="0.8" stroke-linejoin="round"/>` : ''}
+        ${cur.length > 1 ? `<path d="${path(cur)}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+        ${last ? `<circle cx="${x(last.day).toFixed(1)}" cy="${y(last.price).toFixed(1)}" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1.5"/>` : ''}
+        ${xLabels}
+        ${dots(prev)}${dots(cur)}
+      </svg>`;
+  }
+
+  function renderHeating() {
+    if (!heatingData) {
+      return '<div class="wpr-trends-empty">Heating fuel data is temporarily unavailable.</div>';
+    }
+    const anchor = L.heatingSummary(heatingData.propane, Date.now()) || L.heatingSummary(heatingData.heating_oil, Date.now());
+    const banner = anchor && !anchor.inSeason ? `
+      <div class="wpr-heat-banner">The weekly heating-fuel survey runs <strong>October through March</strong>.
+        Showing last winter's final readings (week of ${longIsoDate(anchor.latest.date)}); this winter's first reading arrives in early October.</div>` : '';
+
+    const fuelBtns = Object.entries(HEATING_FUELS).map(([k, s]) =>
+      `<button type="button" aria-pressed="${heatingFuel === k}" class="wpr-gas-fuel-btn ${heatingFuel === k ? 'active' : ''}" data-heat="${k}">${s.label}</button>`
+    ).join('');
+
+    const gas = L.heatingSummary(heatingData.natural_gas, Date.now());
+    const gasStrip = gas ? `
+      <div class="wpr-ctx-strip" title="Source: U.S. EIA, monthly">
+        <span class="wpr-ctx-item"><span class="wpr-ctx-label">Natural gas</span><span class="wpr-ctx-value">$${gas.latest.price.toFixed(2)}<span class="wpr-ctx-unit">/Mcf</span></span><span class="wpr-ctx-rel flat-color">${monthYear(gas.latest.date)}${gas.yearAgo ? ` · ${centsClause(gas.latest.price, gas.yearAgo.price, 'a year ago', '/Mcf')}` : ''}</span></span>
+      </div>
+      <div class="wpr-heat-note">Natural gas is a monthly statewide figure published about three months late; utility bills also carry fixed charges not included here.</div>` : '';
+
+    return `
+      <div class="wpr-state-section-label" style="padding-top:12px">Wisconsin residential heating fuels · weekly via U.S. EIA</div>
+      ${banner}
+      <div class="wpr-heat-grid">${renderHeatingCard('propane')}${renderHeatingCard('heating_oil')}</div>
+      <div class="wpr-gas-fuel-row">${fuelBtns}</div>
+      <div class="wpr-trends-chart-wrap">
+        <div class="wpr-trends-title">${HEATING_FUELS[heatingFuel].label} · this winter vs last</div>
+        ${buildSeasonChart(heatingData[heatingFuel], HEATING_FUELS[heatingFuel].label)}
+      </div>
+      ${gasStrip}
+      <div class="wpr-heat-note">Statewide averages from a weekly dealer survey (EIA State Heating Oil and Propane Program). Your delivered price depends on your dealer, contract, and delivery size — there is no per-city or per-dealer public data for these fuels.</div>
+    `;
+  }
+
   // ── Init ──
   async function init() {
     try {
-      const [dataResp, histResp, ctxResp] = await Promise.all([
+      const [dataResp, histResp, ctxResp, heatResp] = await Promise.all([
         fetch(DATA_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(HISTORY_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(EIA_CONTEXT_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(EIA_HEATING_URL + cacheBust()).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       data = dataResp;
       historyData = histResp;
       contextData = ctxResp;
+      heatingData = heatResp;
     } catch (err) {
       data = null;
     }

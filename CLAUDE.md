@@ -100,6 +100,14 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 3. **EIA API** (`api.eia.gov/v2`) — weekly Midwest (PADD 2, `duoarea=R20`) trend
    series for the chart, plus national reg-gas avg (`duoarea=NUS`) and WTI crude
    (`RWTC`) for the context strip. Requires `EIA_API_KEY`; **skipped silently if unset**.
+4. **EIA heating fuels** (same key) — `fetch_eia_heating()` → `docs/eia_heating.json`
+   for the **Home Heating** tab. `HEATING_SERIES`: Wisconsin residential **propane**
+   (`petroleum/pri/wfr`, `EPLLPA`/`PRS`) and **heating oil** (`EPD2F`/`PRS`) from the
+   State Heating Oil and Propane Program — a weekly dealer survey that runs
+   **October–March only** — plus monthly residential **natural gas**
+   (`natural-gas/pri/sum`, `PRS`, $/Mcf, ~3-month lag). Statewide only; there is no
+   per-city or per-dealer equivalent of GasBuddy for these fuels, and the tab says so.
+   Each series is independent (a failed one is absent, not fatal).
 
 > **Source split:** GasBuddy = live station/metro/cheapest data + the hero average;
 > AAA = the statewide historical trend. Both are labeled in the UI. The two current
@@ -130,6 +138,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly Midwest series (trends chart) | **Never by hand** |
 | `docs/eia_context.json` | EIA national reg-gas avg + WTI crude (context strip) | **Never by hand** |
+| `docs/eia_heating.json` | EIA Wisconsin propane / heating oil (weekly, Oct–Mar) + natural gas (monthly) for the Home Heating tab | **Never by hand** |
 | `docs/scrape_status.json` | Per-run heartbeat (gitignored) — read in-job for failure alerting | **Never** — scraper owns it |
 
 ## Key constants (top of `scrape_gas_prices.py`)
@@ -229,6 +238,17 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
     stay quiet. A closed nudge means the newsroom is done with *that* move, and a
     week-over-week jump keeps qualifying for days.
   It is explicitly a story heads-up, not an error alert.
+- **Home Heating tab.** Fourth tab; renders from `eia_heating.json`. Cards show the
+  latest propane and heating-oil reading with week-over-week (same season only —
+  October's first reading is never compared to March) and year-ago (nearest point
+  within ±10 days of 52 weeks back) changes, plus a "filling the tank" cost
+  (`fillCost()`: 400 gal for a 500-gal propane tank at the standard 80% fill, 275
+  gal for heating oil). The chart overlays this winter on last on a
+  days-since-1-October axis (`seasonPoints()`; seasons are named by start year with
+  a July boundary). Off season — latest reading older than 21 days
+  (`heatingSummary().inSeason`) — an amber banner says the survey resumes in
+  October and the cards show last winter's final week. Natural gas is a dated
+  footnote strip. All of that logic is in `widget-logic.js` with tests.
 - **Trends tab overlays Wisconsin on the Midwest.** `getWIEntries()` reads the daily
   statewide series from `gas_prices_history.json` and draws it over the EIA weekly
   benchmark. The chart x-axis is **time-based, not index-based** — required for

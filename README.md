@@ -42,6 +42,14 @@ The scraper pulls from the cloud — no proxies, no paid services beyond a free 
    trends, plus the U.S. national average and WTI crude for context. Requires a free
    `EIA_API_KEY`; if it's missing, this part is simply skipped and everything else
    still works.
+4. **EIA heating fuels** (same key) — the **Home Heating** tab: Wisconsin's weekly
+   residential propane and heating-oil prices from EIA's dealer survey, which runs
+   **October through March**, plus the monthly residential natural-gas price. These
+   are statewide averages — nobody publishes per-dealer heating prices — so the tab
+   shows the trend, the year-over-year change, and what filling a tank costs, and
+   says plainly that your own quote depends on your dealer. Outside the survey
+   season it shows last winter's final reading with a notice; the first October
+   reading appears on its own.
 
 If a city fails on a given run, its **previous price is carried forward** and marked
 stale, so the widget never shows blank cities.

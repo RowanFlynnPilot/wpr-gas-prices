@@ -524,6 +524,7 @@ def test_main_writes_status_and_strips_run_health(tmp_path, monkeypatch):
     monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s, "fetch_eia_heating", lambda out_dir: False)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
@@ -549,6 +550,7 @@ def test_main_reports_failure_when_scrape_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s, "fetch_eia_heating", lambda out_dir: False)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
@@ -593,6 +595,7 @@ def test_main_refreshes_aaa_when_gasbuddy_fails(tmp_path, monkeypatch):
     monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s, "fetch_eia_heating", lambda out_dir: False)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
@@ -651,6 +654,7 @@ def test_main_leaves_file_untouched_when_gasbuddy_and_aaa_both_fail(tmp_path, mo
     monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: True)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s, "fetch_eia_heating", lambda out_dir: False)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
@@ -682,6 +686,7 @@ def test_main_refreshes_aaa_when_every_city_comes_back_empty(tmp_path, monkeypat
     monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s, "fetch_eia_heating", lambda out_dir: False)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
@@ -718,6 +723,7 @@ def test_fresh_aaa_overrides_carried_forward_aaa(tmp_path, monkeypatch):
     monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
     monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
     monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s, "fetch_eia_heating", lambda out_dir: False)
     monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
     s.main()
 
@@ -863,3 +869,50 @@ def test_tidy_address_passes_through_empty_and_numeric():
 def test_extract_cheapest_stations_tidies_the_address():
     results = [_named("BP", 4.19, line1="401 STATE RD", locality="HATLEY")]
     assert s.extract_cheapest_stations(results)[0]["address"] == "401 State Rd, Hatley"
+
+
+# ---------------------------------------------------------------------------
+# parse_eia_rows — heating-fuel series
+# ---------------------------------------------------------------------------
+
+def test_parse_eia_rows_sorts_ascending_and_drops_junk():
+    rows = [
+        {"period": "2026-03-30", "value": "2.066"},
+        {"period": "2026-03-16", "value": 2.059},
+        {"period": "2026-03-23", "value": None},        # missing value
+        {"period": None, "value": "1.5"},               # missing period
+        {"period": "2026-03-09", "value": "n/a"},       # unparseable
+    ]
+    assert s.parse_eia_rows(rows) == [{"date": "2026-03-16", "price": 2.059},
+                                      {"date": "2026-03-30", "price": 2.066}]
+    assert s.parse_eia_rows([]) == []
+    assert s.parse_eia_rows(None) == []
+
+
+def test_fetch_eia_heating_skips_without_key_and_writes_partial(tmp_path, monkeypatch):
+    monkeypatch.delenv("EIA_API_KEY", raising=False)
+    assert s.fetch_eia_heating(str(tmp_path)) is False
+
+    monkeypatch.setenv("EIA_API_KEY", "x")
+
+    class _R:
+        def __init__(self, payload, fail=False):
+            self._p, self._fail = payload, fail
+        def raise_for_status(self):
+            if self._fail:
+                raise RuntimeError("HTTP 500")
+        def json(self):
+            return self._p
+
+    def fake_get(url, params=None, timeout=None):
+        if "natural-gas" in url:
+            return _R({}, fail=True)                       # one series down
+        return _R({"response": {"data": [{"period": "2026-03-30", "value": "2.066"}]}})
+
+    monkeypatch.setattr(s.requests, "get", fake_get)
+    assert s.fetch_eia_heating(str(tmp_path)) is True
+    out = json.loads((tmp_path / "eia_heating.json").read_text(encoding="utf-8"))
+    assert out["propane"] == [{"date": "2026-03-30", "price": 2.066}]
+    assert out["heating_oil"] == [{"date": "2026-03-30", "price": 2.066}]
+    assert "natural_gas" not in out                        # failed series is absent, not fatal
+    assert "fetched_at" in out

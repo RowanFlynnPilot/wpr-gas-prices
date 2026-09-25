@@ -118,3 +118,59 @@ test('esc neutralises markup in scraped names', () => {
   assert.equal(L.esc(`Casey's "General" & Co`), 'Casey&#39;s &quot;General&quot; &amp; Co');
   assert.equal(L.esc(null), '');
 });
+
+test('seasonOf / seasonLabel: July is the boundary', () => {
+  assert.equal(L.seasonOf('2026-03-30'), 2025);
+  assert.equal(L.seasonOf('2025-10-06'), 2025);
+  assert.equal(L.seasonOf('2026-06'), 2025);   // month-only (natural gas)
+  assert.equal(L.seasonOf('2026-07'), 2026);
+  assert.equal(L.seasonOf('junk'), null);
+  assert.equal(L.seasonLabel(2025), '2025–26');
+  assert.equal(L.seasonLabel(2029), '2029–30');
+});
+
+test('heatingSummary: latest, previous, nearest year-ago within tolerance, in-season flag', () => {
+  const series = [
+    { date: '2025-03-31', price: 1.90 },   // 364 days before latest → year-ago match
+    { date: '2025-03-24', price: 1.95 },
+    { date: '2026-03-16', price: 2.059 },
+    { date: '2026-03-23', price: 2.069 },
+    { date: '2026-03-30', price: 2.066 },
+    { date: '2026-03-02', price: 9.99, junk: true },
+  ].sort(() => 0);
+  const s = L.heatingSummary(series, Date.parse('2026-04-05T00:00:00Z'));
+  assert.equal(s.latest.date, '2026-03-30');
+  assert.equal(s.prev.date, '2026-03-23');
+  assert.equal(s.yearAgo.date, '2025-03-31');
+  assert.equal(s.inSeason, true);
+  assert.equal(s.season, 2025);
+  // Late September: the March reading is 25 weeks old → off-season
+  assert.equal(L.heatingSummary(series, Date.parse('2026-09-25T00:00:00Z')).inSeason, false);
+});
+
+test('heatingSummary: no year-ago when the nearest point is outside ±10 days', () => {
+  const series = [{ date: '2025-02-24', price: 1.8 }, { date: '2026-03-30', price: 2.0 }];
+  assert.equal(L.heatingSummary(series, 0).yearAgo, null);
+  assert.equal(L.heatingSummary([], 0), null);
+  assert.equal(L.heatingSummary(null, 0), null);
+  assert.equal(L.heatingSummary([{ date: 'bad', price: 1 }], 0), null);
+});
+
+test('seasonPoints keys each winter by days since 1 October', () => {
+  const series = [
+    { date: '2025-10-06', price: 1.7 }, { date: '2026-03-30', price: 2.0 },
+    { date: '2024-10-07', price: 1.6 }, { date: '2025-03-31', price: 1.9 },
+  ];
+  const s25 = L.seasonPoints(series, 2025);
+  assert.deepEqual(plain(s25.map(p => [p.day, p.price])), [[5, 1.7], [180, 2.0]]);
+  const s24 = L.seasonPoints(series, 2024);
+  assert.deepEqual(plain(s24.map(p => p.day)), [6, 181]);
+  assert.deepEqual(plain(L.seasonPoints(series, 2023)), []);
+});
+
+test('fillCost rounds to whole dollars and rejects bad input', () => {
+  assert.equal(L.fillCost(2.066, 400), 826);
+  assert.equal(L.fillCost(4.323, 275), 1189);
+  assert.equal(L.fillCost(null, 400), null);
+  assert.equal(L.fillCost(2.0, undefined), null);
+});
