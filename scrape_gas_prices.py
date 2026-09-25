@@ -510,6 +510,7 @@ def scrape_gasbuddy() -> dict:
     batch_size = 7
 
     rate_limited = False
+    rate_limit_wait = 0
     for batch_num, batch_start in enumerate(range(0, len(city_items), batch_size)):
         if rate_limited:
             break
@@ -533,6 +534,7 @@ def scrape_gasbuddy() -> dict:
                           "after %d/%d cities rather than retrying into the ban",
                           e.retry_after, len(metros), len(CITIES))
                 rate_limited = True
+                rate_limit_wait = e.retry_after
                 break
             if data:
                 metros[city_name] = data
@@ -569,6 +571,7 @@ def scrape_gasbuddy() -> dict:
             "cities_fresh":  len(metros),
             "failed_cities": sorted(c for c in CITIES if c not in metros),
             "rate_limited":  rate_limited,
+            "rate_limit_wait": rate_limit_wait,   # the server's Retry-After, seconds
         },
     }
 
@@ -1122,6 +1125,7 @@ def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | Non
         "cities_fresh":     0,
         "failed_cities":    sorted(CITIES),
         "rate_limited":     False,
+        "rate_limit_wait":  0,
     }
     if run_health:
         status.update(run_health)

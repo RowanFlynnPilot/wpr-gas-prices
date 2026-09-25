@@ -833,6 +833,7 @@ def test_scrape_gasbuddy_stops_at_the_first_rate_limit(monkeypatch):
     assert list(data["metros"]) == [seen[0]]   # the good city survives
     health = data["run_health"]
     assert health["rate_limited"] is True
+    assert health["rate_limit_wait"] == 441
     assert health["cities_fresh"] == 1
     assert len(health["failed_cities"]) == len(s.CITIES) - 1
 
