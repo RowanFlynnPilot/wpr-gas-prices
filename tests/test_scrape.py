@@ -1036,3 +1036,48 @@ def test_main_skip_gasbuddy_refreshes_aaa_without_scraping(tmp_path, monkeypatch
     assert status["gasbuddy_success"] is False
     assert status["aaa_only"] is True
     assert isinstance(status["source_problems"], list)
+
+
+# ---------------------------------------------------------------------------
+# Nudge repeat rule — comment only on a 5¢+ change of the figure
+# ---------------------------------------------------------------------------
+
+def test_parse_nudge_text_takes_the_last_move_and_tolerates_mojibake():
+    thread = ("Wisconsin regular dropped 10¢ in the past week (AAA statewide: $3.92 -> $3.81).\n\n"
+              "This is a story nudge. Wisconsin regular jumped 33Â¢ in the past week (AAA ...).\n"
+              "Closed by Rowan — seen.")
+    assert s.parse_nudge_text(thread) == {"period": "week", "delta": 0.33}
+    assert s.parse_nudge_text("Wisconsin regular dropped 7? since yesterday (AAA ...)") ==         {"period": "day", "delta": -0.07}
+    assert s.parse_nudge_text("nothing here") is None
+    assert s.parse_nudge_text("") is None
+
+
+def test_nudge_is_new_only_on_a_five_cent_shift_or_a_different_period():
+    said = "Wisconsin regular jumped 33¢ in the past week (AAA statewide: $4.01 -> $4.34)."
+    assert s.nudge_is_new({"period": "week", "delta": 0.34}, said) is False   # 1¢ drift
+    assert s.nudge_is_new({"period": "week", "delta": 0.30}, said) is False   # 3¢
+    assert s.nudge_is_new({"period": "week", "delta": 0.38}, said) is True    # exactly 5¢
+    assert s.nudge_is_new({"period": "week", "delta": 0.25}, said) is True    # 8¢ the other way
+    assert s.nudge_is_new({"period": "week", "delta": -0.11}, said) is True   # direction flip
+    assert s.nudge_is_new({"period": "day", "delta": 0.06}, said) is True     # different story
+    assert s.nudge_is_new({"period": "week", "delta": 0.34}, "no move stated") is True
+
+
+def test_nudge_check_cli(tmp_path, monkeypatch, capsys):
+    status = tmp_path / "scrape_status.json"
+    status.write_text(json.dumps({"notable_move": {"period": "week", "delta": 0.34,
+                                                   "text": "Wisconsin regular jumped 34¢ in the past week (...)"}}),
+                      encoding="utf-8")
+    monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "--nudge-check", "-o", str(tmp_path / "gas_prices.json")])
+    monkeypatch.setattr(s.sys, "stdin", __import__("io").StringIO("Wisconsin regular jumped 33¢ in the past week (...)"))
+    s.main()
+    assert capsys.readouterr().out.strip() == "same"
+
+    monkeypatch.setattr(s.sys, "stdin", __import__("io").StringIO("Wisconsin regular jumped 20¢ in the past week (...)"))
+    s.main()
+    assert capsys.readouterr().out.strip() == "new"
+
+    status.write_text(json.dumps({"notable_move": None}), encoding="utf-8")
+    monkeypatch.setattr(s.sys, "stdin", __import__("io").StringIO(""))
+    s.main()
+    assert capsys.readouterr().out.strip() == "none"

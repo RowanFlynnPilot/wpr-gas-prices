@@ -1191,6 +1191,51 @@ def load_json_file(path: str) -> dict | None:
         return None
 
 
+# A nudge issue is commented (or a closed one superseded) only when the figure has
+# moved this much since the issue last reported it. Week-over-week numbers drift a
+# cent or two every day; each drift used to count as a "new move" and #53 collected
+# a comment per day for a week, and #53 itself only existed because #52 was closed
+# on a 33¢ reading and the next day's 34¢ looked new.
+NUDGE_MIN_CHANGE = 0.05
+
+# The sentence detect_notable_move() writes, as it appears in an issue thread.
+# \S{0,4} in place of the cent sign tolerates the mojibake one encoding hop
+# produces ("33Â¢") and the "?" PowerShell 5.1 substitutes when piping.
+_NUDGE_RE = re.compile(r"Wisconsin regular (jumped|dropped) (\d+)\S{0,4} (since yesterday|in the past week)")
+
+
+def parse_nudge_text(text: str) -> dict | None:
+    """The most recent move sentence in an issue thread → {"period", "delta"}.
+
+    Scans the whole thread (body + every comment) and takes the last match, so a
+    human reply or a closing note after the figure doesn't hide it. None if the
+    thread never stated a move. Pure/testable.
+    """
+    last = None
+    for m in _NUDGE_RE.finditer(text or ""):
+        last = m
+    if not last:
+        return None
+    sign = 1 if last.group(1) == "jumped" else -1
+    return {"period": "day" if last.group(3) == "since yesterday" else "week",
+            "delta": round(sign * int(last.group(2)) / 100, 2)}
+
+
+def nudge_is_new(move: dict, thread_text: str) -> bool:
+    """Does `move` deserve a fresh nudge given what the thread already says?
+
+    True when the thread states no move, when the period differs (a day move is
+    a different story from a week move), or when the figure has shifted by at
+    least NUDGE_MIN_CHANGE. Pure/testable; both runners call it via --nudge-check.
+    """
+    last = parse_nudge_text(thread_text)
+    if last is None:
+        return True
+    if last["period"] != move.get("period"):
+        return True
+    return abs(float(move.get("delta", 0)) - last["delta"]) >= NUDGE_MIN_CHANGE - 1e-9
+
+
 def is_degraded(run_health: dict | None) -> bool:
     """A run is 'degraded' when fewer than half the cities scraped fresh, or when it
     was cut short by GasBuddy's rate limit. The file is still written (stale
@@ -1262,9 +1307,21 @@ def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | Non
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT)
+    parser.add_argument("--nudge-check", action="store_true",
+                        help="Read an issue thread on stdin and the last run's notable move from "
+                             "scrape_status.json; print 'new', 'same' or 'none'. Used by both runners.")
     args = parser.parse_args()
     out_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(out_dir, exist_ok=True)
+
+    if args.nudge_check:
+        status = load_json_file(os.path.join(out_dir, "scrape_status.json")) or {}
+        move = status.get("notable_move")
+        if not move:
+            print("none")
+        else:
+            print("new" if nudge_is_new(move, sys.stdin.read()) else "same")
+        return
 
     # Load previous data for stale-city preservation
     previous_data: dict = {}

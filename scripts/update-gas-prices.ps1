@@ -67,18 +67,20 @@ function Publish-FailureAlert {
         Write-Host "[warn] Could not file failure alert: $_" -ForegroundColor Yellow
     }
 }
-# Everything written on an issue (body + every comment), reduced to letters and
-# digits. Matching on that key means a move still counts as "already reported"
-# after a human reply pushes it down the thread, or after one encoding hop turns
-# its cent sign into mojibake.
-function Get-IssueThreadKey {
+# Whether an issue thread already reports the current move is decided in one
+# tested place: scrape_gas_prices.py --nudge-check reads the thread on stdin and
+# the run's move from scrape_status.json, and answers new / same / none. "same"
+# means the figure moved under 5c since the thread last stated it, so a daily 1c
+# drift earns neither a comment nor, once closed, a whole new issue. The
+# scraper's regex tolerates the "?" PowerShell 5.1 substitutes for the cent sign.
+function Get-NudgeVerdict {
     param([string]$Number)
     try {
         $issue = gh issue view $Number --json body,comments | ConvertFrom-Json
         $text  = $issue.body + ' ' + (($issue.comments | ForEach-Object { $_.body }) -join ' ')
-        return ($text -replace '[^a-zA-Z0-9]', '')
+        return (($text | & $Python .\scrape_gas_prices.py --nudge-check --output docs\gas_prices.json) | Select-Object -Last 1)
     } catch {
-        return ''
+        return 'new'
     }
 }
 
@@ -251,16 +253,13 @@ if (Test-Path .\docs\scrape_status.json) {
             if (Get-Command gh -ErrorAction SilentlyContinue) {
                 $newsTitle = "Fuel Watch: notable gas-price move"
                 $moveText = $status.notable_move.text
-                # Compare on letters and digits only: a cent sign that survived one
-                # encoding hop as mojibake must still count as the same move.
-                $moveKey = ($moveText -replace '[^a-zA-Z0-9]', '')
                 $open = gh issue list --state open --search "$newsTitle in:title" --json number --jq ".[0].number"
                 if ($open) {
-                    # An open nudge must never swallow a later move: issue 52 sat
-                    # open from Sep 1 and suppressed a 33c/gal jump two weeks on.
-                    # Comment when the move has changed; stay quiet when it hasn't.
-                    if ((Get-IssueThreadKey $open) -notlike "*$moveKey*") {
-                        $body = "$moveText`n`nUpdated $(Get-Date -Format 'yyyy-MM-dd HH:mm') Central - the move has changed since this issue was opened."
+                    # An open nudge must never swallow a later move (issue 52 sat
+                    # open from Sep 1 and hid a 33c/gal jump), but a 1c daily drift
+                    # is not a later move: comment only on a 5c+ change of figure.
+                    if ((Get-NudgeVerdict $open) -eq 'new') {
+                        $body = "$moveText`n`nUpdated $(Get-Date -Format 'yyyy-MM-dd HH:mm') Central - the figure has moved 5c or more since this issue last reported it."
                         Publish-GhBody -Body $body -GhArgs @('issue', 'comment', $open)
                         Write-Host "[news] Updated the open story nudge (#$open)." -ForegroundColor Cyan
                     }
@@ -270,8 +269,8 @@ if (Test-Path .\docs\scrape_status.json) {
                     # raise it again just because the issue was closed.
                     $lastClosed = gh issue list --state closed --search "$newsTitle in:title" --limit 1 --json number --jq ".[0].number"
                     if ($lastClosed) {
-                        if ((Get-IssueThreadKey $lastClosed) -like "*$moveKey*") {
-                            Write-Host "[news] Same move was already nudged and closed (#$lastClosed); staying quiet." -ForegroundColor DarkGray
+                        if ((Get-NudgeVerdict $lastClosed) -ne 'new') {
+                            Write-Host "[news] Same move (within 5c) was already nudged and closed (#$lastClosed); staying quiet." -ForegroundColor DarkGray
                             $moveText = $null
                         }
                     }

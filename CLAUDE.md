@@ -228,16 +228,20 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   moves past `NOTABLE_DAY_MOVE` (5¢ vs yesterday) or `NOTABLE_WEEK_MOVE` (10¢ vs a
   week ago), AAA-internal, into `scrape_status.json` with a ready-to-quote sentence.
   Both runners keep one **"Fuel Watch: notable gas-price move"** issue (same title,
-  so they dedup each other), and decide by comparing the move against everything
-  already written on the issue — normalized to letters and digits, so a human reply
-  or an encoding hop can't hide it:
-  - **Open issue, move changed** → comment the new figure. The first design just
+  so they dedup each other). Whether the thread already reports the current move is
+  decided in one tested place — `scrape_gas_prices.py --nudge-check` (thread on
+  stdin, move from `scrape_status.json`, answers `new` / `same` / `none`) —
+  comparing **figures, not text**: `parse_nudge_text()` reads the last move sentence
+  in the thread (mojibake- and "?"-tolerant), and `nudge_is_new()` says `new` only
+  when the period differs or the figure has shifted by `NUDGE_MIN_CHANGE` (5¢).
+  - **Open issue, `new`** → comment the current figure. The first design just
     skipped while an issue was open, so #52 (a 10¢ drop, opened Sep 1) silently
     swallowed a 33¢/gal jump two weeks later.
-  - **Open issue, same move** → stay quiet.
-  - **No open issue, but the most recent closed one already carries this move** →
-    stay quiet. A closed nudge means the newsroom is done with *that* move, and a
-    week-over-week jump keeps qualifying for days.
+  - **Open issue, `same`** → stay quiet. Week-over-week figures drift a cent or two
+    daily; the text-comparison design gave #53 a comment a day for a week.
+  - **No open issue, and the most recent closed one is `same`** → stay quiet. A
+    closed nudge means the newsroom is done with *that* move; #53 itself only
+    existed because #52 was closed on 33¢ and the next day's 34¢ looked new.
   It is explicitly a story heads-up, not an error alert.
 - **Home Heating tab.** Fourth tab; renders from `eia_heating.json`. Cards show the
   latest propane and heating-oil reading with week-over-week (same season only —
