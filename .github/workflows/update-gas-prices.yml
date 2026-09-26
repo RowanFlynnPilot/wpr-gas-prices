@@ -25,9 +25,21 @@ permissions:
   pages: write
   issues: write
 
+# Runs queue rather than overlap: a workflow_dispatch during a drifted cron run
+# (or two crons bunched by drift) would otherwise be two full GasBuddy scrapes
+# from the same IP at once — the exact pattern that trips its rate limit — plus
+# a push race at the end. cancel-in-progress stays false: a run that has scraped
+# should get to publish.
+concurrency:
+  group: update-gas-prices
+  cancel-in-progress: false
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    # A healthy run takes ~10 minutes. Without this a hung network call holds the
+    # concurrency group until GitHub's six-hour default.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository

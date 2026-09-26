@@ -392,6 +392,15 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   previous run — real run-to-run moves are 0–2% — so `merge_with_previous()` carries
   the previous figure forward, and the city is listed as a source problem (the run
   alerts). A GasBuddy search matching some other "Merrill" is the case it exists for.
+- **Cloud runs queue and are bounded.** The update workflow has a `concurrency`
+  group (runs never overlap — a dispatch during a drifted cron run would be two
+  full scrapes from one IP plus a push race; `cancel-in-progress: false` so a run
+  that scraped still publishes) and `timeout-minutes: 30` (a hung network call
+  used to be able to hold the queue for GitHub's six-hour default).
+- **API keys never reach the log.** `_RedactingFormatter` on the root logger rewrites
+  `api_key=…` to `api_key=***` in every line, tracebacks included — requests'
+  exception text carries the full URL, and `log.exception()` on a failed EIA call
+  used to print the key into the Actions log. Keep new loggers on the root handler.
 - **Every fetch times out at 15s** (`fetchJson()` in both widgets, `getJson()` in the
   digest, via `AbortSignal.timeout` where supported). A hung request now reaches the
   honest "unavailable" state — and, for the digest, `data-ready` — instead of

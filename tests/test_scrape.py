@@ -1105,3 +1105,25 @@ def test_quarantine_tolerates_real_moves_and_missing_references():
     assert s.quarantine_implausible(data, prev) == []
     assert list(data["metros"]) == ["Wausau", "Madison"]
     assert s.quarantine_implausible(data, {}) == []
+
+
+# ---------------------------------------------------------------------------
+# Log redaction — the EIA key must never reach the Actions log
+# ---------------------------------------------------------------------------
+
+def test_log_formatter_redacts_api_keys_in_messages_and_tracebacks():
+    import logging
+    fmt = s._RedactingFormatter("%(message)s")
+    rec = logging.LogRecord("t", logging.ERROR, __file__, 1,
+                            "fetch failed for url: https://api.eia.gov/v2/x?api_key=SECRET123&frequency=weekly", None, None)
+    assert "SECRET123" not in fmt.format(rec)
+    assert "api_key=***&frequency=weekly" in fmt.format(rec)
+
+    try:
+        raise RuntimeError("500 Server Error for url: https://api.eia.gov/?api_key=SECRET456")
+    except RuntimeError:
+        import sys
+        rec = logging.LogRecord("t", logging.ERROR, __file__, 1, "EIA fetch failed", None, sys.exc_info())
+    out = fmt.format(rec)
+    assert "SECRET456" not in out and "Traceback" in out     # traceback kept, key gone
+

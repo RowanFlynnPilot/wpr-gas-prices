@@ -109,7 +109,22 @@ LOCATION_QUERY = (
     "trends { areaName country today todayLow trend } } }"
 )
 
+class _RedactingFormatter(logging.Formatter):
+    """Strips API keys from every log line, tracebacks included.
+
+    requests' exception text carries the full request URL, and the EIA key rides in
+    its query string — so a failed EIA call logged with log.exception() used to
+    print the key into the Actions log. Redacting at the formatter catches every
+    path, not just the ones someone remembered to sanitise.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        return re.sub(r"api_key=[^&\s\"']+", "api_key=***", super().format(record))
+
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+for _handler in logging.getLogger().handlers:
+    _handler.setFormatter(_RedactingFormatter("%(asctime)s [%(levelname)s] %(message)s"))
 log = logging.getLogger(__name__)
 
 CENTRAL = ZoneInfo("America/Chicago")
