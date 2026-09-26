@@ -1065,7 +1065,7 @@ def publish_aaa_only(output_path: str, aaa: dict, previous_data: dict,
         updated["summary"] = summary
 
     write_json(output_path, updated, indent=2)
-    log.info("GasBuddy unavailable — refreshed AAA statewide trend only (as of %s)",
+    log.info("Station data left as published — refreshed AAA statewide trend only (as of %s)",
              aaa.get("as_of"))
     return True
 
