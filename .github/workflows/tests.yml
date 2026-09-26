@@ -8,6 +8,7 @@ on:
       - 'requirements*.txt'
       - 'docs/widget-logic.js'
       - 'docs/*.json'
+      - 'scripts/*.sh'
       - 'package.json'
       - '.github/workflows/tests.yml'
   pull_request:
@@ -46,3 +47,21 @@ jobs:
 
       - name: Run widget logic tests
         run: npm run test:widget
+
+  # scripts/alert.sh + scripts/nudge.sh, every branch, against a stub gh.
+  workflow-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run workflow script tests
+        run: bash tests/workflow-scripts.test.sh

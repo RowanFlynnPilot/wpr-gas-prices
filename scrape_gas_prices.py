@@ -1003,6 +1003,36 @@ def recalculate_statewide(data: dict) -> None:
     data["statewide"] = sw
 
 
+# The most a city's regular average may move between two runs before the new
+# figure is treated as bad data. Real run-to-run moves are 0-2% (largest seen
+# 1.3%); a 15% jump in one run means GasBuddy's search matched somewhere else,
+# not that prices moved.
+CITY_MAX_MOVE = 0.15
+
+
+def quarantine_implausible(data: dict, previous_data: dict) -> list[str]:
+    """Drop fresh metros whose regular average moved more than CITY_MAX_MOVE
+    against the previous run, so merge_with_previous() carries the previous
+    figure forward instead. Returns one sentence per suspect (they become
+    source problems, so the run alerts). No previous figure → no judgement. Pure.
+    """
+    prev_metros = (previous_data or {}).get("metros", {})
+    suspects: list[str] = []
+    for city, m in list(data.get("metros", {}).items()):
+        prev = prev_metros.get(city, {}).get("current_avg", {}).get("regular")
+        cur = m.get("current_avg", {}).get("regular")
+        if not (isinstance(prev, (int, float)) and isinstance(cur, (int, float)) and prev > 0):
+            continue
+        move = (cur - prev) / prev
+        if abs(move) > CITY_MAX_MOVE:
+            log.error("  %s: regular moved %+.0f%% in one run ($%.2f -> $%.2f) — implausible, "
+                      "carrying the previous figure forward", city, move * 100, prev, cur)
+            del data["metros"][city]
+            suspects.append(f"{city}: implausible {move * 100:+.0f}% move in one run "
+                            f"(${prev:.2f} -> ${cur:.2f}); previous figure carried forward")
+    return suspects
+
+
 def merge_with_previous(data: dict, previous_data: dict) -> None:
     """Preserve data from the previous run for anything that failed today."""
     if not previous_data:
@@ -1341,6 +1371,7 @@ def main() -> None:
     gb_success = False
     aaa_only = False
     history_written = True
+    suspects: list[str] = []
     run_health: dict | None = None
     # Set by the workflow when the published station data is already fresh and
     # complete (another run landed within the last couple of hours). Two full
@@ -1359,6 +1390,11 @@ def main() -> None:
             run_health = data.pop("run_health", None)  # transient — not persisted in gas_prices.json
             data["aaa"] = aaa  # empty dict → merge_with_previous carries the last one forward
             data["neighbors"] = neighbors
+            suspects = quarantine_implausible(data, previous_data)
+            if suspects and run_health is not None:
+                run_health["cities_fresh"] = len(data["metros"])
+                run_health["failed_cities"] = sorted(c for c in CITIES if c not in data["metros"])
+                run_health["suspect_cities"] = [s.split(":")[0] for s in suspects]
             fresh_count = len(data.get("metros", {}))
             merge_with_previous(data, previous_data)
             total_count = len(data.get("metros", {}))
@@ -1405,6 +1441,7 @@ def main() -> None:
         load_json_file(os.path.join(out_dir, "eia_heating.json")),
         central_date(),
     )
+    problems.extend(suspects)
     if not history_written:
         problems.append("History file could not be parsed and was left untouched — restore it from git")
     for problem in problems:

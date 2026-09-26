@@ -1081,3 +1081,27 @@ def test_nudge_check_cli(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(s.sys, "stdin", __import__("io").StringIO(""))
     s.main()
     assert capsys.readouterr().out.strip() == "none"
+
+
+# ---------------------------------------------------------------------------
+# quarantine_implausible — a wrong-city scrape must not be believed
+# ---------------------------------------------------------------------------
+
+def test_quarantine_drops_a_city_that_jumped_too_far_and_keeps_the_rest():
+    data = {"metros": {"Merrill": _city(5.60), "Wausau": _city(4.44), "NewCity": _city(4.0)}}
+    prev = {"metros": {"Merrill": _city(4.50), "Wausau": _city(4.40)}}
+    suspects = s.quarantine_implausible(data, prev)
+    assert list(data["metros"]) == ["Wausau", "NewCity"]      # Merrill dropped, no-history city kept
+    assert suspects == ["Merrill: implausible +24% move in one run ($4.50 -> $5.60); previous figure carried forward"]
+    # After the merge the previous Merrill figure is what gets published, flagged stale.
+    s.merge_with_previous(data, {**prev, "price_date": "09/25/26"})
+    assert data["metros"]["Merrill"]["current_avg"]["regular"] == 4.50
+    assert data["metros"]["Merrill"]["stale"] is True
+
+
+def test_quarantine_tolerates_real_moves_and_missing_references():
+    data = {"metros": {"Wausau": _city(4.50), "Madison": _city(3.80)}}
+    prev = {"metros": {"Wausau": _city(4.00), "Madison": {"current_avg": {}}}}   # +12.5%: large but allowed
+    assert s.quarantine_implausible(data, prev) == []
+    assert list(data["metros"]) == ["Wausau", "Madison"]
+    assert s.quarantine_implausible(data, {}) == []

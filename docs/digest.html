@@ -108,6 +108,12 @@
 
   function done() { document.body.setAttribute('data-ready', '1'); }
   function bust() { return '?t=' + Math.floor(Date.now() / 600000); }
+  // 15s cap per fetch so a hung request still lets the card reach data-ready
+  // (the renderer waits on that) — with the line omitted rather than never drawn.
+  function getJson(url) {
+    var opts = AbortSignal.timeout ? { signal: AbortSignal.timeout(15000) } : {};
+    return fetch(url, opts).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
 
   function money(d) { var c = Math.round(Math.abs(d) * 100); return c >= 100 ? '$' + (c / 100).toFixed(2) : c + '¢'; }
   function price(p) { return '<span class="dg-dollar">$</span>' + p.toFixed(2); }
@@ -305,10 +311,7 @@
   }
 
   Promise.all([
-    fetch(DATA + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-    fetch(CTX + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-    fetch(HIST + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-    fetch(HEAT + bust()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    getJson(DATA + bust()), getJson(CTX + bust()), getJson(HIST + bust()), getJson(HEAT + bust())
   ]).then(function (res) {
     if (res[0]) render(res[0], res[1], res[2], res[3]); else fail();
   }).catch(fail);

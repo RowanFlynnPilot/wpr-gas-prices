@@ -384,6 +384,30 @@ if ($LASTEXITCODE -ne 0) {
     }
 }
 
+# -- Verify the live site picked up the publish --------------------------------
+# A run used to end at "pushed". If a Pages deploy fails or stalls, readers keep
+# seeing the previous prices while every run looks healthy. Poll the live JSON
+# until its scraped_at is at least what we just committed (~4 min; Pages usually
+# deploys in 30-90s), and alert if it never is.
+$expected = (Get-Content .\docs\gas_prices.json -Raw -Encoding UTF8 | ConvertFrom-Json).scraped_at
+$liveOk = $false
+$live = "unknown"
+foreach ($i in 1..16) {
+    Start-Sleep -Seconds 15
+    try {
+        $r = Invoke-WebRequest -Uri ("https://rowanflynnpilot.github.io/wpr-gas-prices/gas_prices.json?t=" + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) -UseBasicParsing -TimeoutSec 20
+        $live = ($r.Content | ConvertFrom-Json).scraped_at
+        if ([datetimeoffset]::Parse($live) -ge [datetimeoffset]::Parse($expected)) { $liveOk = $true; break }
+    } catch { }
+}
+if ($liveOk) {
+    Write-Host "[live] Live site serves scraped_at $live after $i check(s)." -ForegroundColor Green
+} else {
+    Write-Host "[warn] Live site still serves scraped_at $live after ~4 minutes; expected $expected." -ForegroundColor Yellow
+    Publish-FailureAlert "Data was pushed, but the live site still served scraped_at $live after ~4 minutes (expected $expected). A GitHub Pages deploy may have failed; readers are still seeing the previous prices."
+    exit 0
+}
+
 Write-Host ""
 Write-Host "[done] Published. Pages will redeploy in about a minute." -ForegroundColor Green
 Write-Host "       https://rowanflynnpilot.github.io/wpr-gas-prices/"

@@ -141,140 +141,32 @@ jobs:
               git pull --rebase -X ours origin main
               git push
             fi
+            echo "PUSHED=1" >> "$GITHUB_ENV"
           fi
 
+      # Did the live site pick it up? scripts/verify-live.sh polls the published
+      # JSON for the scraped_at we just committed and sets PUBLISH_FAILED=1 for the
+      # alert step if a Pages deploy never delivers it.
+      - name: Verify the live site
+        if: ${{ !cancelled() && env.PUSHED == '1' }}
+        env:
+          PAGES_URL: https://rowanflynnpilot.github.io/wpr-gas-prices
+        run: bash scripts/verify-live.sh
+
+      # scripts/alert.sh decides whether the run needs a human and keeps one issue
+      # about it; tests/workflow-scripts.test.sh drives every branch offline.
       - name: Alert on scrape failure
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           DIGEST_OUTCOME: ${{ steps.render.outcome }}
-        run: |
-          TITLE="⚠️ Gas scraper needs attention"
-          if [ -f docs/scrape_status.json ]; then
-            read OK DEG FRESH TOTAL AAA RL RLWAIT <<< "$(python -c "import json;d=json.load(open('docs/scrape_status.json'));print(str(d.get('gasbuddy_success',False) or d.get('gasbuddy_skipped',False)).lower(), str(d.get('degraded',False)).lower(), d.get('cities_fresh',0), d.get('cities_total','?'), str(d.get('aaa_updated',False)).lower(), str(d.get('rate_limited',False)).lower(), d.get('rate_limit_wait',0))")"
-            PROBLEMS=$(python -c "import json;print(chr(10).join('- ' + p for p in json.load(open('docs/scrape_status.json')).get('source_problems', [])))")
-            SKIPPED=$(python -c "import json;print(str(json.load(open('docs/scrape_status.json')).get('gasbuddy_skipped',False)).lower())")
-          else
-            echo "No scrape_status.json — scraper crashed before writing status."
-            OK=false; DEG=false; FRESH=0; TOTAL="?"; AAA=false; RL=false; RLWAIT=0; PROBLEMS=""; SKIPPED=false
-          fi
-          # Failures that are neither GasBuddy nor a stale source, but still mean
-          # someone should look: they join the problem list so the same alert
-          # path handles them.
-          add_problem() { PROBLEMS="${PROBLEMS:+$PROBLEMS
-          }- $1"; }
-          if [ "$CONTRACT_FAILED" = "1" ]; then
-            add_problem "Scraper output failed the widget data contract (tests/data-contract.test.mjs) — the previous data files were kept and nothing new was published; a scraper change probably altered the JSON shape"
-          fi
-          if [ "$DIGEST_OUTCOME" = "failure" ]; then
-            add_problem "The newsletter digest image failed to render (see the 'Render newsletter digest image' step log); the previous digest.png stays live"
-          fi
-          # How to describe the GasBuddy side in messages: a skipped scrape has no
-          # "N/22 fresh" of its own — the published data was already fresh.
-          if [ "$SKIPPED" = "true" ]; then GBTXT="GasBuddy scrape skipped, published station data already fresh"; else GBTXT="$FRESH/$TOTAL cities fresh"; fi
-          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+        run: bash scripts/alert.sh
 
-          if [ "$OK" = "true" ] && [ "$DEG" != "true" ] && [ -z "$PROBLEMS" ]; then
-            echo "Healthy run ($GBTXT, all sources current)."
-            if [ -n "$EXISTING" ]; then
-              gh issue comment "$EXISTING" --body "✅ Recovered — a healthy run ($GBTXT) succeeded ($RUN_URL). Auto-closing."
-              gh issue close "$EXISTING"
-            fi
-            exit 0
-          fi
-
-          if [ "$OK" = "true" ] && [ "$DEG" != "true" ]; then
-            # GasBuddy is fine; a source that used to be invisible has gone stale.
-            echo "Source problem(s) — alerting."
-            SUMMARY="was fine on the GasBuddy side ($GBTXT), but one or more of the other sources has stopped updating:"
-            SUMMARY="$SUMMARY
-
-          $PROBLEMS"
-            CAUSE="Which item is listed says where to look: AAA → their state page changed layout (parse_aaa); EIA → a renamed series code or missing EIA_API_KEY secret; data contract → run 'npm run test:widget' locally against the scraper's output; digest → the render step log. The widget keeps showing the last good figures, dated, until this is fixed."
-          elif [ "$OK" != "true" ]; then
-            echo "GasBuddy scrape failed — alerting (aaa_updated=$AAA)."
-            if [ "$AAA" = "true" ]; then
-              SUMMARY="could not reach GasBuddy, so station and metro prices are carried forward from the last good run. AAA's statewide trend **did** refresh, so the widget's statewide numbers and blurb are current."
-            else
-              SUMMARY="could not reach GasBuddy **or** AAA. Every price on the widget is carried forward from the last good run."
-            fi
-            CAUSE="Most common cause: Cloudflare is 403ing the GitHub Actions datacenter IP on the CSRF-token fetch (the scraper rotates TLS fingerprints and entry URLs, but cannot defeat a pure IP-reputation block). Check the 'Run scraper' log — repeated 'CSRF fetch failed ... 403' means the IP is blocked, not that the site changed. If instead the token is fetched but cities return no data, GasBuddy changed its GraphQL shape (see scrape_gas_prices.py)."
-          elif [ "$RL" = "true" ]; then
-            # Cut short by GasBuddy's rate limit. The scraper stops on the first
-            # 429 with a long Retry-After rather than retrying into the ban, so
-            # this can be a near-complete run — say so instead of "mostly stale".
-            echo "Rate-limited run ($FRESH/$TOTAL fresh, Retry-After ${RLWAIT}s) — alerting."
-            SUMMARY="scraped $FRESH of $TOTAL cities before GasBuddy's Cloudflare rate-limited the GitHub Actions IP (Retry-After: ${RLWAIT}s). The scraper stopped there by design rather than retrying into the ban; the remaining $((TOTAL - FRESH)) carried forward from the previous run."
-            CAUSE="This is the per-IP limit tripping, not a block — it usually means two full scrapes ran close together (a manual workflow_dispatch soon after the scheduled run, or cron drift bunching runs). It clears on its own; the next scheduled run is normally fine."
-          else
-            echo "Degraded run ($FRESH/$TOTAL fresh) — alerting."
-            SUMMARY="only scraped $FRESH of $TOTAL cities fresh; the rest fell back to carried-forward (stale) prices, and the statewide average was recomputed mostly from stale data."
-            CAUSE="Usually transient GasBuddy rate-limiting of the GitHub Actions IP. Often self-corrects on the next run."
-          fi
-          if [ -n "$PROBLEMS" ] && { [ "$OK" != "true" ] || [ "$DEG" = "true" ]; }; then
-            SUMMARY="$SUMMARY
-
-          Also, other sources have stopped updating:
-          $PROBLEMS"
-          fi
-          BODY=$(printf '%s\n' \
-            "The scheduled gas-price update $SUMMARY" "" \
-            "Run: $RUN_URL" "" \
-            "$CAUSE This issue closes itself automatically after a healthy run." )
-          if [ -n "$EXISTING" ]; then
-            gh issue comment "$EXISTING" --body "Still unhealthy as of $(date -u +'%Y-%m-%d %H:%M UTC') ($FRESH/$TOTAL fresh). Run: $RUN_URL"
-          else
-            gh issue create --title "$TITLE" --body "$BODY"
-          fi
-
-      # A story nudge, not an error alert: the scraper flags statewide regular
-      # moves past the thresholds in detect_notable_move() (5c/day, 10c/week,
-      # AAA-internal). One issue carries the current move: an open nudge is
-      # commented when the move CHANGES and left alone when it hasn't, so an
-      # unread issue can't swallow a later, bigger move. The local runner files
-      # the identical issue title, so the two dedup each other.
+      # scripts/nudge.sh: a story heads-up for the newsroom (not an error alert),
+      # one issue carrying the current move, updated only on a 5c+ change of
+      # figure. Tested offline alongside alert.sh.
       - name: Nudge on notable price move
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          TITLE="Fuel Watch: notable gas-price move"
-          [ -f docs/scrape_status.json ] || exit 0
-          TEXT=$(python -c "import json;m=json.load(open('docs/scrape_status.json')).get('notable_move');print(m['text'] if m else '')")
-          if [ -z "$TEXT" ]; then
-            echo "No notable move."
-            exit 0
-          fi
-          # Whether the thread already reports this move is decided in one tested
-          # place: `scrape_gas_prices.py --nudge-check` reads the thread on stdin and
-          # the run's move from scrape_status.json, and answers new / same / none.
-          # "same" = the figure moved under 5c since it was last stated, so a daily
-          # 1c drift no longer earns a comment (or, once closed, a whole new issue).
-          thread() { gh issue view "$1" --json body,comments --jq '[.body] + (.comments | map(.body)) | join(" ")'; }
-          verdict() { thread "$1" | python scrape_gas_prices.py --nudge-check --output docs/gas_prices.json; }
-
-          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
-          if [ -n "$EXISTING" ]; then
-            if [ "$(verdict "$EXISTING")" = "new" ]; then
-              NOTE="Updated $(date -u +'%Y-%m-%d %H:%M UTC') — the figure has moved 5¢ or more since this issue last reported it."
-              gh issue comment "$EXISTING" --body "$(printf '%s\n\n%s' "$TEXT" "$NOTE")"
-              echo "Updated open nudge #$EXISTING with the current move."
-            else
-              echo "Nudge #$EXISTING already reports this move (within 5c); not repeating."
-            fi
-            exit 0
-          fi
-
-          # A closed nudge means the newsroom is done with THAT move, and the same
-          # week-over-week jump keeps qualifying for days. Reopen only for a real
-          # change of figure, not a drift.
-          LAST_CLOSED=$(gh issue list --state closed --search "$TITLE in:title" --limit 1 --json number --jq '.[0].number')
-          if [ -n "$LAST_CLOSED" ] && [ "$(verdict "$LAST_CLOSED")" != "new" ]; then
-            echo "Same move (within 5c) was already nudged and closed (#$LAST_CLOSED); staying quiet."
-            exit 0
-          fi
-          BODY=$(printf '%s\n' \
-            "$TEXT" "" \
-            "This is a story nudge, not an error — the widget and newsletter digest already show the new numbers, and the widget's Copy button has a quotable blurb. Close this issue after reading; it will fire again on the next notable move." )
-          gh issue create --title "$TITLE" --body "$BODY"
+        run: bash scripts/nudge.sh

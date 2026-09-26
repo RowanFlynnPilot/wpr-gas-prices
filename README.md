@@ -74,9 +74,10 @@ on September 17 GasBuddy rate-limited the home connection — the 7pm run got on
 switches over on its own if the cloud run ever stops delivering.
 
 If a run is anything less than healthy — a scraper error, a failed push, a
-*partial* scrape where cities fell back to carried-forward prices, or any source
-(AAA, EIA, the heating survey) that has quietly stopped updating — a GitHub
-issue is opened ("Local gas-price runner failing" for your machine, "Gas scraper needs
+*partial* scrape where cities fell back to carried-forward prices, any source
+(AAA, EIA, the heating survey) that has quietly stopped updating, a city whose
+price jumped implausibly in one run, a newsletter image that failed to render, or
+a push that the live site never picked up — a GitHub issue is opened ("Local gas-price runner failing" for your machine, "Gas scraper needs
 attention" for the cloud run), and closed again after the next healthy run. Task
 Scheduler hides the console, so the issue is how a local problem reaches you.
 

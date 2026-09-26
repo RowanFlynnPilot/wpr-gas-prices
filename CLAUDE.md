@@ -121,7 +121,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `requirements.txt` | `requests`, `curl_cffi` (pinned) | Rarely |
 | `requirements-dev.txt` | Adds `pytest` for the test suite | Rarely |
 | `tests/test_scrape.py` | Unit tests for the pure (no-network) scraper logic | Yes — when changing logic |
-| `.github/workflows/update-gas-prices.yml` | **Primary** twice-daily run (cron 15:00 + 03:00 UTC) + failure alerting + story nudge | To change timing |
+| `.github/workflows/update-gas-prices.yml` | **Primary** twice-daily run (cron 15:00 + 03:00 UTC); the alert/nudge/verify logic lives in `scripts/*.sh` | To change timing |
+| `scripts/alert.sh` | Decides whether the run needs a human and keeps one "Gas scraper needs attention" issue | Yes — with `tests/workflow-scripts.test.sh` |
+| `scripts/nudge.sh` | The story nudge (one "Fuel Watch" issue, updated on a 5¢+ change of figure) | Yes — with `tests/workflow-scripts.test.sh` |
+| `scripts/verify-live.sh` | After a push, polls the live JSON until Pages serves the committed `scraped_at`; sets `PUBLISH_FAILED` for alert.sh | Rarely |
+| `tests/workflow-scripts.test.sh` | Every branch of alert.sh + nudge.sh against a stub `gh` — **refuses to run unless the stub is the gh on PATH** | Yes — when changing those scripts |
 | `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
@@ -361,10 +365,37 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   Pages. A scraper change that alters the JSON shape is the case it exists for —
   the no-network unit tests can't see real output. Extend it whenever the schema
   grows (it is the executable version of the "Output schema" section above).
-- **A failed digest render alerts.** The render step has `id: render`; the alert step
-  reads `steps.render.outcome` and adds a problem-list entry when it failed, so a
-  red render step is an issue rather than a red run nobody opens. The previous
+- **A failed digest render alerts.** The render step has `id: render`; alert.sh
+  reads `DIGEST_OUTCOME` and adds a problem-list entry when it failed, so a red
+  render step is an issue rather than a red run nobody opens. The previous
   `digest.png` stays live meanwhile.
+- **The alert and nudge logic are scripts, not YAML.** `scripts/alert.sh` and
+  `scripts/nudge.sh` (inputs via env: `STATUS_FILE`, `PYTHON`, `CONTRACT_FAILED`,
+  `DIGEST_OUTCOME`, `PUBLISH_FAILED`, `RUN_URL`; `OUTPUT`) are what the workflow
+  runs. `tests/workflow-scripts.test.sh` drives every branch offline against a stub
+  `gh` that answers canned queries and records writes (CI job `workflow-scripts`;
+  locally `PYTHON=./.venv/Scripts/python.exe bash tests/workflow-scripts.test.sh`).
+  **Never run these scripts, or any extracted workflow step, against the real `gh`
+  to "see what they do"** — on 2026-09-26 that happened twice (once by sourcing an
+  extracted step, once when the harness's stub fell off `PATH` under Git Bash) and
+  each time posted bogus comments/issues on the real repo. The harness now aborts
+  unless `command -v gh` resolves inside its temp dir; keep that guard.
+- **A push is verified on the live site.** `scripts/verify-live.sh` (workflow step
+  "Verify the live site", only after a push) polls the published `gas_prices.json`
+  for up to ~4 min until its `scraped_at` is ≥ the committed one, and sets
+  `PUBLISH_FAILED=1` for alert.sh otherwise — a stalled Pages deploy used to leave
+  readers on old prices while every run reported healthy. The local runner does
+  the same in PowerShell. A skip run re-commits the old `scraped_at`, so it passes
+  at once.
+- **A wrong-city scrape is not believed.** `quarantine_implausible()` drops any fresh
+  metro whose regular average moved more than `CITY_MAX_MOVE` (15%) against the
+  previous run — real run-to-run moves are 0–2% — so `merge_with_previous()` carries
+  the previous figure forward, and the city is listed as a source problem (the run
+  alerts). A GasBuddy search matching some other "Merrill" is the case it exists for.
+- **Every fetch times out at 15s** (`fetchJson()` in both widgets, `getJson()` in the
+  digest, via `AbortSignal.timeout` where supported). A hung request now reaches the
+  honest "unavailable" state — and, for the digest, `data-ready` — instead of
+  "Loading…" forever.
 - **Scraped text is escaped.** Station and city names reach the DOM through
   `L.esc()`; station addresses are tidied in the scraper (`tidy_address_part()` —
   title-cases a field only when GasBuddy sent it in ALL CAPS) and link to a Google
