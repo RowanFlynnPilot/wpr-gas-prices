@@ -2,3 +2,7 @@
 # Pin the minor version — impersonation/TLS behavior can change between minors.
 curl_cffi>=0.15,<0.16
 requests>=2.32,<3
+
+# zoneinfo needs an IANA database; Windows has none built in, and every "as of"
+# stamp is the Wisconsin date (America/Chicago), never the UTC runner clock.
+tzdata>=2024.1

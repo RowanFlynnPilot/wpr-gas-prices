@@ -16,7 +16,8 @@ import re
 import statistics
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -110,6 +111,44 @@ LOCATION_QUERY = (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
+
+CENTRAL = ZoneInfo("America/Chicago")
+
+
+def central_date(now_utc: datetime | None = None) -> date:
+    """Today's calendar date in Wisconsin.
+
+    Every "as of" stamp and history key uses this, never the UTC date: the 03:00 UTC
+    cron lands at 10pm Central and used to label the evening's data with
+    *tomorrow's* date, so the widget read "as of September 26" on the 25th.
+    `scraped_at` stays a UTC timestamp — it's an instant, not a day.
+    """
+    now = now_utc or datetime.now(timezone.utc)
+    return now.astimezone(CENTRAL).date()
+
+
+def central_date_key(now_utc: datetime | None = None) -> str:
+    """central_date() as the 'mm/dd/yy' form the data files use."""
+    return central_date(now_utc).strftime("%m/%d/%y")
+
+
+def write_json(path: str, obj, *, indent: int | None = None) -> None:
+    """Write JSON atomically: to a sibling temp file, then rename over the target.
+
+    A crash or kill mid-write can therefore never leave a truncated, unparseable
+    data file behind — which is the one way the daily history could be lost (see
+    update_history). `indent=None` writes the compact form the history/EIA files
+    use; the widget-facing gas_prices.json stays indented for diff readability.
+    """
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        if indent is None:
+            json.dump(obj, f, separators=(",", ":"), ensure_ascii=False)
+        else:
+            json.dump(obj, f, indent=indent, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
 
 # ---------------------------------------------------------------------------
 # GasBuddy GraphQL helpers
@@ -408,7 +447,7 @@ def scrape_aaa() -> dict:
         return {}
     aaa = parse_aaa(html)
     if aaa:
-        aaa["as_of"] = datetime.now(timezone.utc).strftime("%m/%d/%y")
+        aaa["as_of"] = central_date_key()
         log.info("  AAA: reg now=$%s, year ago=$%s",
                  aaa.get("current", {}).get("regular"),
                  aaa.get("year_ago", {}).get("regular"))
@@ -444,7 +483,7 @@ def scrape_neighbors() -> dict:
     if not states:
         return {}
     log.info("  Neighbors: %s", {c: s["current"].get("regular") for c, s in states.items()})
-    return {"as_of": datetime.now(timezone.utc).strftime("%m/%d/%y"), "states": states}
+    return {"as_of": central_date_key(), "states": states}
 
 
 # ---------------------------------------------------------------------------
@@ -550,7 +589,7 @@ def scrape_gasbuddy() -> dict:
     log.info("Statewide avg: reg=$%s (%d/%d cities scraped)",
              f"{reg:.3f}" if reg else "—", len(metros), len(CITIES))
 
-    today = datetime.now(timezone.utc).strftime("%m/%d/%y")
+    today = central_date_key()
 
     # NOTE: AAA is scraped independently in main() — it must not share this
     # function's failure path, or a GasBuddy block would also freeze the
@@ -617,8 +656,7 @@ def fetch_eia_data(out_dir: str) -> bool:
             log.exception("  EIA fetch failed for %s", fuel)
 
     if result:
-        with open(eia_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, separators=(",", ":"), ensure_ascii=False)
+        write_json(eia_path, result)
         log.info("Wrote EIA data to %s", eia_path)
         return True
     return False
@@ -688,8 +726,7 @@ def fetch_eia_heating(out_dir: str) -> bool:
     if not result:
         return False
     result["fetched_at"] = datetime.now(timezone.utc).isoformat()
-    with open(os.path.join(out_dir, "eia_heating.json"), "w", encoding="utf-8") as f:
-        json.dump(result, f, separators=(",", ":"), ensure_ascii=False)
+    write_json(os.path.join(out_dir, "eia_heating.json"), result)
     log.info("Wrote EIA heating data to %s", os.path.join(out_dir, "eia_heating.json"))
     return True
 
@@ -751,8 +788,7 @@ def fetch_eia_context(out_dir: str) -> None:
         log.exception("EIA WTI fetch failed")
 
     if context:
-        with open(os.path.join(out_dir, "eia_context.json"), "w", encoding="utf-8") as f:
-            json.dump(context, f, separators=(",", ":"), ensure_ascii=False)
+        write_json(os.path.join(out_dir, "eia_context.json"), context)
         log.info("Wrote EIA context: %s", context)
 
 
@@ -799,10 +835,23 @@ def load_history(out_dir: str) -> dict:
     return {}
 
 
-def update_history(data: dict, out_dir: str) -> None:
+def update_history(data: dict, out_dir: str) -> bool:
+    """Record today's statewide + fresh-metro averages. Returns False if it refused.
+
+    A history file that exists but won't parse is left exactly as it is: writing
+    the empty dict load_history() returns would replace months of daily readings
+    with `{}` in one commit. Git could restore it, but only if someone noticed —
+    so the refusal is reported as a source problem instead.
+    """
     history_path = os.path.join(out_dir, "gas_prices_history.json")
-    today_key = data.get("price_date", datetime.now(timezone.utc).strftime("%m/%d/%y"))
-    history = normalize_history_keys(load_history(out_dir))
+    today_key = data.get("price_date", central_date_key())
+    loaded = load_history(out_dir)
+    if not loaded and os.path.exists(history_path) and os.path.getsize(history_path) > 2:
+        log.error("History file exists (%d bytes) but could not be parsed — leaving it "
+                  "untouched rather than overwriting it with an empty history",
+                  os.path.getsize(history_path))
+        return False
+    history = normalize_history_keys(loaded)
 
     entry: dict = {}
     sw = data.get("statewide", {}).get("current_avg", {})
@@ -824,9 +873,9 @@ def update_history(data: dict, out_dir: str) -> None:
         for k in sorted(history, key=history_key_date)[: len(history) - 400]:
             del history[k]
 
-    with open(history_path, "w", encoding="utf-8") as f:
-        json.dump(history, f, separators=(",", ":"), ensure_ascii=False)
+    write_json(history_path, history)
     log.info("Updated history (%d days)", len(history))
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -1015,8 +1064,7 @@ def publish_aaa_only(output_path: str, aaa: dict, previous_data: dict,
     if summary:
         updated["summary"] = summary
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(updated, f, indent=2, ensure_ascii=False)
+    write_json(output_path, updated, indent=2)
     log.info("GasBuddy unavailable — refreshed AAA statewide trend only (as of %s)",
              aaa.get("as_of"))
     return True
@@ -1082,6 +1130,67 @@ def detect_notable_move(aaa: dict) -> dict | None:
     return best
 
 
+# How old each non-GasBuddy source may be before the run reports it. AAA and the
+# neighbor strip refresh every run; EIA publishes weekly (Mondays, holidays slip);
+# the heating survey is weekly but only from October to March.
+SOURCE_MAX_AGE_DAYS = {"aaa": 3, "neighbors": 3, "eia_weekly": 14, "eia_context": 14,
+                       "eia_heating": 14}
+
+
+def in_heating_season(today: date) -> bool:
+    """When a fresh heating reading is expected: Oct 15 (two weeks' grace for the
+    first survey) through the end of March."""
+    return (today.month, today.day) >= (10, 15) or today.month <= 3
+
+
+def source_problems(data: dict, eia_weekly: dict | None, eia_context: dict | None,
+                    eia_heating: dict | None, today: date) -> list[str]:
+    """Sources that have quietly stopped updating, as one sentence each. Pure.
+
+    The failure alert used to key on GasBuddy alone, so an AAA layout change or a
+    renamed EIA code would carry the old block forward forever while every run
+    reported healthy. Anything listed here makes the run alert.
+    """
+    problems: list[str] = []
+
+    def days_old(text: str | None, fmt: str) -> int | None:
+        try:
+            return (today - datetime.strptime(text, fmt).date()).days
+        except (TypeError, ValueError):
+            return None
+
+    def check(label: str, stamp: str | None, fmt: str, limit: int) -> None:
+        age = days_old(stamp, fmt)
+        if age is None:
+            problems.append(f"{label}: no data")
+        elif age > limit:
+            problems.append(f"{label}: last updated {stamp} ({age} days ago; limit {limit})")
+
+    check("AAA statewide trend", (data.get("aaa") or {}).get("as_of"), "%m/%d/%y",
+          SOURCE_MAX_AGE_DAYS["aaa"])
+    check("AAA neighboring states", (data.get("neighbors") or {}).get("as_of"), "%m/%d/%y",
+          SOURCE_MAX_AGE_DAYS["neighbors"])
+
+    weekly = ((eia_weekly or {}).get("regular") or [{}])[-1].get("date")
+    check("EIA Midwest weekly", weekly, "%Y-%m-%d", SOURCE_MAX_AGE_DAYS["eia_weekly"])
+    check("EIA national/WTI context", (eia_context or {}).get("national_as_of"), "%Y-%m-%d",
+          SOURCE_MAX_AGE_DAYS["eia_context"])
+    if in_heating_season(today):
+        heating = ((eia_heating or {}).get("propane") or [{}])[-1].get("date")
+        check("EIA heating fuels (in season)", heating, "%Y-%m-%d",
+              SOURCE_MAX_AGE_DAYS["eia_heating"])
+    return problems
+
+
+def load_json_file(path: str) -> dict | None:
+    """Read a docs/*.json file, or None if missing or unparseable."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def is_degraded(run_health: dict | None) -> bool:
     """A run is 'degraded' when fewer than half the cities scraped fresh, or when it
     was cut short by GasBuddy's rate limit. The file is still written (stale
@@ -1102,7 +1211,8 @@ def is_degraded(run_health: dict | None) -> bool:
 
 def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | None,
                  eia_updated: bool, aaa_updated: bool, aaa_only: bool,
-                 notable_move: dict | None = None) -> None:
+                 notable_move: dict | None = None, gasbuddy_skipped: bool = False,
+                 problems: list[str] | None = None) -> None:
     """Always-written per-run heartbeat consumed by the failure-alert workflow step.
 
     Not committed (gitignored) — it is read in-job, after the scraper, to decide
@@ -1111,7 +1221,13 @@ def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | Non
     status = {
         "last_run":         datetime.now(timezone.utc).isoformat(),
         "gasbuddy_success": gasbuddy_success,
+        # True when the run deliberately left the published station data alone
+        # because it was already fresh (SKIP_GASBUDDY). Healthy, not a failure.
+        "gasbuddy_skipped": gasbuddy_skipped,
         "degraded":         gasbuddy_success and is_degraded(run_health),
+        # Non-GasBuddy sources that have stopped updating, or a history file the
+        # run refused to overwrite. Any entry makes the alert fire.
+        "source_problems":  problems or [],
         "eia_updated":      eia_updated,
         "aaa_updated":      aaa_updated,
         "aaa_only":         aaa_only,
@@ -1131,8 +1247,7 @@ def write_status(out_dir: str, *, gasbuddy_success: bool, run_health: dict | Non
         status.update(run_health)
     path = os.path.join(out_dir, "scrape_status.json")
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(status, f, indent=2, ensure_ascii=False)
+        write_json(path, status, indent=2)
         log.info("Wrote run status to %s (gasbuddy_success=%s, fresh=%s/%s)",
                  path, gasbuddy_success,
                  status.get("cities_fresh", "?"), status.get("cities_total", "?"))
@@ -1168,33 +1283,45 @@ def main() -> None:
 
     gb_success = False
     aaa_only = False
+    history_written = True
     run_health: dict | None = None
+    # Set by the workflow when the published station data is already fresh and
+    # complete (another run landed within the last couple of hours). Two full
+    # scrapes close together is what trips GasBuddy's per-IP limit.
+    skip_gb = bool(os.environ.get("SKIP_GASBUDDY"))
     try:
-        data = scrape_gasbuddy()
-        run_health = data.pop("run_health", None)  # transient — not persisted in gas_prices.json
-        data["aaa"] = aaa  # empty dict → merge_with_previous carries the last one forward
-        data["neighbors"] = neighbors
+        if skip_gb:
+            log.info("SKIP_GASBUDDY set — station data is already fresh; refreshing AAA/EIA only")
+            data = None
+        else:
+            data = scrape_gasbuddy()
+        if data is None:
+            aaa_only = publish_aaa_only(args.output, aaa, previous_data, neighbors)
+            fresh_count = -1  # not applicable; skips the publish branch below
+        else:
+            run_health = data.pop("run_health", None)  # transient — not persisted in gas_prices.json
+            data["aaa"] = aaa  # empty dict → merge_with_previous carries the last one forward
+            data["neighbors"] = neighbors
+            fresh_count = len(data.get("metros", {}))
+            merge_with_previous(data, previous_data)
+            total_count = len(data.get("metros", {}))
+            if run_health is not None:
+                run_health["cities_stale_preserved"] = total_count - fresh_count
+            log.info("Cities: %d fresh, %d stale preserved, %d total",
+                     fresh_count, total_count - fresh_count, total_count)
 
-        fresh_count = len(data.get("metros", {}))
-        merge_with_previous(data, previous_data)
-        total_count = len(data.get("metros", {}))
-        if run_health is not None:
-            run_health["cities_stale_preserved"] = total_count - fresh_count
-
-        log.info("Cities: %d fresh, %d stale preserved, %d total",
-                 fresh_count, total_count - fresh_count, total_count)
-
-        if fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
+        if fresh_count == -1:
+            pass
+        elif fresh_count > 0 and data.get("statewide", {}).get("current_avg"):
             validate_output(data)
             summary = build_summary(data, load_history(out_dir))
             if summary:
                 data["summary"] = summary
                 log.info("Summary: %s", summary["blurb"])
             gb_success = True
-            with open(args.output, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            write_json(args.output, data, indent=2)
             log.info("Wrote gas prices to %s", args.output)
-            update_history(data, out_dir)
+            history_written = update_history(data, out_dir)
         else:
             # Reached when GasBuddy answered but every city came back empty (e.g. all
             # rate-limited). Same outcome as a hard failure: keep the station prices,
@@ -1210,11 +1337,31 @@ def main() -> None:
     fetch_eia_context(out_dir)
     fetch_eia_heating(out_dir)
 
+    # Freshness of everything that isn't GasBuddy, judged from what's on disk now
+    # (carried-forward blocks included), so a source that stopped updating shows
+    # up here even though the run itself "succeeded".
+    published = load_json_file(args.output) or {}
+    problems = source_problems(
+        published,
+        load_json_file(os.path.join(out_dir, "eia_weekly.json")),
+        load_json_file(os.path.join(out_dir, "eia_context.json")),
+        load_json_file(os.path.join(out_dir, "eia_heating.json")),
+        central_date(),
+    )
+    if not history_written:
+        problems.append("History file could not be parsed and was left untouched — restore it from git")
+    for problem in problems:
+        log.warning("Source problem: %s", problem)
+
     write_status(out_dir, gasbuddy_success=gb_success, run_health=run_health,
                  eia_updated=eia_updated, aaa_updated=bool(aaa), aaa_only=aaa_only,
-                 notable_move=detect_notable_move(aaa))
+                 notable_move=detect_notable_move(aaa), gasbuddy_skipped=skip_gb,
+                 problems=problems)
 
-    if not gb_success:
+    if skip_gb:
+        log.info("GasBuddy skipped (data already fresh); AAA %s, EIA data updated.",
+                 "refreshed" if aaa_only else "unavailable")
+    elif not gb_success:
         log.warning("GasBuddy scrape failed; AAA %s, EIA data updated.",
                     "refreshed" if aaa_only else "unavailable too")
     elif is_degraded(run_health):

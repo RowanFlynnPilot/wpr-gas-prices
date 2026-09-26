@@ -220,8 +220,16 @@ if (Test-Path .\docs\scrape_status.json) {
     # run also files the GitHub issue - a degraded run used to exit 0 in silence
     # and was only noticed because someone happened to see the window.
     $rateNote = if ($status.rate_limited) { " GasBuddy rate-limited this IP and the run stopped early rather than retrying into the ban." } else { "" }
-    if ($status.gasbuddy_success -and -not $status.degraded) {
-        Write-Host "[ok] Healthy run. $fresh cities fresh." -ForegroundColor Green
+    # Non-GasBuddy sources that stopped updating (AAA layout change, renamed EIA
+    # code, unparseable history). Invisible before: GasBuddy alone decided health.
+    $problems = @()
+    if ($status.source_problems) { $problems = @($status.source_problems) }
+    if ($status.gasbuddy_success -and -not $status.degraded -and $problems.Count -eq 0) {
+        Write-Host "[ok] Healthy run. $fresh cities fresh; all sources current." -ForegroundColor Green
+    } elseif ($status.gasbuddy_success -and -not $status.degraded) {
+        Write-Host "[warn] GasBuddy fine ($fresh fresh) but a source has stopped updating:" -ForegroundColor Yellow
+        $problems | ForEach-Object { Write-Host "       - $_" -ForegroundColor Yellow }
+        Publish-FailureAlert ("GasBuddy scraped normally ($fresh cities), but another source has stopped updating:`n- " + ($problems -join "`n- "))
     } elseif ($status.gasbuddy_success) {
         Write-Host "[warn] Degraded run: only $fresh cities fresh; rest carried forward." -ForegroundColor Yellow
         Publish-FailureAlert "Degraded run: only $fresh cities scraped fresh; the rest were carried forward, so the statewide average is mostly stale.$rateNote"

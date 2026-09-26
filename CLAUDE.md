@@ -25,7 +25,7 @@ already fresh** (`$FreshHours = 10`, plus every metro non-stale):
 |---|---|---|
 | What | `.github/workflows/update-gas-prices.yml` | `scripts/update-gas-prices.ps1` |
 | When | 15:00 + 03:00 **UTC** (drifts hours — see below) | 7am + 7pm **Central** (Task Scheduler `WPRGasPrices-Update`) |
-| Does | Full scrape: GasBuddy stations/metros, AAA, EIA, digest PNG | The same, but **only if** CI's data is >10h old or has stale metros |
+| Does | Full scrape: GasBuddy stations/metros, AAA, EIA, digest PNG — but **skips GasBuddy** (`SKIP_GASBUDDY=1`) when the published data is <2h old and complete | The same, but **only if** CI's data is >10h old or has stale metros |
 
 Nothing needs switching if CI starts failing: `scraped_at` stops advancing (or cities
 come back stale), the freshness gate opens, and the local run takes over by itself.
@@ -292,6 +292,30 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 - **Output is validated before write.** `validate_output()` raises if the assembled
   data is missing keys or has an implausible statewide regular avg; the live file is
   preserved on failure (caught like any scrape error).
+- **Every data file is written atomically** (`write_json()`: temp file + `os.replace`),
+  so a crash mid-write can't leave a truncated file. And `update_history()` **refuses
+  to overwrite a history file it can't parse** — `load_history()` returns `{}` on a
+  parse error, and writing that back would have replaced months of daily readings
+  with `{}` in one commit. The refusal is reported as a source problem (below).
+- **All "as of" dates are Wisconsin dates.** `central_date()` / `central_date_key()`
+  (`America/Chicago`, via `tzdata` — Windows has no zone database) stamp
+  `price_date`, AAA/neighbor `as_of`, and history keys. The 03:00 UTC cron lands at
+  10pm Central and used to label the evening's data with *tomorrow's* date.
+  `scraped_at` stays a UTC instant.
+- **Every source is freshness-checked, not just GasBuddy.** `source_problems()` runs
+  at the end of each run against what's on disk (AAA/neighbors `as_of` > 3 days, EIA
+  weekly/context > 14 days, heating > 14 days but only between Oct 15 and Mar 31 —
+  `in_heating_season()`), plus the history refusal above. Anything listed in
+  `scrape_status.json["source_problems"]` makes **both** runners alert, even when
+  GasBuddy was perfect. Before this, an AAA layout change or a renamed EIA code would
+  have carried the old block forward forever while every run reported healthy.
+- **CI skips GasBuddy when the data is already fresh.** The "Decide whether GasBuddy
+  needs scraping" step sets `SKIP_GASBUDDY=1` if `gas_prices.json` is under 2h old
+  with no stale metros; `main()` then runs the `publish_aaa_only()` path (AAA,
+  neighbors, blurb, EIA, heating, digest all still refresh) and reports
+  `gasbuddy_skipped: true`, which the alert treats as healthy. Two full scrapes close
+  together — a manual dispatch after the cron, or drift bunching runs — is exactly
+  what trips the per-IP rate limit (it did on 2026-09-25).
 - **Run heartbeat + alerting.** `main()` always writes `docs/scrape_status.json`
   (gitignored) with `gasbuddy_success`, `degraded`, fresh/stale counts, and failed
   cities. The workflow's "Alert on scrape failure" step reads it and opens (or

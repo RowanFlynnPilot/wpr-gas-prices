@@ -917,3 +917,122 @@ def test_fetch_eia_heating_skips_without_key_and_writes_partial(tmp_path, monkey
     assert out["heating_oil"] == [{"date": "2026-03-30", "price": 2.066}]
     assert "natural_gas" not in out                        # failed series is absent, not fatal
     assert "fetched_at" in out
+
+
+# ---------------------------------------------------------------------------
+# Robustness: Central dates, atomic writes, history guard, source freshness,
+# and the SKIP_GASBUDDY path
+# ---------------------------------------------------------------------------
+
+from datetime import date, datetime, timezone
+
+
+def test_central_date_is_the_wisconsin_calendar_day():
+    # 03:20 UTC on the 26th is 10:20pm CDT on the 25th — the old UTC stamp said 26.
+    assert s.central_date(datetime(2026, 9, 26, 3, 20, tzinfo=timezone.utc)) == date(2026, 9, 25)
+    assert s.central_date_key(datetime(2026, 9, 26, 3, 20, tzinfo=timezone.utc)) == "09/25/26"
+    # Winter (CST, UTC-6): 05:30 UTC on Jan 15 is still Jan 14 in Wisconsin.
+    assert s.central_date(datetime(2026, 1, 15, 5, 30, tzinfo=timezone.utc)) == date(2026, 1, 14)
+    # Daytime is unaffected.
+    assert s.central_date(datetime(2026, 9, 26, 15, 0, tzinfo=timezone.utc)) == date(2026, 9, 26)
+
+
+def test_write_json_is_atomic_and_round_trips(tmp_path):
+    target = tmp_path / "x.json"
+    target.write_text("old", encoding="utf-8")
+    s.write_json(str(target), {"a": [1, 2], "u": "¢"})
+    assert json.loads(target.read_text(encoding="utf-8")) == {"a": [1, 2], "u": "¢"}
+    assert not (tmp_path / "x.json.tmp").exists()      # temp file renamed away
+    s.write_json(str(target), {"b": 1}, indent=2)
+    assert target.read_text(encoding="utf-8").startswith("{\n  ")
+
+
+def test_update_history_refuses_to_overwrite_an_unparseable_file(tmp_path):
+    hist = tmp_path / "gas_prices_history.json"
+    hist.write_text('{"06/01/26": {"statewide": {"regular": 3.5}}', encoding="utf-8")  # truncated
+    before = hist.read_bytes()
+    data = {"price_date": "06/03/26", "statewide": {"current_avg": {"regular": 3.9}},
+            "metros": {"Wausau": _city(4.0)}}
+    assert s.update_history(data, str(tmp_path)) is False
+    assert hist.read_bytes() == before                  # byte-for-byte untouched
+    # A genuinely empty/missing file is still fine to start from.
+    hist.unlink()
+    assert s.update_history(data, str(tmp_path)) is True
+    assert "06/03/26" in json.loads(hist.read_text(encoding="utf-8"))
+
+
+def _fresh_sources(today):
+    d = today.strftime("%m/%d/%y")
+    iso = today.isoformat()
+    return (
+        {"aaa": {"as_of": d}, "neighbors": {"as_of": d}},
+        {"regular": [{"date": iso, "price": 3.9}]},
+        {"national_as_of": iso},
+        {"propane": [{"date": iso, "price": 2.0}]},
+    )
+
+
+def test_source_problems_quiet_when_everything_is_fresh():
+    today = date(2026, 11, 20)
+    assert s.source_problems(*_fresh_sources(today), today) == []
+
+
+def test_source_problems_flags_each_stale_or_missing_source():
+    today = date(2026, 11, 20)
+    data, weekly, ctx, heat = _fresh_sources(today)
+    data["aaa"]["as_of"] = "11/15/26"                  # 5 days: over the 3-day limit
+    del data["neighbors"]                              # missing entirely
+    weekly["regular"][-1]["date"] = "2026-10-26"       # 25 days: over 14
+    heat["propane"][-1]["date"] = "2026-10-05"         # 46 days, in season
+    out = s.source_problems(data, weekly, ctx, heat, today)
+    assert any(p.startswith("AAA statewide trend: last updated 11/15/26 (5 days ago") for p in out)
+    assert "AAA neighboring states: no data" in out
+    assert any(p.startswith("EIA Midwest weekly: last updated 2026-10-26 (25 days") for p in out)
+    assert any(p.startswith("EIA heating fuels (in season): last updated 2026-10-05") for p in out)
+    assert not any(p.startswith("EIA national") for p in out)
+
+
+def test_source_problems_ignores_heating_out_of_season():
+    # Late September: March's last reading is 6 months old and that's expected.
+    today = date(2026, 9, 26)
+    data, weekly, ctx, heat = _fresh_sources(today)
+    heat["propane"][-1]["date"] = "2026-03-30"
+    assert s.source_problems(data, weekly, ctx, heat, today) == []
+    assert s.in_heating_season(date(2026, 10, 14)) is False   # grace for the first survey
+    assert s.in_heating_season(date(2026, 10, 15)) is True
+    assert s.in_heating_season(date(2027, 3, 31)) is True
+    assert s.in_heating_season(date(2027, 4, 1)) is False
+
+
+def test_main_skip_gasbuddy_refreshes_aaa_without_scraping(tmp_path, monkeypatch):
+    out = tmp_path / "gas_prices.json"
+    previous = {
+        "source": "GasBuddy", "price_date": "09/26/26",
+        "scraped_at": "2026-09-26T08:20:00+00:00",
+        "statewide": {"current_avg": {"regular": 4.29}},
+        "metros": {"Wausau": _city(4.3)},
+        "aaa": {"as_of": "09/25/26", "current": {"regular": 4.40}},
+    }
+    out.write_text(json.dumps(previous), encoding="utf-8")
+
+    def must_not_run():
+        raise AssertionError("scrape_gasbuddy must not be called when SKIP_GASBUDDY is set")
+
+    monkeypatch.setenv("SKIP_GASBUDDY", "1")
+    monkeypatch.setattr(s, "scrape_gasbuddy", must_not_run)
+    monkeypatch.setattr(s, "scrape_aaa", lambda: dict(_AAA_FRESH))
+    monkeypatch.setattr(s, "scrape_neighbors", lambda: {})
+    monkeypatch.setattr(s, "fetch_eia_data", lambda out_dir: False)
+    monkeypatch.setattr(s, "fetch_eia_context", lambda out_dir: None)
+    monkeypatch.setattr(s, "fetch_eia_heating", lambda out_dir: False)
+    monkeypatch.setattr(s.sys, "argv", ["scrape_gas_prices.py", "-o", str(out)])
+    s.main()
+
+    live = json.loads(out.read_text(encoding="utf-8"))
+    assert live["aaa"]["current"]["regular"] == 3.97          # AAA refreshed
+    assert live["scraped_at"] == "2026-09-26T08:20:00+00:00"  # station data untouched
+    status = json.loads((tmp_path / "scrape_status.json").read_text(encoding="utf-8"))
+    assert status["gasbuddy_skipped"] is True
+    assert status["gasbuddy_success"] is False
+    assert status["aaa_only"] is True
+    assert isinstance(status["source_problems"], list)
