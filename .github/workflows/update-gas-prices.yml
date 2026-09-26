@@ -84,6 +84,21 @@ jobs:
           node-version: 22
           cache: npm
 
+      # The scraper's fresh output must satisfy what the widgets read (see
+      # tests/data-contract.test.mjs). A failure here means a scraper change
+      # altered the JSON shape: the previous data files are restored so nothing
+      # broken is published, the digest renders from them, and the run alerts.
+      - name: Check scraper output against the widget data contract
+        if: ${{ !cancelled() }}
+        run: |
+          if node --test tests/data-contract.test.mjs; then
+            echo "Fresh data satisfies the widget contract."
+          else
+            echo "::error::Scraper output failed the widget data contract — restoring the previously published data files."
+            git checkout -- docs/gas_prices.json docs/gas_prices_history.json docs/eia_weekly.json docs/eia_context.json docs/eia_heating.json
+            echo "CONTRACT_FAILED=1" >> "$GITHUB_ENV"
+          fi
+
       - name: Install Playwright
         if: ${{ !cancelled() }}
         run: |
@@ -91,6 +106,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Render newsletter digest image
+        id: render
         if: ${{ !cancelled() }}
         run: |
           python -m http.server 4180 --bind 127.0.0.1 --directory docs &
@@ -131,6 +147,7 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          DIGEST_OUTCOME: ${{ steps.render.outcome }}
         run: |
           TITLE="⚠️ Gas scraper needs attention"
           if [ -f docs/scrape_status.json ]; then
@@ -140,6 +157,17 @@ jobs:
           else
             echo "No scrape_status.json — scraper crashed before writing status."
             OK=false; DEG=false; FRESH=0; TOTAL="?"; AAA=false; RL=false; RLWAIT=0; PROBLEMS=""; SKIPPED=false
+          fi
+          # Failures that are neither GasBuddy nor a stale source, but still mean
+          # someone should look: they join the problem list so the same alert
+          # path handles them.
+          add_problem() { PROBLEMS="${PROBLEMS:+$PROBLEMS
+          }- $1"; }
+          if [ "$CONTRACT_FAILED" = "1" ]; then
+            add_problem "Scraper output failed the widget data contract (tests/data-contract.test.mjs) — the previous data files were kept and nothing new was published; a scraper change probably altered the JSON shape"
+          fi
+          if [ "$DIGEST_OUTCOME" = "failure" ]; then
+            add_problem "The newsletter digest image failed to render (see the 'Render newsletter digest image' step log); the previous digest.png stays live"
           fi
           # How to describe the GasBuddy side in messages: a skipped scrape has no
           # "N/22 fresh" of its own — the published data was already fresh.
@@ -163,7 +191,7 @@ jobs:
             SUMMARY="$SUMMARY
 
           $PROBLEMS"
-            CAUSE="AAA problems usually mean their state page changed layout (parse_aaa); EIA problems usually mean a renamed series code or a missing EIA_API_KEY secret. The widget keeps showing the last good figures, dated, until this is fixed."
+            CAUSE="Which item is listed says where to look: AAA → their state page changed layout (parse_aaa); EIA → a renamed series code or missing EIA_API_KEY secret; data contract → run 'npm run test:widget' locally against the scraper's output; digest → the render step log. The widget keeps showing the last good figures, dated, until this is fixed."
           elif [ "$OK" != "true" ]; then
             echo "GasBuddy scrape failed — alerting (aaa_updated=$AAA)."
             if [ "$AAA" = "true" ]; then

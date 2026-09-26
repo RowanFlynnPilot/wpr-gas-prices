@@ -127,6 +127,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
 | `docs/widget-logic.js` | Pure logic shared by both widgets (deltas, history ordering, station extremes, sorting, escaping) | Yes — with its tests; bump `?v=` in both widgets |
 | `tests/widget-logic.test.mjs` | Node tests for that file — evaluates the exact script the browser loads | Yes — when changing widget logic |
+| `tests/data-contract.test.mjs` | The **data contract**: real `docs/*.json` must satisfy what the widgets read; gates the update workflow's commit | Yes — when the JSON schema changes |
 | `docs/embed.js` | Host-side iframe autosize; unusable on WPR until Cloudflare allows `<script src>` in post saves | Rarely |
 | `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
 | `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
@@ -346,6 +347,20 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   the module's API changes: Pages caches it for ten minutes, and a new `index.html`
   must not meet a stale copy. If the file fails to load, the widgets show the same
   quiet "unavailable" state as a missing data file.
+- **The data contract gates publishing.** `tests/data-contract.test.mjs` runs the
+  real widget logic against the actual `docs/*.json` — every metro's fields, the
+  AAA/neighbor blocks, history depth and key format, EIA/heating shapes. It runs in
+  the Tests workflow against the committed files, and in the update workflow
+  **against the scraper's fresh output before the commit**: on failure the previous
+  data files are restored with `git checkout`, the digest renders from them,
+  `CONTRACT_FAILED=1` joins the alert's problem list, and nothing broken reaches
+  Pages. A scraper change that alters the JSON shape is the case it exists for —
+  the no-network unit tests can't see real output. Extend it whenever the schema
+  grows (it is the executable version of the "Output schema" section above).
+- **A failed digest render alerts.** The render step has `id: render`; the alert step
+  reads `steps.render.outcome` and adds a problem-list entry when it failed, so a
+  red render step is an issue rather than a red run nobody opens. The previous
+  `digest.png` stays live meanwhile.
 - **Scraped text is escaped.** Station and city names reach the DOM through
   `L.esc()`; station addresses are tidied in the scraper (`tidy_address_part()` —
   title-cases a field only when GasBuddy sent it in ALL CAPS) and link to a Google
@@ -396,7 +411,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 # install
 pip install -r requirements.txt
 
-# widget logic tests (Node built-in runner, no install needed)
+# widget logic + data contract tests (Node built-in runner, no install needed)
 npm run test:widget
 
 # run the scraper (writes to docs/gas_prices.json by default)
