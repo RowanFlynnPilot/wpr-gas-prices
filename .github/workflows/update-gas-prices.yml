@@ -136,17 +136,21 @@ jobs:
           if [ -f docs/scrape_status.json ]; then
             read OK DEG FRESH TOTAL AAA RL RLWAIT <<< "$(python -c "import json;d=json.load(open('docs/scrape_status.json'));print(str(d.get('gasbuddy_success',False) or d.get('gasbuddy_skipped',False)).lower(), str(d.get('degraded',False)).lower(), d.get('cities_fresh',0), d.get('cities_total','?'), str(d.get('aaa_updated',False)).lower(), str(d.get('rate_limited',False)).lower(), d.get('rate_limit_wait',0))")"
             PROBLEMS=$(python -c "import json;print(chr(10).join('- ' + p for p in json.load(open('docs/scrape_status.json')).get('source_problems', [])))")
+            SKIPPED=$(python -c "import json;print(str(json.load(open('docs/scrape_status.json')).get('gasbuddy_skipped',False)).lower())")
           else
             echo "No scrape_status.json — scraper crashed before writing status."
-            OK=false; DEG=false; FRESH=0; TOTAL="?"; AAA=false; RL=false; RLWAIT=0; PROBLEMS=""
+            OK=false; DEG=false; FRESH=0; TOTAL="?"; AAA=false; RL=false; RLWAIT=0; PROBLEMS=""; SKIPPED=false
           fi
+          # How to describe the GasBuddy side in messages: a skipped scrape has no
+          # "N/22 fresh" of its own — the published data was already fresh.
+          if [ "$SKIPPED" = "true" ]; then GBTXT="GasBuddy scrape skipped, published station data already fresh"; else GBTXT="$FRESH/$TOTAL cities fresh"; fi
           RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
 
           if [ "$OK" = "true" ] && [ "$DEG" != "true" ] && [ -z "$PROBLEMS" ]; then
-            echo "Healthy run ($FRESH/$TOTAL cities fresh, all sources current)."
+            echo "Healthy run ($GBTXT, all sources current)."
             if [ -n "$EXISTING" ]; then
-              gh issue comment "$EXISTING" --body "✅ Recovered — a healthy run ($FRESH/$TOTAL cities) succeeded ($RUN_URL). Auto-closing."
+              gh issue comment "$EXISTING" --body "✅ Recovered — a healthy run ($GBTXT) succeeded ($RUN_URL). Auto-closing."
               gh issue close "$EXISTING"
             fi
             exit 0
@@ -155,7 +159,7 @@ jobs:
           if [ "$OK" = "true" ] && [ "$DEG" != "true" ]; then
             # GasBuddy is fine; a source that used to be invisible has gone stale.
             echo "Source problem(s) — alerting."
-            SUMMARY="scraped GasBuddy normally ($FRESH/$TOTAL cities), but one or more of the other sources has stopped updating:"
+            SUMMARY="was fine on the GasBuddy side ($GBTXT), but one or more of the other sources has stopped updating:"
             SUMMARY="$SUMMARY
 
           $PROBLEMS"
