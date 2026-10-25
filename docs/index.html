@@ -161,6 +161,19 @@
   .wpr-trends-legend-dashed { background:none; border-top:2px dashed var(--ink-light); height:0; }
   .wpr-chart-hit:hover { fill:var(--accent-pale); }
 
+  /* Motion: entrance only (.wpr-enter is set when the view changes) */
+  @keyframes wpr-draw { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
+  @keyframes wpr-grow { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+  @keyframes wpr-rise { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+  .wpr-enter .wpr-draw { stroke-dasharray:1; animation:wpr-draw 0.9s cubic-bezier(0.33,1,0.68,1) both; }
+  .wpr-enter .wpr-ladder-bar { animation:wpr-grow 0.6s cubic-bezier(0.33,1,0.68,1) both; }
+  .wpr-enter .wpr-ladder-row:nth-child(3) .wpr-ladder-bar { animation-delay:0.06s; }
+  .wpr-enter .wpr-ladder-row:nth-child(4) .wpr-ladder-bar { animation-delay:0.12s; }
+  .wpr-enter .wpr-ladder-row:nth-child(5) .wpr-ladder-bar { animation-delay:0.18s; }
+  .wpr-enter .wpr-tr-enddot, .wpr-enter .wpr-tr-endlbl, .wpr-enter .wpr-tr-note, .wpr-enter .wpr-tr-bracket { animation:wpr-rise 0.4s 0.7s ease-out both; }
+  @media (prefers-reduced-motion: reduce) {
+    .wpr-enter .wpr-draw, .wpr-enter .wpr-ladder-bar, .wpr-enter .wpr-tr-enddot, .wpr-enter .wpr-tr-endlbl, .wpr-enter .wpr-tr-note, .wpr-enter .wpr-tr-bracket { animation:none; }
+  }
   /* Statewide: headline + 30-day line, change ladder */
   .wpr-st-story { padding-top:2px; padding-bottom:4px; }
   .wpr-st-chips { display:inline-flex; gap:6px; margin-left:4px; vertical-align:1px; flex-wrap:wrap; }
@@ -474,6 +487,26 @@
     if (e.source === window.parent && e.data === 'wpr-gas-height?') postHeight();
   });
 
+  // ── Motion ──
+  // Entrance motion runs only when the view changes (lastView), never on a
+  // redraw from a resize or a select, and not at all under reduced motion.
+  let lastView = '', firstRender = true;
+  const reduceMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  // The header price counts from the previous reading to today's on first load.
+  function countUpHero(from, to) {
+    const el = widget.querySelector('.wpr-gas-hero-value');
+    if (!el || typeof from !== 'number' || typeof to !== 'number' || reduceMotion() || Math.abs(to - from) < 0.005) return;
+    const t0 = performance.now(), dur = 900;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.innerHTML = fmtHero(from + (to - from) * e);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    // Background tabs don't run rAF: make sure the final figure lands regardless.
+    setTimeout(() => { el.innerHTML = fmtHero(to); }, dur + 100);
+  }
+
   // Tiny inline trend line for a metro row, from recent history (F5).
   function metroSparkline(name, fuel) {
     if (!historyData) return '';
@@ -559,7 +592,10 @@
       </div>
     `;
 
-    html += '<div role="tabpanel" aria-live="polite">';
+    const view = `${activeTab}|${activeFuel}|${trendRange}|${heatingFuel}`;
+    const entering = view !== lastView;
+    lastView = view;
+    html += `<div role="tabpanel" aria-live="polite"${entering ? ' class="wpr-enter"' : ''}>`;
     if (activeTab === 'statewide') html += renderStatewide();
     else if (activeTab === 'metro') html += renderMetro();
     else if (activeTab === 'heating') html += renderHeating();
@@ -574,7 +610,21 @@
       : `Data via <a href="https://www.gasbuddy.com/gasprices/wisconsin" target="_blank" rel="noopener">GasBuddy</a>`;
 
     html += `<div class="wpr-gas-footer"><span>${sourceCredit}</span><span>Wausau Pilot &amp; Review</span></div>`;
+    // Map dots keep their previous colors for one frame so a fuel change fades
+    // between the two pictures instead of snapping.
+    const prevFills = {};
+    widget.querySelectorAll('.wpr-map-svg .wpr-map-dot[data-city]').forEach(d => { prevFills[d.getAttribute('data-city')] = d.getAttribute('fill'); });
     widget.innerHTML = html;
+    if (Object.keys(prevFills).length && !reduceMotion()) {
+      const dots = [...widget.querySelectorAll('.wpr-map-svg .wpr-map-dot[data-city]')];
+      const next = dots.map(d => d.getAttribute('fill'));
+      dots.forEach(d => { const f = prevFills[d.getAttribute('data-city')]; if (f) d.setAttribute('fill', f); });
+      // A timer, not requestAnimationFrame: background tabs never run rAF, and the
+      // dots would keep the previous fuel's colors.
+      void widget.offsetWidth;
+      setTimeout(() => dots.forEach((d, i) => d.setAttribute('fill', next[i])), 20);
+    }
+    if (firstRender) { firstRender = false; countUpHero(prev?.price, currentPrice); }
 
     widget.querySelectorAll('.wpr-gas-tab').forEach(t => {
       t.addEventListener('click', () => { activeTab = t.dataset.tab; render(); });
@@ -741,7 +791,7 @@
         <div class="wpr-ladder-row">
           <span class="wpr-ladder-label">${r.label}</span>
           <span class="wpr-ladder-then">${money2(r.then)}</span>
-          <span class="wpr-ladder-track" style="--zero:${zero}%"><i class="wpr-ladder-bar ${cls}" style="${r.c >= 0 ? `left:${zero}%` : `right:${100 - zero}%`};width:${w}%"></i></span>
+          <span class="wpr-ladder-track" style="--zero:${zero}%"><i class="wpr-ladder-bar ${cls}" style="${r.c >= 0 ? `left:${zero}%;transform-origin:left` : `right:${100 - zero}%;transform-origin:right`};width:${w}%"></i></span>
           <span class="wpr-ladder-c ${cls}-color">${text}</span>
         </div>`;
     }).join('');
@@ -1011,7 +1061,7 @@
     const lp = path(lead);
     svg += `<path d="${lp}L${X(lead[lead.length - 1].t).toFixed(1)},${H - B}L${X(lead[0].t).toFixed(1)},${H - B}Z" class="wpr-tr-area"/>`;
     if (bench.length >= 2) svg += `<path d="${path(bench)}" class="wpr-tr-bench"/>`;
-    svg += `<path d="${lp}" class="wpr-tr-line"/>`;
+    svg += `<path d="${lp}" class="wpr-tr-line wpr-draw" pathLength="1"/>`;
 
     // Low point
     const lx = X(story.low.t), ly = Y(story.low.price);
@@ -1393,7 +1443,6 @@
   // Label positions stay where today's layout put them. Only the map changes; the
   // lists, the dek and the strip plot keep describing today.
   let tlFrames = null, tlFuel = null, tlTimer = 0;
-  const reduceMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function framesFor(fuel) {
     if (tlFuel !== fuel) { tlFrames = historyData ? L.mapFrames(historyData, fuel, 60) : []; tlFuel = fuel; }
     return tlFrames;

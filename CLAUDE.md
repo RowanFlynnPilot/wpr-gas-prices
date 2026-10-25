@@ -298,6 +298,14 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   when it saves 50¢+), and AAA's statewide year-over-year change. Vehicle and city
   are remembered in `localStorage` (`wpr-gas-vehicle` / `wpr-gas-city`) behind
   try/catch; without storage it defaults to a sedan in Wausau.
+- **Motion is entrance-only and opt-out.** `render()` sets `.wpr-enter` on the tab
+  panel only when the tab, fuel, range or heating fuel changed (`lastView`), so a
+  resize or a select never replays it. Lines with `.wpr-draw` (+ `pathLength="1"`)
+  draw in, ladder bars grow from zero, end labels fade up; map dots fade from the
+  previous fuel's colors (a timer, not rAF — background tabs never run rAF); the
+  header price counts up from the previous reading on first load, with a timeout
+  that guarantees the final figure lands. All of it is off under
+  `prefers-reduced-motion` (CSS media query + `reduceMotion()`).
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
 - **Every figure shows cents, in both widgets.** Prices use `fmtCents()` (the header's
