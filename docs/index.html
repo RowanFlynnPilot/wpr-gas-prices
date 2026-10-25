@@ -237,6 +237,17 @@
   .wpr-map-ring { fill:none; stroke:var(--ink-mid); stroke-width:1.2; stroke-dasharray:4 3; }
   .wpr-map-dot { stroke:#fff; stroke-width:1.8; cursor:pointer; }
   .wpr-map-dot:hover, .wpr-map-dot:focus-visible { stroke:var(--ink); stroke-width:2; outline:none; }
+  .wpr-tl { display:flex; align-items:center; gap:10px; margin:2px 0 6px; }
+  .wpr-tl-play { flex:none; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--accent); background:#fff; color:var(--accent-dark); font-size:11px; cursor:pointer; display:grid; place-items:center; padding:0; }
+  .wpr-tl-play:hover { background:var(--accent-pale); }
+  .wpr-tl-play:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .wpr-tl-range { flex:1; min-width:0; accent-color:var(--accent-dark); }
+  .wpr-tl-day { flex:none; min-width:112px; font-size:11.5px; font-weight:600; color:var(--ink-mid); text-align:right; }
+  .wpr-map-dot { transition:fill 0.18s; }
+  .wpr-map-dot-carried { opacity:0.55; }
+  .wpr-map-past .wpr-map-today { display:none; }   /* the ring describes today only */
+  .wpr-map-dot-none { stroke:#b9bfbd; stroke-dasharray:2 2; }
+  @media (prefers-reduced-motion: reduce) { .wpr-map-dot { transition:none; } }
   .wpr-map-me { fill:none; stroke:var(--ink); stroke-width:1.6; }
   .wpr-map-lbl { fill:var(--ink); font-family:'DM Sans',sans-serif; font-weight:700; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; }
   .wpr-map-price { font-weight:500; fill:var(--ink-mid); }
@@ -303,7 +314,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=5"></script>
+<script src="./widget-logic.js?v=6"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -568,6 +579,7 @@
     });
     wireTrendChart();
     wireMetroMap();
+    wireTimelapse();
     lastFrameW = frameW();
     const copyBtn = widget.querySelector('.wpr-summary-copy');
     if (copyBtn && data.summary && data.summary.blurb) {
@@ -1170,6 +1182,8 @@
 
     // Boxes already taken (labels, dots, the ring caption) so labels never collide.
     const taken = ranked.map(m => { const [x, y] = pos[m.name]; return { x0: x - r - 2, x1: x + r + 2, y0: y - r - 2, y1: y + r + 2, own: m.name }; });
+    const lakeW = textW('Michigan', fs - 1, 400);   // the water label is occupied space too
+    taken.push({ x0: lkx - lakeW / 2, x1: lkx + lakeW / 2, y0: lky - fs, y1: lky + fs + 4, own: '' });
     const clear = (b, own) => b.x0 >= 2 && b.x1 <= VW - 2 && b.y0 >= 2 && b.y1 <= VH - 2
       && !taken.some(t => t.own !== own && !(b.x1 < t.x0 || b.x0 > t.x1 || b.y1 < t.y0 || b.y0 > t.y1));
 
@@ -1180,7 +1194,7 @@
       const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
       const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
       const rx = (Math.max(...xs) - Math.min(...xs)) / 2 + 24, ry = (Math.max(...ys) - Math.min(...ys)) / 2 + 22;
-      svg += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" class="wpr-map-ring"/>`;
+      svg += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" class="wpr-map-ring wpr-map-today"/>`;
       const cap1 = narrow ? 'Central WI' : 'Central Wisconsin';
       const cap2 = share.count === share.of ? `all ${share.of} priciest${narrow ? '' : ' metros'}`
         : narrow ? `${share.count} of ${share.of} priciest` : `${share.count} of the ${share.of} priciest metros`;
@@ -1194,8 +1208,8 @@
       const box = ([x, y, a]) => ({ x0: a === 'end' ? x - cw : x, x1: a === 'end' ? x : x + cw, y0: y - fs, y1: y + fs + 4, own: '' });
       const spot = spots.find(sp => clear(box(sp), '')) || spots[0];
       const [capX, capY, capA] = spot;
-      svg += `<text x="${capX.toFixed(1)}" y="${capY.toFixed(1)}" text-anchor="${capA}" class="wpr-map-lbl" style="font-size:${fs}px">${cap1}</text>`
-        + `<text x="${capX.toFixed(1)}" y="${(capY + fs + 2).toFixed(1)}" text-anchor="${capA}" class="wpr-map-sub" style="font-size:${fs - 0.5}px">${cap2}</text>`;
+      svg += `<text x="${capX.toFixed(1)}" y="${capY.toFixed(1)}" text-anchor="${capA}" class="wpr-map-lbl wpr-map-today" style="font-size:${fs}px">${cap1}</text>`
+        + `<text x="${capX.toFixed(1)}" y="${(capY + fs + 2).toFixed(1)}" text-anchor="${capA}" class="wpr-map-sub wpr-map-today" style="font-size:${fs - 0.5}px">${cap2}</text>`;
       taken.push(box(spot));
     }
 
@@ -1224,7 +1238,7 @@
         const b = { x0, x1: x0 + w, y0: ty - fs, y1: ty + 3, own: name };
         if (!clear(b, name)) continue;
         taken.push(b);
-        svg += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anchor}" class="wpr-map-lbl" style="font-size:${fs}px">${esc(name)} <tspan class="wpr-map-price">${money2(m.price)}</tspan></text>`;
+        svg += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anchor}" class="wpr-map-lbl" style="font-size:${fs}px">${esc(name)} <tspan class="wpr-map-price" data-city="${esc(name)}">${money2(m.price)}</tspan></text>`;
         break;
       }
     }
@@ -1248,6 +1262,7 @@
         <div class="wpr-map-grid">
           <div>
             <svg viewBox="0 0 ${VW} ${VH}" class="wpr-map-svg" role="group" aria-label="Map of Wisconsin metro ${fuelLabel(activeFuel).toLowerCase()} prices compared with the state average">${svg}</svg>
+            ${timelapseControls()}
             <div class="wpr-map-scale">${scale}</div>
           </div>
           <div class="wpr-map-side">
@@ -1292,6 +1307,74 @@
     if (me && me !== ranked[0] && me !== ranked[ranked.length - 1]) svg += lab(me, cy + 38, 'middle');
     return `<div class="wpr-strip"><div class="wpr-map-rank-h">All ${ranked.length} metros on one line</div>
       <svg viewBox="0 0 ${W} ${H}" class="wpr-strip-svg" role="img" aria-label="${esc(`${fuelLabel(activeFuel)} prices for ${ranked.length} metros, from ${money2(lo0)} in ${ranked[0].name} to ${money2(hi0)} in ${ranked[ranked.length - 1].name}; state average ${money2(avg)}`)}">${svg}</svg></div>`;
+  }
+
+  // ── Map time-lapse ──
+  // Replays the last 60 days on the map: each frame re-colors the dots (and the
+  // labelled prices) against that day's statewide average, from L.mapFrames().
+  // Label positions stay where today's layout put them. Only the map changes; the
+  // lists, the dek and the strip plot keep describing today.
+  let tlFrames = null, tlFuel = null, tlTimer = 0;
+  const reduceMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function framesFor(fuel) {
+    if (tlFuel !== fuel) { tlFrames = historyData ? L.mapFrames(historyData, fuel, 60) : []; tlFuel = fuel; }
+    return tlFrames;
+  }
+  function timelapseControls() {
+    const frames = framesFor(activeFuel);
+    if (frames.length < 10) return '';
+    const n = frames.length - 1;
+    return `
+      <div class="wpr-tl" role="group" aria-label="Replay the last ${frames.length} days on the map">
+        <button type="button" class="wpr-tl-play" aria-label="Play the last ${frames.length} days">▶</button>
+        <input type="range" class="wpr-tl-range" min="0" max="${n}" value="${n}" step="1" aria-label="Day shown on the map">
+        <span class="wpr-tl-day" aria-live="off">Today</span>
+      </div>`;
+  }
+  function showFrame(i) {
+    const frames = framesFor(activeFuel), f = frames[i];
+    if (!f) return;
+    const isToday = i === frames.length - 1;
+    widget.querySelectorAll('.wpr-map-svg .wpr-map-dot[data-city]').forEach(dot => {
+      const m = f.metros[dot.getAttribute('data-city')];
+      dot.setAttribute('fill', m ? BIN_COLORS[m.bin] : '#ffffff');
+      dot.classList.toggle('wpr-map-dot-none', !m);
+      dot.classList.toggle('wpr-map-dot-carried', !!(m && m.carried));
+    });
+    widget.querySelectorAll('.wpr-map-svg .wpr-map-price[data-city]').forEach(t => {
+      const m = f.metros[t.getAttribute('data-city')];
+      t.textContent = m ? money2(m.price) : '—';
+    });
+    const day = widget.querySelector('.wpr-tl-day');
+    if (day) day.innerHTML = isToday ? 'Today' : `${L.shortDate(f.t)} · state ${money2(f.avg)}`;
+    const range = widget.querySelector('.wpr-tl-range');
+    if (range && +range.value !== i) range.value = i;
+    widget.querySelector('.wpr-map-svg')?.classList.toggle('wpr-map-past', !isToday);
+  }
+  function stopTimelapse() {
+    clearInterval(tlTimer); tlTimer = 0;
+    const btn = widget.querySelector('.wpr-tl-play');
+    if (btn) { btn.textContent = '▶'; btn.setAttribute('aria-label', btn.getAttribute('aria-label').replace('Pause', 'Play')); }
+  }
+  function wireTimelapse() {
+    stopTimelapse();
+    const btn = widget.querySelector('.wpr-tl-play'), range = widget.querySelector('.wpr-tl-range');
+    if (!btn || !range) return;
+    const last = +range.max;
+    range.addEventListener('input', () => { stopTimelapse(); showFrame(+range.value); });
+    btn.addEventListener('click', () => {
+      if (tlTimer) { stopTimelapse(); return; }
+      let i = +range.value >= last ? 0 : +range.value;
+      showFrame(i);
+      btn.textContent = '❚❚';
+      btn.setAttribute('aria-label', btn.getAttribute('aria-label').replace('Play', 'Pause'));
+      // ~6s for 60 days; slower steps when the reader prefers less motion.
+      tlTimer = setInterval(() => {
+        i += 1;
+        showFrame(i);
+        if (i >= last) stopTimelapse();
+      }, reduceMotion() ? 400 : 110);
+    });
   }
 
   // Map and strip dots open that city's row (with its cheapest stations) in the list.

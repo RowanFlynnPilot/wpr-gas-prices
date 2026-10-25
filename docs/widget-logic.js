@@ -316,6 +316,34 @@
     return { count: top.filter(m => CENTRAL_WI.includes(m.name)).length, of: top.length };
   }
 
+  // ── Map time-lapse ──
+  // One frame per history day for the last `days` days: each metro's price and
+  // bin against that day's statewide average. Stale cities are left out of the
+  // history file, so a metro missing on a day shows its latest reading from the
+  // previous week (marked `carried`); older than that it is absent from the frame.
+  function mapFrames(history, fuel, days = 60) {
+    const keys = sortedHistoryKeys(history);
+    if (!keys.length) return [];
+    const lastT = historyKeyTime(keys[keys.length - 1]);
+    const latest = {};               // city -> { t, price } as of the frame being built
+    const frames = [];
+    for (const k of keys) {
+      const t = historyKeyTime(k), day = history[k] || {};
+      for (const [name, v] of Object.entries(day)) {
+        if (name !== 'statewide' && typeof v?.[fuel] === 'number') latest[name] = { t, price: v[fuel] };
+      }
+      const avg = day.statewide?.[fuel];
+      if (t < lastT - (days - 1) * MS_DAY || typeof avg !== 'number') continue;
+      const metros = {};
+      for (const [name, r] of Object.entries(latest)) {
+        if (t - r.t > 7 * MS_DAY) continue;
+        metros[name] = { price: r.price, bin: priceBin(r.price, avg), carried: r.t !== t };
+      }
+      frames.push({ key: k, t, avg, metros });
+    }
+    return frames;
+  }
+
   // ── Statewide tab headline ──
   // `series` is WPR's daily statewide reading for one fuel, [{ t: ms, price }]
   // sorted ascending: the same source as the header price and the 30-day chart
@@ -371,7 +399,7 @@
     FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
     isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
-    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory,
+    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames,
     CITY_COORDS, CENTRAL_WI, projectWI, PRICE_BINS, priceBin, rankMetros, centralShare,
   };
 })();

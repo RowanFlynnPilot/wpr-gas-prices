@@ -284,6 +284,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   overlap a dot or each other; a label that can't fit is dropped (the side list and
   dek still name the extremes). `L.CITY_COORDS` must cover every scraped city — the
   data contract test fails if `CITIES` gains one without coordinates.
+- **Map time-lapse.** A play button and slider under the map replay the last 60
+  history days (`L.mapFrames()`): each frame re-colors the dots and labelled prices
+  against *that day's* statewide average. A metro missing from a day (stale cities
+  aren't written to history) shows its reading from up to a week earlier, faded;
+  older than that it is drawn hollow. Label positions stay from today's layout and
+  the central-region ring hides on past frames (it describes today). Playback is
+  ~6s, slower under `prefers-reduced-motion`, and ends on today.
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
 - **Every figure shows cents, in both widgets.** Prices use `fmtCents()` (the header's

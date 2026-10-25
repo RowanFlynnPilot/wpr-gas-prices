@@ -282,3 +282,19 @@ test('statewideStory: record since tracking began, and no fake comparisons from 
   assert.equal(s.extreme, null);
   assert.equal(s.headline, 'Wisconsin regular gas is holding steady');
 });
+
+test('mapFrames: bins against that day\'s average, carries a missing city a week, then drops it', () => {
+  const day = d => `10/${String(d).padStart(2, '0')}/26`;
+  const h = {};
+  for (let d = 1; d <= 12; d++) h[day(d)] = { statewide: { regular: 4.0 }, Wausau: { regular: 4.0 + d * 0.01 } };
+  h[day(1)].Merrill = { regular: 4.30 };        // Merrill reports once, on Oct 1
+  const frames = L.mapFrames(h, 'regular', 60);
+  assert.equal(frames.length, 12);
+  assert.equal(frames[0].metros.Merrill.bin, 4);           // 30¢ above that day's 4.00
+  assert.equal(frames[0].metros.Merrill.carried, false);
+  assert.equal(frames[7].metros.Merrill.carried, true);    // Oct 8: 7 days old, still shown
+  assert.equal(frames[8].metros.Merrill, undefined);       // Oct 9: older than a week, gone
+  assert.equal(frames[11].metros.Wausau.price, 4.12);
+  assert.equal(L.mapFrames(h, 'regular', 5).length, 5);    // window counts days back from the last
+  assert.deepEqual(plain(L.mapFrames({}, 'regular')), []);
+});
