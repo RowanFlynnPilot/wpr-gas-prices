@@ -286,7 +286,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   data contract test fails if `CITIES` gains one without coordinates.
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
-- **The Metro list shows cents.** City averages and station prices use `fmtCents()`
+- **The Metro list (and the compact widget's city rows) shows cents.** City averages and station prices use `fmtCents()`
   and the day-over-day change uses `L.delta(..., { cents: true })` ("▲ 4¢"; a move
   that rounds to 0¢ is flat). Statewide figures keep three decimals, where a tenth
   of a cent is a real move in a 22-city average.

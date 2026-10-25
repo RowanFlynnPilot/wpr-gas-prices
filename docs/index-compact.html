@@ -269,6 +269,11 @@
     if (p == null) return '—';
     return '<span class="wpr-dollar">$</span>' + p.toFixed(3);
   }
+  // City rows show cents like index.html's Metro list; the state hero keeps three decimals.
+  function fmtCents(p) {
+    if (p == null) return '—';
+    return '<span class="wpr-dollar">$</span>' + p.toFixed(2);
+  }
   function fuelLabel(k) {
     return { regular: 'Regular', mid_grade: 'Mid-Grade', premium: 'Premium', diesel: 'Diesel' }[k] || k;
   }
@@ -344,13 +349,13 @@
       const m = metros[name];
       const mp = m.current_avg?.[activeFuel];
       const my = previousReading(name, activeFuel);
-      const md = delta(mp, my?.price ?? null);
+      const md = delta(mp, my?.price ?? null, { cents: true });
       const isWausau = name === 'Wausau';
       return `
         <div class="wpr-c-metro-row ${isWausau ? 'highlight' : ''}">
           <span class="wpr-c-metro-name">${esc(name)}</span>
           <div class="wpr-c-metro-right">
-            <span class="wpr-c-metro-price">${fmt(mp)}</span>
+            <span class="wpr-c-metro-price">${fmtCents(mp)}</span>
             <span class="wpr-c-metro-delta ${md.cls}">${md.text}</span>
           </div>
         </div>`;
