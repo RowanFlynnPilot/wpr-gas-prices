@@ -316,6 +316,44 @@
     return { count: top.filter(m => CENTRAL_WI.includes(m.name)).length, of: top.length };
   }
 
+  // ── Fill-up calculator ──
+  // Typical usable tank sizes, in gallons. A reader's own tank will differ; the
+  // widget says these are typical.
+  const VEHICLES = [
+    { key: 'compact', label: 'Compact car', gallons: 12 },
+    { key: 'sedan', label: 'Midsize sedan', gallons: 15 },
+    { key: 'suv', label: 'SUV', gallons: 19 },
+    { key: 'pickup', label: 'Pickup', gallons: 26 },
+  ];
+  const dollars = v => Math.round(v * 100) / 100;
+  // What filling up costs in one city today, and against a week ago (the city's
+  // own history, same source), the cheapest listed station, and a year ago
+  // (AAA's statewide change, since our per-city history is shorter than a year).
+  function fillUp({ metros, history, aaa, city, fuel, gallons }) {
+    const m = metros?.[city];
+    const price = m?.current_avg?.[fuel];
+    if (typeof price !== 'number' || !(gallons > 0)) return null;
+    const cost = dollars(price * gallons);
+
+    let week = null;
+    const keys = sortedHistoryKeys(history);
+    if (keys.length) {
+      const series = keys.map(k => ({ t: historyKeyTime(k), price: history[k]?.[city]?.[fuel] }))
+        .filter(p => typeof p.price === 'number');
+      const lastT = historyKeyTime(keys[keys.length - 1]);
+      const p = readingAtOrBefore(series, lastT - 7 * MS_DAY);
+      if (p && lastT - p.t <= 10 * MS_DAY) week = { t: p.t, diff: dollars(cost - p.price * gallons) };
+    }
+
+    const st = (m.stations || []).filter(s => typeof s.prices?.[fuel] === 'number')
+      .sort((a, b) => a.prices[fuel] - b.prices[fuel])[0];
+    const cheapest = st ? { name: st.name, address: st.address || '', price: st.prices[fuel], save: dollars(cost - st.prices[fuel] * gallons) } : null;
+
+    const now = aaa?.current?.[fuel], then = aaa?.year_ago?.[fuel];
+    const year = typeof now === 'number' && typeof then === 'number' ? dollars((now - then) * gallons) : null;
+    return { city, price, gallons, cost, week, cheapest, year };
+  }
+
   // ── Map time-lapse ──
   // One frame per history day for the last `days` days: each metro's price and
   // bin against that day's statewide average. Stale cities are left out of the
@@ -399,7 +437,7 @@
     FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
     isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
-    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames,
+    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp,
     CITY_COORDS, CENTRAL_WI, projectWI, PRICE_BINS, priceBin, rankMetros, centralShare,
   };
 })();

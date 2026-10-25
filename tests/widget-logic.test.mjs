@@ -298,3 +298,21 @@ test('mapFrames: bins against that day\'s average, carries a missing city a week
   assert.equal(L.mapFrames(h, 'regular', 5).length, 5);    // window counts days back from the last
   assert.deepEqual(plain(L.mapFrames({}, 'regular')), []);
 });
+
+test('fillUp: today, a week ago from the city\'s own history, cheapest station, AAA year', () => {
+  const metros = { Wausau: { current_avg: { regular: 4.43 }, stations: [
+    { name: 'BP', prices: { regular: 4.39 } }, { name: 'Amoco', address: '306 W Stewart Ave', prices: { regular: 4.14 } }] } };
+  const history = { '10/18/26': { Wausau: { regular: 4.10 } }, '10/25/26': { Wausau: { regular: 4.43 } } };
+  const aaa = { current: { regular: 4.53 }, year_ago: { regular: 2.82 } };
+  const f = L.fillUp({ metros, history, aaa, city: 'Wausau', fuel: 'regular', gallons: 15 });
+  assert.equal(f.cost, 66.45);
+  assert.equal(f.week.diff, 4.95);               // 15 × 33¢
+  assert.equal(f.cheapest.name, 'Amoco');
+  assert.equal(f.cheapest.save, 4.35);           // 15 × 29¢
+  assert.equal(f.year, 25.65);                   // 15 × $1.71
+  // No week-old reading (history too short) → no week comparison, not a wrong one.
+  const g = L.fillUp({ metros, history: { '10/25/26': history['10/25/26'] }, aaa: {}, city: 'Wausau', fuel: 'regular', gallons: 12 });
+  assert.equal(g.week, null);
+  assert.equal(g.year, null);
+  assert.equal(L.fillUp({ metros, history, aaa, city: 'Nowhere', fuel: 'regular', gallons: 12 }), null);
+});

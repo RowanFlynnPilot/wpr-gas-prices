@@ -221,6 +221,22 @@
   .wpr-tr-tip-s { fill:var(--ink-light); }
   .wpr-tr-hit { cursor:crosshair; }
 
+  /* Fill-up calculator */
+  .wpr-fill { margin:12px 16px 4px; padding:14px 14px 10px; background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); }
+  .wpr-fill .wpr-tr-title { font-size:19px; }
+  .wpr-fill-cost { color:var(--accent-dark); white-space:nowrap; }
+  .wpr-fill-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0 10px; }
+  .wpr-fill-vehs { display:flex; flex-wrap:wrap; gap:6px; flex:1 1 auto; }
+  .wpr-fill-veh { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; color:var(--ink-mid); background:var(--paper-warm); border:1.5px solid var(--rule-light); border-radius:18px; padding:5px 11px; cursor:pointer; display:inline-flex; gap:5px; align-items:baseline; }
+  .wpr-fill-veh span { font-weight:400; font-size:10.5px; color:var(--ink-faint); }
+  .wpr-fill-veh.active { background:var(--accent-dark); border-color:var(--accent-dark); color:#fff; }
+  .wpr-fill-veh.active span { color:rgba(255,255,255,0.8); }
+  .wpr-fill-veh:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .wpr-fill-city { width:auto; flex:0 1 170px; padding:6px 10px; }
+  .wpr-fill-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; }
+  .wpr-fill-tile { border:1px solid var(--rule-light); border-radius:var(--radius); padding:8px 10px; background:var(--paper-warm); }
+  .wpr-fill-tile-v { font-family:'Playfair Display',Georgia,serif; font-size:19px; font-weight:700; margin:2px 0 1px; }
+  .wpr-fill-note { font-size:11px; color:var(--ink-faint); margin:8px 0 0; line-height:1.45; }
   /* Metro map + strip plot */
   .wpr-map { padding:4px 16px 6px; }
   .wpr-map-grid { display:grid; grid-template-columns:1fr 190px; gap:14px; align-items:start; }
@@ -298,6 +314,13 @@
     .wpr-tr-tiles { grid-template-columns:1fr 1fr; gap:6px; }
     .wpr-tr-tile-v { font-size:19px; }
     .wpr-ladder { padding-left:12px; padding-right:12px; }
+    .wpr-fill { margin-left:12px; margin-right:12px; padding:12px 10px 8px; }
+    .wpr-fill-city { flex:1 1 100%; }
+    .wpr-fill-tiles { grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:5px; }
+    .wpr-fill-tile { padding:7px 7px; }
+    .wpr-fill-tile-v { font-size:16px; }
+    .wpr-fill-tile .wpr-tr-tile-l { font-size:9px; letter-spacing:0.3px; }
+    .wpr-fill-tile .wpr-tr-tile-s { font-size:9.5px; }
     .wpr-ladder-row { grid-template-columns:78px 42px 1fr 54px; gap:7px; font-size:11.5px; }
   }
 </style>
@@ -314,7 +337,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=6"></script>
+<script src="./widget-logic.js?v=7"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -580,6 +603,15 @@
     wireTrendChart();
     wireMetroMap();
     wireTimelapse();
+    widget.querySelectorAll('.wpr-fill-veh').forEach(b => b.addEventListener('click', () => {
+      fillVehicle = b.dataset.vehicle; store.set('vehicle', fillVehicle); render();
+      widget.querySelector(`.wpr-fill-veh[data-vehicle="${fillVehicle}"]`)?.focus({ preventScroll: true });
+    }));
+    const fillSel = widget.querySelector('#fillCity');
+    if (fillSel) fillSel.addEventListener('change', () => {
+      fillCity = fillSel.value; store.set('city', fillCity); render();
+      widget.querySelector('#fillCity')?.focus({ preventScroll: true });
+    });
     lastFrameW = frameW();
     const copyBtn = widget.querySelector('.wpr-summary-copy');
     if (copyBtn && data.summary && data.summary.blurb) {
@@ -893,6 +925,7 @@
     return `
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
       ${buildMetroMap()}
+      ${buildFillUp()}
       <div class="wpr-sort-row" role="group" aria-label="Sort metro areas"><span class="wpr-sort-label">Sort</span>${sortBtns}</div>
       <div class="wpr-metro-list">${cards}</div>
     `;
@@ -1307,6 +1340,51 @@
     if (me && me !== ranked[0] && me !== ranked[ranked.length - 1]) svg += lab(me, cy + 38, 'middle');
     return `<div class="wpr-strip"><div class="wpr-map-rank-h">All ${ranked.length} metros on one line</div>
       <svg viewBox="0 0 ${W} ${H}" class="wpr-strip-svg" role="img" aria-label="${esc(`${fuelLabel(activeFuel)} prices for ${ranked.length} metros, from ${money2(lo0)} in ${ranked[0].name} to ${money2(hi0)} in ${ranked[ranked.length - 1].name}; state average ${money2(avg)}`)}">${svg}</svg></div>`;
+  }
+
+  // ── Fill-up calculator ──
+  // A reader's choice of vehicle and city is remembered in this browser only
+  // (a convenience: everything works without storage, defaulting to Wausau).
+  const store = {
+    get(k, d) { try { return localStorage.getItem('wpr-gas-' + k) || d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('wpr-gas-' + k, v); } catch (e) { /* private mode */ } },
+  };
+  let fillVehicle = store.get('vehicle', 'sedan');
+  let fillCity = store.get('city', 'Wausau');
+  const usd = v => '$' + Math.abs(v).toFixed(2);
+  const signedUsd = v => (v > 0.004 ? '+' : v < -0.004 ? '−' : '') + usd(v);
+
+  function buildFillUp() {
+    const metros = data?.metros || {};
+    if (!metros[fillCity]) fillCity = metros.Wausau ? 'Wausau' : Object.keys(metros)[0];
+    const vehicle = L.VEHICLES.find(v => v.key === fillVehicle) || L.VEHICLES[1];
+    const f = L.fillUp({ metros, history: historyData, aaa: data?.aaa, city: fillCity, fuel: activeFuel, gallons: vehicle.gallons });
+    if (!f) return '';
+    const vBtns = L.VEHICLES.map(v =>
+      `<button type="button" class="wpr-fill-veh ${v.key === vehicle.key ? 'active' : ''}" aria-pressed="${v.key === vehicle.key}" data-vehicle="${v.key}">${v.label}<span>${v.gallons} gal</span></button>`
+    ).join('');
+    const cityOpts = Object.keys(metros).sort().map(n => `<option value="${esc(n)}" ${n === fillCity ? 'selected' : ''}>${esc(n)}</option>`).join('');
+    const tile = (label, value, cls, sub) =>
+      `<div class="wpr-fill-tile"><div class="wpr-tr-tile-l">${label}</div><div class="wpr-fill-tile-v ${cls}">${value}</div><div class="wpr-tr-tile-s">${sub}</div></div>`;
+    const cls = v => (v > 0.004 ? 'up-color' : v < -0.004 ? 'down-color' : '');
+    const tiles = [
+      f.week ? tile('Vs a week ago', signedUsd(f.week.diff), cls(f.week.diff), `same tank on ${L.shortDate(f.week.t)}`) : '',
+      f.cheapest && f.cheapest.save >= 0.5   // a few cents is not worth a detour
+        ? tile(`At ${esc(f.cheapest.name)}`, `${usd(f.cost - f.cheapest.save)}`, 'down-color', `save ${usd(f.cheapest.save)} at ${money2(f.cheapest.price)}/gal`)
+        : '',
+      f.year != null ? tile('Vs a year ago', signedUsd(f.year), cls(f.year), 'statewide change, per AAA') : '',
+    ].filter(Boolean).join('');
+    return `
+      <div class="wpr-fill">
+        <div class="wpr-tr-kicker">Fill-up calculator · ${fuelLabel(activeFuel)}</div>
+        <h3 class="wpr-tr-title">Filling ${/^[AEIOU]/.test(vehicle.label) ? 'an' : 'a'} ${vehicle.label.toLowerCase().replace('suv', 'SUV')} in ${esc(f.city)} costs <span class="wpr-fill-cost">${usd(f.cost)}</span></h3>
+        <div class="wpr-fill-controls">
+          <div class="wpr-fill-vehs" role="group" aria-label="Vehicle">${vBtns}</div>
+          <select class="wpr-state-city-select wpr-fill-city" id="fillCity" aria-label="City for the fill-up">${cityOpts}</select>
+        </div>
+        ${tiles ? `<div class="wpr-fill-tiles">${tiles}</div>` : ''}
+        <p class="wpr-fill-note">A typical ${vehicle.gallons}-gallon tank at the ${esc(f.city)} average of ${money2(f.price)} a gallon. Your tank size and station will differ.</p>
+      </div>`;
   }
 
   // ── Map time-lapse ──

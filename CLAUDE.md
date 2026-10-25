@@ -291,6 +291,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   older than that it is drawn hollow. Label positions stay from today's layout and
   the central-region ring hides on past frames (it describes today). Playback is
   ~6s, slower under `prefers-reduced-motion`, and ends on today.
+- **Fill-up calculator (Metro tab, under the strip plot).** Vehicle (`L.VEHICLES`,
+  typical 12/15/19/26-gal tanks) × the chosen city's average for the active fuel
+  (`L.fillUp()`): today's cost, vs a week ago from the city's own history (omitted
+  when there's no reading 7–10 days back), the cheapest listed station (shown only
+  when it saves 50¢+), and AAA's statewide year-over-year change. Vehicle and city
+  are remembered in `localStorage` (`wpr-gas-vehicle` / `wpr-gas-city`) behind
+  try/catch; without storage it defaults to a sedan in Wausau.
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
 - **Every figure shows cents, in both widgets.** Prices use `fmtCents()` (the header's
