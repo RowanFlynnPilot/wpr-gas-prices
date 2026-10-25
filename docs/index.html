@@ -232,6 +232,12 @@
   .wpr-tr-tiptxt { fill:var(--ink); font-family:'DM Sans',sans-serif; font-size:11.5px; }
   .wpr-tr-tip-h { font-weight:700; }
   .wpr-tr-tip-s { fill:var(--ink-light); }
+  .wpr-tr-noteline { stroke:#9a7b2f; stroke-width:1; stroke-dasharray:2 3; }
+  .wpr-tr-notedot { fill:#fdf6e7; stroke:#9a7b2f; stroke-width:1.3; }
+  .wpr-tr-notenum { fill:#6b5216; font-family:'DM Sans',sans-serif; font-size:10px; font-weight:700; }
+  .wpr-tr-notes { margin:6px 0 2px; padding-left:22px; font-size:12px; line-height:1.5; color:var(--ink-mid); }
+  .wpr-tr-notes li::marker { color:#6b5216; font-weight:700; }
+  .wpr-tr-notes b { font-weight:600; color:var(--ink); margin-right:4px; }
   .wpr-tr-hit { cursor:crosshair; }
 
   /* Fill-up calculator */
@@ -350,7 +356,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=7"></script>
+<script src="./widget-logic.js?v=8"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -361,6 +367,7 @@
   const EIA_DATA_URL = './eia_weekly.json';
   const EIA_CONTEXT_URL = './eia_context.json';
   const EIA_HEATING_URL = './eia_heating.json';
+  const NOTES_URL = './annotations.json';
   // Cache-bust in 10-min buckets so the GitHub Pages CDN doesn't serve stale JSON.
   const cacheBust = () => '?t=' + Math.floor(Date.now() / 600000);
   // Every fetch gives up after 15s: a request that neither succeeds nor fails
@@ -374,6 +381,7 @@
 
   let data = null;
   let historyData = null;
+  let notesData = null;   // docs/annotations.json, hand-edited by the newsroom
   let contextData = null;
   let heatingData = null;
   let heatingFuel = 'propane';
@@ -1109,9 +1117,21 @@
       <rect class="wpr-tr-hit" x="${Lp}" y="${T}" width="${W - Lp - R}" height="${H - T - B}" fill="transparent"/>`;
 
     chartModel = { W, H, T, B, Lp, R, X, Y, lead, bench: story.leadIsWI ? mw : [], leadIsWI: story.leadIsWI, narrow };
+    const notes = L.notesInWindow(notesData, start, end, activeFuel);
+    let notesSvg = '';
+    notes.forEach((n, i) => {
+      const x = X(n.t).toFixed(1);
+      notesSvg += `<g class="wpr-tr-notemark"><title>${esc(L.shortDate(n.t) + ': ' + n.text)}</title>`
+        + `<line x1="${x}" x2="${x}" y1="${T + 9}" y2="${H - B}" class="wpr-tr-noteline"/>`
+        + `<circle cx="${x}" cy="${T}" r="8" class="wpr-tr-notedot"/>`
+        + `<text x="${x}" y="${T + 3.5}" text-anchor="middle" class="wpr-tr-notenum">${i + 1}</text></g>`;
+    });
+    // Markers go under the crosshair layer, which is the last thing in the drawing.
+    const hoverAt = svg.lastIndexOf('<g class="wpr-tr-hover"');
+    if (notesSvg) svg = svg.slice(0, hoverAt) + notesSvg + svg.slice(hoverAt);
 
     const aria = `${story.headline}. ${story.dek} Use the left and right arrow keys to read values.`;
-    return { story, hasGap, svg: `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>` };
+    return { story, hasGap, notes, svg: `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>` };
   }
 
   function renderTrends() {
@@ -1132,7 +1152,9 @@
     }
     const built = buildTrendChart(frameW() - 2 * padX());
     if (typeof built === 'string') return controls + built;
-    const { story, hasGap, svg } = built;
+    const { story, hasGap, notes, svg } = built;
+    const noteKey = notes.length ? `<ol class="wpr-tr-notes">${notes.map(n =>
+      `<li><b>${L.shortDate(n.t)}</b> ${esc(n.text)}</li>`).join('')}</ol>` : '';
     const rangeLabel = trendRange === 26 ? 'last 6 months' : 'last 12 months';
 
     const tiles = story.leadIsWI ? [
@@ -1167,6 +1189,7 @@
         <div class="wpr-tr-tiles">${tileHtml}</div>
         ${legend}
         ${svg}
+        ${noteKey}
       </div>`;
   }
 
@@ -1664,16 +1687,18 @@
   // ── Init ──
   async function init() {
     try {
-      const [dataResp, histResp, ctxResp, heatResp] = await Promise.all([
+      const [dataResp, histResp, ctxResp, heatResp, notesResp] = await Promise.all([
         fetchJson(DATA_URL + cacheBust()),
         fetchJson(HISTORY_URL + cacheBust()),
         fetchJson(EIA_CONTEXT_URL + cacheBust()),
         fetchJson(EIA_HEATING_URL + cacheBust()),
+        fetchJson(NOTES_URL + cacheBust()),
       ]);
       data = dataResp;
       historyData = histResp;
       contextData = ctxResp;
       heatingData = heatResp;
+      notesData = notesResp;
     } catch (err) {
       data = null;
     }

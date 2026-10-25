@@ -140,6 +140,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `scripts/update-gas-prices.ps1` | **Standby** local runner (Task Scheduler); scrapes only when CI's data is stale | Yes |
 | `package.json` / `package-lock.json` | Node deps for the digest renderer (Playwright only) | Rarely |
 | `docs/digest.png` | Baked newsletter image (twice-daily) at a stable Pages URL | **Never by hand** — CI owns it |
+| `docs/annotations.json` | Newsroom notes for the trend chart | **The newsroom**, by hand — format checked by `tests/annotations.test.mjs` |
 | `docs/wpr-logo.jpg` | WPR logo asset used by the digest card | Rarely |
 | `docs/gas_prices.json` | Main output | **Never by hand** — scraper owns it |
 | `docs/gas_prices_history.json` | Daily history, capped at 400 days | **Never by hand** |
@@ -306,6 +307,15 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   header price counts up from the previous reading on first load, with a timeout
   that guarantees the final figure lands. All of it is off under
   `prefers-reduced-motion` (CSS media query + `reduceMotion()`).
+- **Newsroom notes on the trend chart.** `docs/annotations.json` is the one data
+  file edited by people, not the scraper (`[{date: "YYYY-MM-DD", text ≤ 80 chars,
+  fuels?: [...]}]`; README explains it to the newsroom). `L.notesInWindow()` keeps
+  valid notes in the chart's range for the active fuel, drawn as numbered markers
+  under the crosshair layer with a key below the chart. `L.validNote()` rejects bad
+  formats and impossible dates; `tests/annotations.test.mjs` fails on any bad note
+  so a typo surfaces on that commit's Tests run. It is deliberately **not** in the
+  data contract: the update workflow runs the contract before each publish, and a
+  newsroom typo must never block price updates. Never invent notes — it ships as `[]`.
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
 - **Every figure shows cents, in both widgets.** Prices use `fmtCents()` (the header's

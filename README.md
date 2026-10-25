@@ -248,6 +248,31 @@ the cron expressions in `.github/workflows/update-gas-prices.yml`
    WordPress updates sometimes drop Custom HTML blocks.
 3. **Force an update?** → **Actions** → **Update Gas Prices** → **Run workflow**.
 
+### Adding a newsroom note to the trend chart
+
+The Price Trends chart can show numbered markers that explain a spike or drop,
+with a key under the chart. The notes live in `docs/annotations.json`, edited by hand:
+
+1. On github.com, open `docs/annotations.json` and click the pencil (Edit).
+2. Add one line per note inside the square brackets, separated by commas:
+
+   ```json
+   [
+     { "date": "2026-08-02", "text": "Whiting refinery outage" },
+     { "date": "2026-09-01", "text": "Labor Day travel", "fuels": ["regular"] }
+   ]
+   ```
+
+   - `date` is the day the note marks, as `YYYY-MM-DD`.
+   - `text` is up to 80 characters. Readers see it next to the date.
+   - `fuels` is optional. Leave it out to show the note on every fuel, or list
+     any of `"regular"`, `"mid_grade"`, `"premium"`, `"diesel"`.
+3. Click **Commit changes**. The chart shows the note within about ten minutes.
+
+A note only appears when its date falls inside the range being viewed (6 or 12
+months). If a note is malformed, the **Tests** run on that commit fails and names
+the note. The widget skips it rather than breaking.
+
 ---
 
 ## Local Development
@@ -308,6 +333,7 @@ PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "
 | `requirements.txt` | Python dependencies (`requests`, `curl_cffi`) | Rarely |
 | `.github/workflows/update-gas-prices.yml` | Automation schedule | Rowan |
 | `docs/index.html` | The widget UI | Rowan |
+| `docs/annotations.json` | Newsroom notes on the trend chart | **The newsroom**, by hand (see above) |
 | `docs/wi-outline.js` | Wisconsin outline for the Metro tab map | **Never by hand** — `scripts/build-wi-outline.py` makes it |
 | `docs/gas_prices.json` | Live price data | **Never by hand** — the scraper owns it |
 | `docs/gas_prices_history.json` | Daily history (last 400 days) | **Never by hand** |

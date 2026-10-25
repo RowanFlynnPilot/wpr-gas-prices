@@ -316,6 +316,27 @@
     return { count: top.filter(m => CENTRAL_WI.includes(m.name)).length, of: top.length };
   }
 
+  // ── Newsroom notes on the trend chart ──
+  // docs/annotations.json is edited by hand: [{ "date": "YYYY-MM-DD", "text": "...",
+  // "fuels": ["regular", ...] (optional, default all) }]. Anything malformed is
+  // skipped here (and fails the data contract test), never drawn.
+  const NOTE_MAX = 80;
+  function validNote(n) {
+    // The round trip rejects impossible dates like 2026-02-30, which Date.UTC would roll over.
+    return !!n && typeof n.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(n.date)
+      && new Date(isoTime(n.date)).toISOString().slice(0, 10) === n.date
+      && typeof n.text === 'string' && n.text.trim().length > 0 && n.text.length <= NOTE_MAX
+      && (n.fuels === undefined || (Array.isArray(n.fuels) && n.fuels.every(f => FUELS.includes(f))));
+  }
+  function notesInWindow(notes, startMs, endMs, fuel) {
+    return (Array.isArray(notes) ? notes : [])
+      .filter(validNote)
+      .filter(n => !n.fuels || n.fuels.includes(fuel))
+      .map(n => ({ t: isoTime(n.date), text: n.text.trim() }))
+      .filter(n => n.t >= startMs && n.t <= endMs)
+      .sort((a, b) => a.t - b.t);
+  }
+
   // ── Fill-up calculator ──
   // Typical usable tank sizes, in gallons. A reader's own tank will differ; the
   // widget says these are typical.
@@ -437,7 +458,7 @@
     FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
     isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
-    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp,
+    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp, NOTE_MAX, validNote, notesInWindow,
     CITY_COORDS, CENTRAL_WI, projectWI, PRICE_BINS, priceBin, rankMetros, centralShare,
   };
 })();

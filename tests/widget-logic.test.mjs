@@ -316,3 +316,20 @@ test('fillUp: today, a week ago from the city\'s own history, cheapest station, 
   assert.equal(g.year, null);
   assert.equal(L.fillUp({ metros, history, aaa, city: 'Nowhere', fuel: 'regular', gallons: 12 }), null);
 });
+
+test('notesInWindow: valid notes in range, for the fuel, oldest first; junk is dropped', () => {
+  const notes = [
+    { date: '2026-10-20', text: 'Refinery outage' },
+    { date: '2026-09-01', text: 'Labor Day', fuels: ['regular'] },
+    { date: '2026-02-30', text: 'impossible date' },
+    { date: '2026-10-01', text: '' },
+    { date: '10/05/26', text: 'wrong format' },
+    { date: '2026-10-02', text: 'x'.repeat(81) },
+    { date: '2026-10-03', text: 'bad fuel', fuels: ['jet'] },
+    { date: '2025-01-01', text: 'out of range' },
+  ];
+  const start = Date.UTC(2026, 3, 1), end = Date.UTC(2026, 9, 25);
+  assert.deepEqual(plain(L.notesInWindow(notes, start, end, 'regular').map(n => n.text)), ['Labor Day', 'Refinery outage']);
+  assert.deepEqual(plain(L.notesInWindow(notes, start, end, 'diesel').map(n => n.text)), ['Refinery outage']);
+  assert.deepEqual(plain(L.notesInWindow(null, start, end, 'regular')), []);
+});
