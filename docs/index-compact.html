@@ -241,7 +241,7 @@
 </noscript>
 
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=4"></script>
+<script src="./widget-logic.js?v=5"></script>
 <script>
 (function() {
   'use strict';
@@ -269,7 +269,7 @@
     if (p == null) return '—';
     return '<span class="wpr-dollar">$</span>' + p.toFixed(3);
   }
-  // City rows show cents like index.html's Metro list; the state hero keeps three decimals.
+  // Every figure shows cents, matching index.html.
   function fmtCents(p) {
     if (p == null) return '—';
     return '<span class="wpr-dollar">$</span>' + p.toFixed(2);
@@ -333,7 +333,7 @@
     const sw = data.statewide;
     const price = sw.current_avg?.[activeFuel];
     const yest = previousReading('statewide', activeFuel);
-    const d = delta(price, yest?.price ?? null);
+    const d = delta(price, yest?.price ?? null, { cents: true });
     const heroCompare = yest ? comparisonLabel(yest.key) : 'vs previous';
     const metros = data.metros || {};
     const priority = data.priority_metros || PRIORITY_METROS;
@@ -370,7 +370,7 @@
       </div>
       <div class="wpr-c-hero">
         <div class="wpr-c-hero-label">State Avg · ${fuelLabel(activeFuel)}</div>
-        <div class="wpr-c-hero-price">${fmt(price)}</div>
+        <div class="wpr-c-hero-price">${fmtCents(price)}</div>
         <div class="wpr-c-hero-change ${d.cls}">${d.text} ${heroCompare}</div>
       </div>
       <div class="wpr-c-fuels">${fuelBtns}</div>

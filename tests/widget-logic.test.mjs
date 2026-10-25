@@ -253,3 +253,32 @@ test('rankMetros + centralShare', () => {
   assert.equal(ranked[0].bin, 0);
   assert.deepEqual(plain(L.centralShare(ranked, 2)), { count: 2, of: 2 });
 });
+
+// Daily series helper: prices[i] is day i, counting from Mar 1, 2026 (UTC).
+const daily = prices => prices.map((price, i) => ({ t: Date.UTC(2026, 2, 1) + i * 864e5, price }));
+
+test('statewideStory: a week move leads, and names how long since it was this high', () => {
+  // 40 days: high of 4.50 on day 5, then a slide, then a jump to 4.40 at the end.
+  const p = Array.from({ length: 40 }, (_, i) => (i === 5 ? 4.5 : i < 32 ? 4.0 : 4.0 + (i - 32) * 0.05));
+  const s = L.statewideStory(daily(p), 'regular');
+  assert.equal(s.c7, 35);
+  assert.equal(s.headline, 'Wisconsin regular gas is up 35¢ in a week');
+  assert.equal(s.dek, '$4.35 a gallon today, the highest since Mar 6.');
+});
+
+test('statewideStory: month move when the week is quiet; steady when both are', () => {
+  const month = daily(Array.from({ length: 35 }, (_, i) => (i < 20 ? 4.2 : 4.0)));
+  assert.equal(L.statewideStory(month, 'diesel').headline, 'Wisconsin diesel is down 20¢ over the past month');
+  const flat = daily(Array.from({ length: 35 }, (_, i) => 4 + (i % 2) * 0.01));
+  assert.equal(L.statewideStory(flat, 'premium').headline, 'Wisconsin premium is holding steady');
+});
+
+test('statewideStory: record since tracking began, and no fake comparisons from short history', () => {
+  const rising = daily(Array.from({ length: 45 }, (_, i) => 3 + i * 0.01));
+  assert.equal(L.statewideStory(rising, 'regular').dek, '$3.44 a gallon today, the highest since WPR began tracking on Mar 1.');
+  const short = daily([4.0, 4.1, 4.2]);
+  const s = L.statewideStory(short, 'regular');
+  assert.equal(s.c7, null);
+  assert.equal(s.extreme, null);
+  assert.equal(s.headline, 'Wisconsin regular gas is holding steady');
+});

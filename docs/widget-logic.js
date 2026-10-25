@@ -316,11 +316,62 @@
     return { count: top.filter(m => CENTRAL_WI.includes(m.name)).length, of: top.length };
   }
 
+  // ── Statewide tab headline ──
+  // `series` is WPR's daily statewide reading for one fuel, [{ t: ms, price }]
+  // sorted ascending: the same source as the header price and the 30-day chart
+  // under the headline, so the three can't disagree.
+  function dateSince(t, lastT) {
+    const d = new Date(t);
+    return lastT - t > 300 * MS_DAY ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}` : shortDate(t);
+  }
+  function statewideStory(series, fuel) {
+    if (!Array.isArray(series) || series.length < 2) return null;
+    const last = series[series.length - 1];
+    // A comparison only counts when the reading really is about that far back.
+    const back = (days, minDays) => {
+      const p = readingAtOrBefore(series, last.t - days * MS_DAY);
+      return p && last.t - p.t <= (days + 3) * MS_DAY && last.t - p.t >= minDays * MS_DAY ? p : null;
+    };
+    const wk = back(7, 5), mo = back(30, 25);
+    const cents = p => (p ? Math.round((last.price - p.price) * 100) : null);
+    const c7 = cents(wk), c30 = cents(mo);
+
+    // "Highest since …": the latest earlier reading at or above today's, if it
+    // is at least two weeks back; none at all means the highest we've recorded.
+    const first = series[0];
+    let extreme = null;
+    for (const kind of ['high', 'low']) {
+      let since = null;
+      for (let i = series.length - 2; i >= 0; i--) {
+        const p = series[i];
+        if (kind === 'high' ? p.price >= last.price - 0.0005 : p.price <= last.price + 0.0005) { since = p; break; }
+      }
+      if (since && last.t - since.t >= 14 * MS_DAY) { extreme = { kind, since: since.t }; break; }
+      if (!since && last.t - first.t >= 30 * MS_DAY) { extreme = { kind, since: null }; break; }
+    }
+
+    const subject = `Wisconsin ${FUEL_PHRASE[fuel] || fuel}`;
+    const move = (c, period) => `${subject} is ${c > 0 ? 'up' : 'down'} ${centsText(c / 100)} ${period}`;
+    const headline = c7 != null && Math.abs(c7) >= 5 ? move(c7, 'in a week')
+      : c30 != null && Math.abs(c30) >= 5 ? move(c30, 'over the past month')
+      : `${subject} is holding steady`;
+
+    let dek = `$${last.price.toFixed(2)} a gallon today`;
+    if (extreme) {
+      const word = extreme.kind === 'high' ? 'highest' : 'lowest';
+      dek += extreme.since
+        ? `, the ${word} since ${dateSince(extreme.since, last.t)}`
+        : `, the ${word} since WPR began tracking on ${dateSince(first.t, last.t)}`;
+    }
+    dek += '.';
+    return { last, wk, mo, c7, c30, extreme, headline, dek };
+  }
+
   self.WprGasLogic = {
     FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
     isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
-    shortDate, centsText, valueAt, readingAtOrBefore, trendStory,
+    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory,
     CITY_COORDS, CENTRAL_WI, projectWI, PRICE_BINS, priceBin, rankMetros, centralShare,
   };
 })();

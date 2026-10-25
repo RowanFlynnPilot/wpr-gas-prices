@@ -132,16 +132,6 @@
   .up-color { color:var(--up); } .down-color { color:var(--down); } .flat-color { color:var(--neutral); }
 
   /* Statewide comparison bars */
-  .wpr-gas-compare { padding:8px 14px 16px; }
-  .wpr-gas-compare-row { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:4px; transition:background 0.12s; }
-  .wpr-gas-compare-row:hover { background:var(--paper-warm); }
-  .wpr-gas-compare-row.active-fuel { background:var(--accent-pale); }
-  .wpr-gas-compare-label { font-size:11px; font-weight:500; color:var(--ink-mid); min-width:72px; }
-  .wpr-gas-compare-bar-wrap { flex:1; height:24px; background:var(--rule-light); border-radius:4px; overflow:hidden; position:relative; }
-  .wpr-gas-compare-bar { height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-light)); border-radius:4px; transition:width 0.3s ease; }
-  .wpr-gas-compare-row.active-fuel .wpr-gas-compare-bar { background:linear-gradient(90deg, var(--accent-dark), var(--accent)); }
-  .wpr-gas-compare-price { font-family:'Playfair Display',Georgia,serif; font-size:14px; font-weight:700; min-width:58px; text-align:right; }
-  .wpr-gas-compare-change { font-size:10px; font-weight:600; min-width:68px; text-align:right; }
 
   .wpr-trends-btn-row { justify-content:center; }
   .wpr-trends-btn-divider { display:inline-block; width:1px; height:20px; background:var(--rule); margin:0 4px; align-self:center; }
@@ -171,6 +161,25 @@
   .wpr-trends-legend-dashed { background:none; border-top:2px dashed var(--ink-light); height:0; }
   .wpr-chart-hit:hover { fill:var(--accent-pale); }
 
+  /* Statewide: headline + 30-day line, change ladder */
+  .wpr-st-story { padding-top:2px; padding-bottom:4px; }
+  .wpr-st-chips { display:inline-flex; gap:6px; margin-left:4px; vertical-align:1px; flex-wrap:wrap; }
+  .wpr-st-chip { font-size:11px; padding:1px 8px; border-radius:10px; background:#fff; border:1px solid var(--rule-light); white-space:nowrap; }
+  .wpr-st-chip b { font-weight:600; color:var(--ink-light); }
+  .wpr-st-spark { margin-top:2px; }
+  .wpr-ladder { padding:2px 16px 6px; }
+  .wpr-ladder-row { display:grid; grid-template-columns:92px 48px 1fr 62px; align-items:center; gap:10px; padding:4px 0; border-bottom:1px solid var(--rule-light); font-size:12px; }
+  .wpr-ladder-row:last-child { border-bottom:0; }
+  .wpr-ladder-label { color:var(--ink-mid); font-weight:500; }
+  .wpr-ladder-then { color:var(--ink-light); text-align:right; }
+  .wpr-ladder-track { position:relative; height:12px; background:linear-gradient(var(--rule), var(--rule)) var(--zero) 0 / 1px 100% no-repeat; }
+  .wpr-ladder-bar { position:absolute; top:1px; bottom:1px; border-radius:3px; }
+  .wpr-ladder-bar.up { background:#d9644f; } .wpr-ladder-bar.down { background:var(--accent); } .wpr-ladder-bar.flat { background:var(--rule); }
+  .wpr-ladder-c { font-weight:700; text-align:right; }
+  .wpr-summary-wrap { margin:6px 14px 8px; }
+  .wpr-summary-wrap > summary { cursor:pointer; font-size:11px; font-weight:700; color:var(--accent-dark); padding:6px 2px; list-style-position:inside; }
+  .wpr-summary-wrap > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+  .wpr-summary-wrap .wpr-summary { margin:4px 0 0; }
   /* Price Trends: Wisconsin leads, the Midwest is a dashed benchmark */
   .wpr-tr { padding:4px 16px 10px; }
   .wpr-tr-kicker { font-size:10.5px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--accent-dark); }
@@ -277,6 +286,8 @@
     .wpr-tr-title { font-size:19px; }
     .wpr-tr-tiles { grid-template-columns:1fr 1fr; gap:6px; }
     .wpr-tr-tile-v { font-size:19px; }
+    .wpr-ladder { padding-left:12px; padding-right:12px; }
+    .wpr-ladder-row { grid-template-columns:78px 42px 1fr 54px; gap:7px; font-size:11.5px; }
   }
 </style>
 </head>
@@ -292,7 +303,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=4"></script>
+<script src="./widget-logic.js?v=5"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -382,7 +393,7 @@
   }
   function fmtHero(p) {
     if (p == null) return '—';
-    return '<span class="wpr-dollar">$</span>' + p.toFixed(3);
+    return '<span class="wpr-dollar">$</span>' + p.toFixed(2);
   }
   function fuelLabel(k) {
     return { regular:'Regular', mid_grade:'Mid-Grade', premium:'Premium', diesel:'Diesel' }[k] || k;
@@ -480,7 +491,7 @@
     const sw = data.statewide;
     const currentPrice = sw?.current_avg?.[activeFuel];
     const prev = previousReading('statewide', activeFuel);
-    const d = delta(currentPrice, prev?.price ?? null);
+    const d = delta(currentPrice, prev?.price ?? null, { cents: true });
     const heroFuelName = fuelLabel(activeFuel);
     const hasYesterday = prev != null;
     const heroCompare = hasYesterday ? comparisonLabel(prev.key) : '';
@@ -582,7 +593,7 @@
       const cents = Math.round(Math.abs(diff) * 100);
       const rel = diff < -0.005 ? `${cents}¢ below` : diff > 0.005 ? `${cents}¢ above` : 'even with';
       const cls = diff < -0.005 ? 'down-color' : diff > 0.005 ? 'up-color' : 'flat-color';
-      items.push(`<span class="wpr-ctx-item"><span class="wpr-ctx-label">U.S. avg</span><span class="wpr-ctx-value">${fmt(nat)}</span><span class="wpr-ctx-rel ${cls}">WI ${rel}</span></span>`);
+      items.push(`<span class="wpr-ctx-item"><span class="wpr-ctx-label">U.S. avg</span><span class="wpr-ctx-value">${fmtCents(nat)}</span><span class="wpr-ctx-rel ${cls}">WI ${rel}</span></span>`);
     }
     if (contextData.wti != null) {
       items.push(`<span class="wpr-ctx-item"><span class="wpr-ctx-label">WTI crude</span><span class="wpr-ctx-value">$${contextData.wti.toFixed(2)}<span class="wpr-ctx-unit">/bbl</span></span></span>`);
@@ -609,7 +620,7 @@
         const sign = diff > 0.005 ? '+' : diff < -0.005 ? '−' : '±';
         rel = `<span class="wpr-ctx-rel ${cls}">${sign}${cents}¢</span>`;
       }
-      items.push(`<span class="wpr-ctx-item" title="${st.name}"><span class="wpr-ctx-label">${code}</span><span class="wpr-ctx-value">${fmt(p)}</span>${rel}</span>`);
+      items.push(`<span class="wpr-ctx-item" title="${st.name}"><span class="wpr-ctx-label">${code}</span><span class="wpr-ctx-value">${fmtCents(p)}</span>${rel}</span>`);
     }
     if (!items.length) return '';
     return `
@@ -618,24 +629,110 @@
   }
 
   // ── Statewide Tab ──
+  // The first screen every reader sees. Leads with a headline and a 30-day line
+  // from WPR's own daily statewide readings (the header's source too), then
+  // today's spread across stations, then AAA's longer comparisons as bars around
+  // zero: the old version drew each price as a bar from zero, which mostly
+  // showed that prices are positive.
+  function statewideSeries(fuel) {
+    return (getWIEntries(fuel) || []).map(e => ({ t: e.date.getTime(), price: e.price }));
+  }
+
+  function buildStateSpark(series, W) {
+    const lastT = series[series.length - 1].t;
+    const pts = series.filter(p => p.t >= lastT - 30 * DAY_MS);
+    if (pts.length < 3) return '';
+    const narrow = W < 460;
+    const H = 104, T = 12, B = 20, Lp = 2, R = narrow ? 58 : 70, fs = 11.5;
+    const t0 = pts[0].t;
+    const lo = Math.min(...pts.map(p => p.price)), hi = Math.max(...pts.map(p => p.price));
+    const padY = Math.max((hi - lo) * 0.18, 0.02);
+    const X = t => Lp + (t - t0) / ((lastT - t0) || 1) * (W - Lp - R);
+    const Y = v => T + (1 - (v - (lo - padY)) / ((hi - lo) + 2 * padY)) * (H - T - B);
+    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.price).toFixed(1)}`).join('');
+    const first = pts[0], last = pts[pts.length - 1];
+    const lowP = pts.reduce((a, p) => (p.price < a.price ? p : a), pts[0]);
+    const highP = pts.reduce((a, p) => (p.price > a.price ? p : a), pts[0]);
+    let svg = `<path d="${line}L${X(lastT).toFixed(1)},${H - B}L${X(t0).toFixed(1)},${H - B}Z" class="wpr-tr-area"/>`
+      + `<line x1="${Lp}" x2="${W - R + 4}" y1="${H - B}" y2="${H - B}" class="wpr-tr-tick"/>`
+      + `<path d="${line}" class="wpr-tr-line wpr-draw" pathLength="1"/>`;
+    // Mark the 30-day high and low unless they are the endpoints (already labelled).
+    for (const [p, word, dy] of [[highP, 'High', -8], [lowP, 'Low', 16]]) {
+      if (p === last || p === first) continue;
+      const x = X(p.t), y = Y(p.price);
+      const anchor = x < 60 ? 'start' : x > W - R - 60 ? 'end' : 'middle';
+      svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" class="wpr-tr-lowdot"/>`
+        + `<text x="${x.toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${anchor}" class="wpr-tr-note" style="font-size:${fs - 1}px">${word} ${money2(p.price)}</text>`;
+    }
+    const ex = X(last.t), ey = Y(last.price);
+    svg += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="5" class="wpr-tr-enddot"/>`
+      + `<text x="${(ex + 10).toFixed(1)}" y="${(ey + 1).toFixed(1)}" class="wpr-tr-endlbl" style="font-size:13px">${money2(last.price)}</text>`
+      + `<text x="${(ex + 10).toFixed(1)}" y="${(ey + 15).toFixed(1)}" class="wpr-tr-note" style="font-size:${fs - 1}px">today</text>`
+      + `<text x="${Lp}" y="${H - 6}" class="wpr-tr-ax" style="font-size:${fs - 0.5}px">${L.shortDate(first.t)}</text>`
+      + `<text x="${(W - R).toFixed(1)}" y="${H - 6}" text-anchor="end" class="wpr-tr-ax" style="font-size:${fs - 0.5}px">${L.shortDate(last.t)}</text>`;
+    const aria = `${fuelLabel(activeFuel)} statewide average over the last 30 days, from ${money2(first.price)} on ${L.shortDate(first.t)} to ${money2(last.price)} today; high ${money2(highP.price)}, low ${money2(lowP.price)}.`;
+    return `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg wpr-st-spark" role="img" aria-label="${esc(aria)}">${svg}</svg>`;
+  }
+
+  // AAA's statewide table as change-since bars around zero (AAA vs AAA, so the
+  // comparison is internally consistent even though the header is GasBuddy).
+  function buildChangeLadder() {
+    const now = aaaPeriodValue('current', activeFuel);
+    if (now == null) return '';
+    const rows = [['yesterday', 'Yesterday'], ['week_ago', 'A week ago'], ['month_ago', 'A month ago'], ['year_ago', 'A year ago']]
+      .map(([k, label]) => ({ label, then: aaaPeriodValue(k, activeFuel) }))
+      .filter(r => r.then != null)
+      .map(r => ({ ...r, c: Math.round((now - r.then) * 100) }));
+    if (!rows.length) return '';
+    const maxC = Math.max(...rows.map(r => Math.abs(r.c)), 1);
+    // Zero sits at the edge when every change has the same sign, so the bars use
+    // the whole track; it moves to the middle only when there are both.
+    const zero = rows.every(r => r.c >= 0) ? 0 : rows.every(r => r.c <= 0) ? 100 : 50;
+    const span = zero === 50 ? 50 : 100;
+    const html = rows.map(r => {
+      const w = (Math.abs(r.c) / maxC * span).toFixed(1);
+      const cls = r.c > 0 ? 'up' : r.c < 0 ? 'down' : 'flat';
+      const text = r.c === 0 ? 'no change' : `${r.c > 0 ? '+' : '−'}${L.centsText(r.c / 100)}`;
+      return `
+        <div class="wpr-ladder-row">
+          <span class="wpr-ladder-label">${r.label}</span>
+          <span class="wpr-ladder-then">${money2(r.then)}</span>
+          <span class="wpr-ladder-track" style="--zero:${zero}%"><i class="wpr-ladder-bar ${cls}" style="${r.c >= 0 ? `left:${zero}%` : `right:${100 - zero}%`};width:${w}%"></i></span>
+          <span class="wpr-ladder-c ${cls}-color">${text}</span>
+        </div>`;
+    }).join('');
+    return `
+      <div class="wpr-ladder">
+        <div class="wpr-map-rank-h">Today's ${money2(now)} compared with · AAA statewide average</div>
+        ${html}
+      </div>`;
+  }
+
   function renderStatewide() {
     const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
     const sw = data.statewide;
-
-    let fuelBtns = fuels.map(f =>
+    const fuelBtns = fuels.map(f =>
       `<button type="button" aria-pressed="${activeFuel === f}" class="wpr-gas-fuel-btn ${activeFuel === f ? 'active' : ''}" data-fuel="${f}">${fuelLabel(f)}</button>`
     ).join('');
 
-    // Time comparison periods — AAA's statewide table (keys match data.aaa)
-    const periods = [
-      { key: 'current', label: 'Today' },
-      { key: 'yesterday', label: 'Yesterday' },
-      { key: 'week_ago', label: 'Week Ago' },
-      { key: 'month_ago', label: 'Month Ago' },
-      { key: 'year_ago', label: 'Year Ago' },
-    ];
+    const series = statewideSeries(activeFuel);
+    const story = L.statewideStory(series, activeFuel);
+    const colW = frameW() - 2 * padX();
+    const chips = story ? [
+      story.c7 != null ? ['Past week', story.c7] : null,
+      story.c30 != null ? ['Past month', story.c30] : null,
+    ].filter(Boolean).map(([label, c]) =>
+      `<span class="wpr-st-chip"><b>${label}</b> <span class="${c > 0 ? 'up' : c < 0 ? 'down' : 'flat'}-color">${c === 0 ? 'even' : `${c > 0 ? '+' : '−'}${L.centsText(c / 100)}`}</span></span>`
+    ).join('') : '';
+    const storyBlock = story ? `
+      <div class="wpr-tr wpr-st-story">
+        <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · statewide average · WPR daily tracking</div>
+        <h3 class="wpr-tr-title">${esc(story.headline)}</h3>
+        <p class="wpr-tr-dek">${esc(story.dek)}${chips ? ` <span class="wpr-st-chips">${chips}</span>` : ''}</p>
+        ${buildStateSpark(series, colW)}
+      </div>` : '';
 
-    // ── Spatial snapshot: lowest / average / highest + range ──
+    // ── Today's spread: cheapest / average (or a chosen city) / priciest station ──
     const avg = sw?.current_avg?.[activeFuel];
     const low = sw?.low?.[activeFuel];
     const high = sw?.high?.[activeFuel];
@@ -646,70 +743,39 @@
       ? `<div class="wpr-state-card-sub"><span class="wpr-pin ${cls}">●</span>${esc(end.city)}</div>`
         + (end.name ? `<div class="wpr-state-card-station">${esc(end.name)}</div>` : '')
       : '';
-
     const metros = data?.metros || {};
     const cityNames = Object.keys(metros).sort();
     const cityPrice = selectedCity ? metros[selectedCity]?.current_avg?.[activeFuel] : null;
-
     const pctOf = v => (v != null && low != null && high != null && high > low)
       ? Math.max(0, Math.min(100, ((v - low) / (high - low)) * 100)) : null;
     const markerPct = pctOf(avg) ?? 50;
     const cityMarkerPct = pctOf(cityPrice);
-
-    const middleLabel = selectedCity ? `${selectedCity} Avg` : 'State Average';
+    const middleLabel = selectedCity ? `${esc(selectedCity)} avg` : 'State average';
     const middleValue = selectedCity ? cityPrice : avg;
-    const middleVs = (selectedCity && cityPrice != null && avg != null) ? delta(cityPrice, avg) : null;
-
+    const middleVs = (selectedCity && cityPrice != null && avg != null) ? delta(cityPrice, avg, { cents: true }) : null;
     const cityOptions = cityNames.map(n =>
       `<option value="${esc(n)}" ${selectedCity === n ? 'selected' : ''}>${esc(n)}</option>`
     ).join('');
 
-    // ── Temporal: today vs past — AAA's statewide table (internally consistent) ──
-    const periodVals = periods
-      .map(p => ({ label: p.label, key: p.key, val: aaaPeriodValue(p.key, activeFuel) }))
-      .filter(p => p.val != null);
-    const aaaCurrent = aaaPeriodValue('current', activeFuel);
-    const maxPrice = (periodVals.length ? Math.max(...periodVals.map(p => p.val)) : 1) * 1.08;
-    const compareRows = periodVals.map(p => {
-      const isCurrent = p.key === 'current';
-      const pct = ((p.val / maxPrice) * 100).toFixed(1);
-      const ch = (!isCurrent && aaaCurrent != null) ? delta(aaaCurrent, p.val) : { text: '', cls: '' };
-      return `
-        <div class="wpr-gas-compare-row${isCurrent ? ' active-fuel' : ''}">
-          <span class="wpr-gas-compare-label">${p.label}</span>
-          <div class="wpr-gas-compare-bar-wrap"><div class="wpr-gas-compare-bar" style="width:${pct}%"></div></div>
-          <span class="wpr-gas-compare-price">${fmt(p.val)}</span>
-          <span class="wpr-gas-compare-change ${ch.cls}">${ch.text}</span>
-        </div>`;
-    }).join('');
-    const compareSection = periodVals.length > 1
-      ? `<div class="wpr-state-section-label">Wisconsin ${fuelLabel(activeFuel)} over time · via AAA</div>
-         <div class="wpr-gas-compare">${compareRows}</div>`
-      : '';
-
     return `
-      ${data.summary && data.summary.blurb ? `
-        <div class="wpr-summary">
-          <p class="wpr-summary-text">${data.summary.blurb}</p>
-          <button type="button" class="wpr-summary-copy" aria-label="Copy this summary">Copy</button>
-        </div>` : ''}
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
+      ${storyBlock}
       <div class="wpr-state-grid">
         <div class="wpr-state-card">
           <div class="wpr-state-card-label">Cheapest station</div>
-          <div class="wpr-state-card-value" style="color:var(--down)">${fmt(low)}</div>
+          <div class="wpr-state-card-value" style="color:var(--down)">${fmtCents(low)}</div>
           ${endSub(ends.low, 'down-color')}
         </div>
         <div class="wpr-state-card wpr-state-card-feature">
           <div class="wpr-state-card-label">${middleLabel}</div>
-          <div class="wpr-state-card-value">${fmt(middleValue)}</div>
+          <div class="wpr-state-card-value">${fmtCents(middleValue)}</div>
           ${middleVs
             ? `<div class="wpr-state-card-sub ${middleVs.cls}">${middleVs.text} vs state</div>`
-            : '<div class="wpr-state-card-sub">statewide average</div>'}
+            : '<div class="wpr-state-card-sub">all stations</div>'}
         </div>
         <div class="wpr-state-card">
           <div class="wpr-state-card-label">Priciest station</div>
-          <div class="wpr-state-card-value" style="color:var(--up)">${fmt(high)}</div>
+          <div class="wpr-state-card-value" style="color:var(--up)">${fmtCents(high)}</div>
           ${endSub(ends.high, 'up-color')}
         </div>
       </div>
@@ -720,7 +786,7 @@
           <span class="wpr-state-range-tag wpr-state-range-tag-state" style="left:${markerPct}%">State $${avg != null ? avg.toFixed(2) : '—'}</span>
           ${cityMarkerPct != null
             ? `<div class="wpr-state-range-marker-city" style="left:${cityMarkerPct}%"></div>
-               <span class="wpr-state-range-tag wpr-state-range-tag-city" style="left:${cityMarkerPct}%">${selectedCity} $${cityPrice.toFixed(2)}</span>`
+               <span class="wpr-state-range-tag wpr-state-range-tag-city" style="left:${cityMarkerPct}%">${esc(selectedCity)} $${cityPrice.toFixed(2)}</span>`
             : ''}
         </div>
         <div class="wpr-state-range-labels">
@@ -729,15 +795,22 @@
         </div>
       </div>
       <div class="wpr-state-city-select-wrap">
-        <div class="wpr-state-city-label">Compare a city</div>
         <select class="wpr-state-city-select" id="citySelect" aria-label="Compare a city to the state average">
-          <option value="">State Average</option>
+          <option value="">Compare a city to the state average…</option>
           ${cityOptions}
         </select>
       </div>
-      ${compareSection}
+      ${buildChangeLadder()}
       ${renderNeighborStrip()}
       ${renderContextStrip()}
+      ${data.summary && data.summary.blurb ? `
+        <details class="wpr-summary-wrap">
+          <summary>Newsroom summary · a ready-to-quote paragraph</summary>
+          <div class="wpr-summary">
+            <p class="wpr-summary-text">${esc(data.summary.blurb)}</p>
+            <button type="button" class="wpr-summary-copy" aria-label="Copy this summary">Copy</button>
+          </div>
+        </details>` : ''}
     `;
   }
 

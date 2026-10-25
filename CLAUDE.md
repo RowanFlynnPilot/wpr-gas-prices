@@ -286,10 +286,20 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   data contract test fails if `CITIES` gains one without coordinates.
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
-- **The Metro list (and the compact widget's city rows) shows cents.** City averages and station prices use `fmtCents()`
-  and the day-over-day change uses `L.delta(..., { cents: true })` ("▲ 4¢"; a move
-  that rounds to 0¢ is flat). Statewide figures keep three decimals, where a tenth
-  of a cent is a real move in a 22-city average.
+- **Every figure shows cents, in both widgets.** Prices use `fmtCents()` (the header's
+  `fmtHero()` too) and day-over-day changes use `L.delta(..., { cents: true })`
+  ("▲ 4¢"; a move that rounds to 0¢ is flat).
+- **Statewide tab = headline, 30-day line, spread, change ladder.** The headline
+  and dek come from `L.statewideStory()` on WPR's daily statewide series (the same
+  source as the header): the week's move if it is 5¢+, else the month's, else
+  "holding steady", plus "the highest since …" from our history. Below: today's
+  cheapest/average/priciest station with the city compare, then AAA's
+  yesterday/week/month/year as change-since bars (zero at the edge when every
+  change has the same sign), the neighbor/U.S. strips, and the newsroom blurb in a
+  closed-by-default `<details>` with its Copy button. Its default height (re-measured
+  2026-10-25: 1140/914/950/931px at frame widths 288/468/600/720) still fits the
+  published `clamp(960px, calc(1640px - 131vw), 1300px)`; keep it under 960px at
+  600px+ or the embed code has to change.
 - **Statewide trend = AAA.** `parse_aaa()`/`scrape_aaa()` populate `data["aaa"]`; the
   Statewide "over time" bars and the blurb's trend both read it. The hero "vs
   yesterday" stays GasBuddy-history (same source as the hero number).
