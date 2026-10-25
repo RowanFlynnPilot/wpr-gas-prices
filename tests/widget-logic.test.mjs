@@ -77,6 +77,10 @@ test('delta direction, sign and dead band', () => {
   assert.equal(L.delta(3.5, 3.5).cls, 'flat-color');
   assert.equal(L.delta(3.5004, 3.5).cls, 'flat-color'); // sub-0.001 is noise
   assert.deepEqual(plain(L.delta(null, 3.5)), { text: '—', cls: 'flat-color' });
+  // Cents mode: whole cents, and a sub-half-cent move is flat, not "▲ 0¢".
+  assert.deepEqual(plain(L.delta(4.433, 4.389, { cents: true })), { text: '▲ 4¢', cls: 'up-color' });
+  assert.deepEqual(plain(L.delta(4.381, 4.39, { cents: true })), { text: '▼ 1¢', cls: 'down-color' });
+  assert.deepEqual(plain(L.delta(4.433, 4.429, { cents: true })), { text: '— 0¢', cls: 'flat-color' });
 });
 
 test('freshness wording and the 26h stale threshold', () => {

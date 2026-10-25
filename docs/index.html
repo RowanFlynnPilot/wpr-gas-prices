@@ -292,7 +292,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=3"></script>
+<script src="./widget-logic.js?v=4"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -373,6 +373,12 @@
   function fmt(p) {
     if (p == null) return '—';
     return '<span class="wpr-dollar">$</span>' + p.toFixed(3);
+  }
+  // The Metro list shows cents, the way a pump does; the statewide figures keep
+  // three decimals, where a tenth of a cent is a real move in a 22-city average.
+  function fmtCents(p) {
+    if (p == null) return '—';
+    return '<span class="wpr-dollar">$</span>' + p.toFixed(2);
   }
   function fmtHero(p) {
     if (p == null) return '—';
@@ -755,7 +761,7 @@
       const low = m.low?.[activeFuel];
       const high = m.high?.[activeFuel];
       const yest = previousReading(name, activeFuel);
-      const d = delta(price, yest?.price ?? null);
+      const d = delta(price, yest?.price ?? null, { cents: true });
       const isWausau = name === 'Wausau';
       const rangeText = (low != null && high != null) ? `$${low.toFixed(2)} – $${high.toFixed(2)}` : '';
 
@@ -773,7 +779,7 @@
             <span class="wpr-metro-station-name">${esc(st.name)}</span>
             ${st.address ? `<a class="wpr-metro-station-addr" href="${esc(L.mapsUrl(st))}" target="_blank" rel="noopener" title="Open in Google Maps">${esc(st.address)} <span aria-hidden="true">↗</span></a>` : ''}
           </div>
-          <span class="wpr-metro-station-price${i === 0 ? ' down-color' : ''}">${fmt(st.prices[activeFuel])}</span>
+          <span class="wpr-metro-station-price${i === 0 ? ' down-color' : ''}">${fmtCents(st.prices[activeFuel])}</span>
         </div>`).join('');
 
       return `
@@ -786,7 +792,7 @@
             </div>
             <div class="wpr-metro-right">
               ${metroSparkline(name, activeFuel)}
-              <div class="wpr-metro-price">${fmt(price)}</div>
+              <div class="wpr-metro-price">${fmtCents(price)}</div>
               <div class="wpr-metro-delta ${d.cls}">${yest != null ? d.text : ''}</div>
               ${canExpand ? `<span class="wpr-metro-expand">${isExpanded ? '▲' : '▼'}</span>` : '<span class="wpr-metro-expand"></span>'}
             </div>

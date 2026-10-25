@@ -54,9 +54,18 @@
     return `vs ${d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${d.getUTCDate()}`;
   }
 
-  function delta(current, previous) {
+  // `cents: true` gives whole cents ("▲ 2¢") for rows that show prices to the cent;
+  // a change that rounds to 0¢ is flat there, so the arrow never disagrees with the text.
+  function delta(current, previous, { cents = false } = {}) {
     if (current == null || previous == null) return { text: '—', cls: 'flat-color' };
     const diff = current - previous;
+    if (cents) {
+      const c = Math.round(diff * 100);
+      return {
+        text: c > 0 ? `▲ ${c}¢` : c < 0 ? `▼ ${-c}¢` : '— 0¢',
+        cls: c > 0 ? 'up-color' : c < 0 ? 'down-color' : 'flat-color',
+      };
+    }
     const up = diff > 0.001, down = diff < -0.001;
     return {
       text: `${up ? '▲' : down ? '▼' : '—'} ${diff > 0 ? '+' : ''}${diff.toFixed(3)}`,

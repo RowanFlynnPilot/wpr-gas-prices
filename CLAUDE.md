@@ -286,6 +286,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   data contract test fails if `CITIES` gains one without coordinates.
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
+- **The Metro list shows cents.** City averages and station prices use `fmtCents()`
+  and the day-over-day change uses `L.delta(..., { cents: true })` ("▲ 4¢"; a move
+  that rounds to 0¢ is flat). Statewide figures keep three decimals, where a tenth
+  of a cent is a real move in a 22-city average.
 - **Statewide trend = AAA.** `parse_aaa()`/`scrape_aaa()` populate `data["aaa"]`; the
   Statewide "over time" bars and the blurb's trend both read it. The hero "vs
   yesterday" stays GasBuddy-history (same source as the hero number).
