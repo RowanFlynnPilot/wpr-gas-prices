@@ -129,7 +129,9 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
-| `docs/widget-logic.js` | Pure logic shared by both widgets (deltas, history ordering, station extremes, sorting, escaping) | Yes — with its tests; bump `?v=` in both widgets |
+| `docs/widget-logic.js` | Pure logic shared by both widgets (deltas, history ordering, station extremes, sorting, escaping, trend story, map bins) | Yes — with its tests; bump `?v=` in **all three** pages (index, compact, digest) |
+| `docs/wi-outline.js` | Wisconsin outline path + projection constants for the Metro tab map | **Never by hand** — `scripts/build-wi-outline.py` generates it |
+| `scripts/build-wi-outline.py` | One-off: Natural Earth 1:10m states (lakes clipped) → projected, simplified `docs/wi-outline.js` | Rarely |
 | `tests/widget-logic.test.mjs` | Node tests for that file — evaluates the exact script the browser loads | Yes — when changing widget logic |
 | `tests/data-contract.test.mjs` | The **data contract**: real `docs/*.json` must satisfy what the widgets read; gates the update workflow's commit | Yes — when the JSON schema changes |
 | `docs/embed.js` | Host-side iframe autosize; unusable on WPR until Cloudflare allows `<script src>` in post saves | Rarely |
@@ -258,11 +260,32 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   (`heatingSummary().inSeason`) — an amber banner says the survey resumes in
   October and the cards show last winter's final week. Natural gas is a dated
   footnote strip. All of that logic is in `widget-logic.js` with tests.
-- **Trends tab overlays Wisconsin on the Midwest.** `getWIEntries()` reads the daily
-  statewide series from `gas_prices_history.json` and draws it over the EIA weekly
-  benchmark. The chart x-axis is **time-based, not index-based** — required for
-  daily and weekly points to align; don't revert it. Stat tiles and min/max
-  annotations stay EIA-only; the y-domain covers both series.
+- **Trends tab leads with Wisconsin.** `getWIEntries()` reads the daily statewide
+  series from `gas_prices_history.json`; it is the solid line, the tiles and the
+  headline, and the EIA weekly Midwest series is a dashed benchmark with the gap
+  shaded where Wisconsin runs above it. (The chart used to lead with the Midwest,
+  and its loudest number, "−5.3%" in green, described the Midwest while Wisconsin
+  sat at a six-month high.) The headline and dek come from `L.trendStory()` so the
+  words can't contradict the line; it says "highest since Mar 18" rather than
+  "12-month high" when our history doesn't cover the window. Falls back to
+  Midwest-only if there's no Wisconsin history. The x-axis is **time-based, not
+  index-based** (daily and weekly points must align). A crosshair reads both lines
+  at any date (pointer, touch, or arrow keys on the focused chart).
+- **Every chart SVG is drawn at the pixel width it occupies** (`frameW()`), and
+  re-rendered when the frame width changes. A fixed 680-wide drawing scaled onto a
+  phone shrank its labels to ~8px; now chart text is 10–12px at every width.
+  Canvases under 560px get shorter end labels.
+- **Metro tab map + strip plot.** Above the city list: a Wisconsin map with a dot per
+  metro colored by `L.priceBin()` against the statewide average for the active fuel
+  (diverging teal / gray-within-5¢ / red), Wausau ringed with a callout, the central
+  region ringed when it holds 4+ of the 6 priciest metros (`L.centralShare()`), and
+  a strip plot of all metros on one price line. Dots are buttons that open that
+  city's row. Labels are placed greedily with canvas-measured widths so they never
+  overlap a dot or each other; a label that can't fit is dropped (the side list and
+  dek still name the extremes). `L.CITY_COORDS` must cover every scraped city — the
+  data contract test fails if `CITIES` gains one without coordinates.
+- **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
+  both widgets, and numbers use tabular lining figures so columns line up.
 - **Statewide trend = AAA.** `parse_aaa()`/`scrape_aaa()` populate `data["aaa"]`; the
   Statewide "over time" bars and the blurb's trend both read it. The hero "vs
   yesterday" stays GasBuddy-history (same source as the hero number).

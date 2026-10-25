@@ -119,3 +119,10 @@ test('eia_heating.json: the Home Heating tab and digest line', () => {
   const gas = L.heatingSummary(heat.natural_gas, Date.now());
   assert.ok(gas && typeof gas.latest.price === 'number' && /^\d{4}-\d{2}$/.test(gas.latest.date), 'natural gas monthly');
 });
+
+test('every scraped metro can be placed on the map', () => {
+  for (const name of Object.keys(data.metros)) {
+    assert.ok(L.CITY_COORDS[name], `"${name}" has no coordinates in widget-logic.js CITY_COORDS`);
+  }
+  for (const name of L.CENTRAL_WI) assert.ok(name in data.metros, `central-region town "${name}" is not a scraped metro`);
+});

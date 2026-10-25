@@ -174,3 +174,78 @@ test('fillCost rounds to whole dollars and rejects bad input', () => {
   assert.equal(L.fillCost(null, 400), null);
   assert.equal(L.fillCost(2.0, undefined), null);
 });
+
+// ── Price Trends story ──────────────────────────────────────────────────
+const day = 864e5;
+const ser = (startIso, prices, stepDays = 1) => prices.map((price, i) => ({ t: Date.parse(startIso + 'T12:00:00Z') + i * stepDays * day, price }));
+
+test('trendStory: Wisconsin leads, at a six-month high, with the Midwest gap', () => {
+  const wi = ser('2026-04-26', [4.33, ...Array(180).fill(4.5), 5.00]);
+  const mw = ser('2026-04-27', Array(26).fill(4.4).concat([4.62]), 7);
+  const s = L.trendStory(wi, mw, 182, 'mid_grade');
+  assert.equal(s.leadIsWI, true);
+  assert.equal(s.headline, 'Wisconsin mid-grade is at its six-month high');
+  assert.equal(s.dek, 'Up 67¢ since Apr 26, and running 38¢ above the Midwest average.');
+  assert.equal(s.low.price, 4.33);
+});
+
+test('trendStory: never claims a 12-month high from a shorter history', () => {
+  const wi = ser('2026-04-26', [4.33, 4.6, 5.0]);
+  const s = L.trendStory(wi, [], 364, 'regular');
+  assert.equal(s.headline, 'Wisconsin regular gas is at its highest since Apr 26');
+  assert.equal(s.gap, null);
+  assert.equal(s.dek, 'Up 67¢ since Apr 26.');
+});
+
+test('trendStory: falling-but-not-a-low says the move and names the low', () => {
+  const wi = ser('2026-05-01', [4.80, 4.10, 4.40]);
+  const s = L.trendStory(wi, ser('2026-05-01', [4.5, 4.6], 7), 182, 'diesel');
+  assert.equal(s.headline, 'Wisconsin diesel is down 40¢ since May 1');
+  assert.equal(s.dek, 'Running 20¢ below the Midwest average, and the low was $4.10 on May 2.');
+});
+
+test('trendStory: falls back to the Midwest when Wisconsin history is missing', () => {
+  const s = L.trendStory(null, ser('2026-01-05', [3.0, 2.8, 2.5], 7), 182, 'premium');
+  assert.equal(s.leadIsWI, false);
+  assert.match(s.headline, /^Midwest premium is at its/);
+  assert.equal(s.gap, null);
+  assert.equal(L.trendStory(null, [], 182, 'regular'), null);
+});
+
+test('valueAt interpolates inside the span only; readingAtOrBefore never looks ahead', () => {
+  const mw = ser('2026-01-05', [3.0, 3.7], 7);
+  assert.equal(L.valueAt(mw, mw[0].t + 3.5 * day), 3.35);
+  assert.equal(L.valueAt(mw, mw[0].t - day), null);
+  assert.equal(L.readingAtOrBefore(mw, mw[1].t - 1).price, 3.0);
+  assert.equal(L.readingAtOrBefore(mw, mw[0].t - 1), null);
+});
+
+test('centsText and shortDate', () => {
+  assert.equal(L.centsText(0.674), '67¢');
+  assert.equal(L.centsText(-1.524), '$1.52');
+  assert.equal(L.shortDate(Date.UTC(2026, 6, 8, 12)), 'Jul 8');
+});
+
+// ── Metro map ───────────────────────────────────────────────────────────
+test('priceBin: diverging classes around the average, edges in whole cents', () => {
+  const avg = 4.43;
+  assert.deepEqual(plain([4.28, 4.29, 4.37, 4.38, 4.43, 4.48, 4.49, 4.57, 4.58].map(p => L.priceBin(p, avg))),
+    [0, 1, 1, 2, 2, 2, 3, 3, 4]);
+  assert.equal(L.PRICE_BINS.length, 5);
+});
+
+test('projectWI matches the generated outline projection', () => {
+  const proj = { k: 0.71079947, minX: -66.034499, maxY: 47.081595, s: 81.869494, pad: 14 };
+  const [x, y] = L.projectWI(44.959, -89.630, proj);      // Wausau sits mid-state
+  assert.ok(x > 120 && x < 260 && y > 130 && y < 250, `Wausau at ${x},${y}`);
+  const [sx, sy] = L.projectWI(46.721, -92.104, proj);    // Superior: far north-west
+  assert.ok(sx < x && sy < y);
+});
+
+test('rankMetros + centralShare', () => {
+  const m = n => ({ current_avg: { regular: n } });
+  const ranked = L.rankMetros({ Wausau: m(4.43), Mosinee: m(4.69), 'Eau Claire': m(4.08), Marshfield: m(4.69), Madison: m(4.33) }, 'regular', 4.43);
+  assert.deepEqual(plain(ranked.map(r => r.name)), ['Eau Claire', 'Madison', 'Wausau', 'Marshfield', 'Mosinee']);
+  assert.equal(ranked[0].bin, 0);
+  assert.deepEqual(plain(L.centralShare(ranked, 2)), { count: 2, of: 2 });
+});

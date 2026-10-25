@@ -308,6 +308,7 @@ PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "
 | `requirements.txt` | Python dependencies (`requests`, `curl_cffi`) | Rarely |
 | `.github/workflows/update-gas-prices.yml` | Automation schedule | Rowan |
 | `docs/index.html` | The widget UI | Rowan |
+| `docs/wi-outline.js` | Wisconsin outline for the Metro tab map | **Never by hand** — `scripts/build-wi-outline.py` makes it |
 | `docs/gas_prices.json` | Live price data | **Never by hand** — the scraper owns it |
 | `docs/gas_prices_history.json` | Daily history (last 400 days) | **Never by hand** |
 | `docs/eia_weekly.json` | EIA weekly trend series | **Never by hand** |

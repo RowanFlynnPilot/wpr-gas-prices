@@ -21,14 +21,14 @@
 <style>
 
   :root {
-    --ink: #1a1a1a; --ink-mid: #444; --ink-light: #6b6b6b; --ink-faint: #999;
+    --ink: #1a1a1a; --ink-mid: #444; --ink-light: #5f5f5f; --ink-faint: #6a6a6a;
     --paper: #f9fafb; --paper-warm: #f0f5f4;
     --rule: #c8d8d5; --rule-light: #dfe9e7;
     --accent: #3e847a; --accent-light: #5ab8ad; --accent-pale: #e0f2ef; --accent-dark: #2d6259;
     --up: #c0392b; --down: #27864a; --neutral: #888; --radius: 6px;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  .wpr-gas { font-family:'DM Sans',-apple-system,sans-serif; background:var(--paper); color:var(--ink); max-width:720px; margin:0 auto; border:1px solid var(--rule); border-radius:10px; overflow:hidden; line-height:1.45; box-shadow:0 6px 24px rgba(20,50,45,0.09); }
+  .wpr-gas { font-variant-numeric:lining-nums tabular-nums; font-family:'DM Sans',-apple-system,sans-serif; background:var(--paper); color:var(--ink); max-width:720px; margin:0 auto; border:1px solid var(--rule); border-radius:10px; overflow:hidden; line-height:1.45; box-shadow:0 6px 24px rgba(20,50,45,0.09); }
 
   .wpr-gas-header { background:var(--ink); color:#fff; position:relative; }
   .wpr-gas-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--accent),var(--accent-light)); }
@@ -147,24 +147,12 @@
   .wpr-trends-btn-divider { display:inline-block; width:1px; height:20px; background:var(--rule); margin:0 4px; align-self:center; }
   .wpr-trends-title { font-family:'Playfair Display',Georgia,serif; font-size:16px; font-weight:700; color:var(--ink); text-align:center; padding:4px 0 12px; letter-spacing:-0.2px; }
   .wpr-trends-chart-wrap { padding:0 10px 10px; }
-  .wpr-trends-note { text-align:center; font-size:10px; color:var(--ink-faint); padding:0 18px 10px; margin-top:-8px; line-height:1.45; }
-  .wpr-trends-stats { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; padding:8px 14px 12px; }
-  .wpr-trends-stat { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:8px 12px; text-align:center; min-width:100px; flex:1; box-shadow:0 1px 3px rgba(20,50,45,0.05); }
-  .wpr-trends-stat-feature { background:linear-gradient(165deg,var(--accent-pale),#ffffff 80%); border-color:var(--accent-light); box-shadow:0 3px 10px rgba(62,132,122,0.16); }
-  .wpr-trends-stat-label { display:block; font-size:8px; text-transform:uppercase; letter-spacing:0.7px; color:var(--ink-faint); margin-bottom:3px; }
-  .wpr-trends-stat-feature .wpr-trends-stat-label { color:var(--accent-dark); }
-  .wpr-trends-stat-value { font-family:'Playfair Display',Georgia,serif; font-size:18px; font-weight:700; }
-  .wpr-trends-stat-sub { display:block; font-size:8.5px; color:var(--ink-light); margin-top:2px; font-weight:600; }
   .wpr-trends-legend { display:flex; justify-content:center; gap:16px; padding:2px 0 6px; font-size:10px; color:var(--ink-light); font-weight:600; }
   .wpr-trends-legend-item { display:flex; align-items:center; gap:5px; }
   .wpr-trends-legend-swatch { display:inline-block; width:14px; height:3px; border-radius:2px; }
   .wpr-trends-svg { width:100%; height:auto; }
   .wpr-trends-empty { text-align:center; padding:40px 10px; color:var(--ink-faint); font-style:italic; font-size:13px; }
   .wpr-chart-axis-label { font-size:9px; fill:var(--ink-faint); font-family:'DM Sans',sans-serif; }
-  .wpr-chart-hover-group .wpr-chart-crosshair, .wpr-chart-hover-group .wpr-chart-dot, .wpr-chart-hover-group .wpr-chart-tooltip { transition:opacity 0.12s; }
-  .wpr-chart-hover-group:hover .wpr-chart-crosshair { opacity:0.5 !important; }
-  .wpr-chart-hover-group:hover .wpr-chart-dot { opacity:1 !important; }
-  .wpr-chart-hover-group:hover .wpr-chart-tooltip { opacity:1 !important; }
 
   /* Home Heating tab */
   .wpr-heat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 14px 4px; }
@@ -182,6 +170,82 @@
   .wpr-heat-note { text-align:center; font-size:10px; color:var(--ink-faint); padding:2px 18px 12px; line-height:1.45; }
   .wpr-trends-legend-dashed { background:none; border-top:2px dashed var(--ink-light); height:0; }
   .wpr-chart-hit:hover { fill:var(--accent-pale); }
+
+  /* Price Trends: Wisconsin leads, the Midwest is a dashed benchmark */
+  .wpr-tr { padding:4px 16px 10px; }
+  .wpr-tr-kicker { font-size:10.5px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--accent-dark); }
+  .wpr-tr-title { font-family:'Playfair Display',Georgia,serif; font-size:21px; line-height:1.2; font-weight:700; color:var(--ink); margin:4px 0; letter-spacing:-0.2px; text-wrap:balance; }
+  .wpr-tr-dek { font-size:13px; line-height:1.5; color:var(--ink-mid); margin:0 0 12px; }
+  .wpr-tr-tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+  .wpr-tr-tile { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:9px 10px; }
+  .wpr-tr-tile-hero { background:var(--accent-pale); border-color:var(--accent-light); }
+  .wpr-tr-tile-l { font-size:10px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--ink-light); }
+  .wpr-tr-tile-hero .wpr-tr-tile-l { color:var(--accent-dark); }
+  .wpr-tr-tile-v { font-family:'Playfair Display',Georgia,serif; font-size:21px; font-weight:700; color:var(--ink); margin:2px 0 1px; }
+  .wpr-tr-tile-s { font-size:10.5px; color:var(--ink-faint); }
+  .wpr-tr-legend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:11px; color:var(--ink-light); font-weight:600; margin-bottom:4px; }
+  .wpr-tr-legend span { display:inline-flex; align-items:center; gap:6px; }
+  .wpr-tr-sw { display:inline-block; width:18px; height:0; border-top:3px solid var(--accent-dark); border-radius:2px; }
+  .wpr-tr-sw-dash { border-top:2px dashed #8a8a8a; }
+  .wpr-tr-sw-gap { height:10px; border:0; background:rgba(179,54,42,0.16); }
+  .wpr-tr-svg { width:100%; height:auto; display:block; overflow:visible; touch-action:pan-y; }
+  .wpr-tr-svg:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+  .wpr-tr-grid { stroke:#e6e8e8; stroke-width:1; }
+  .wpr-tr-tick { stroke:#c9cccc; }
+  .wpr-tr-ax { fill:var(--ink-faint); font-family:'DM Sans',sans-serif; font-size:11px; }
+  .wpr-tr-gap { fill:rgba(179,54,42,0.13); }
+  .wpr-tr-area { fill:rgba(62,132,122,0.08); }
+  .wpr-tr-line { fill:none; stroke:var(--accent-dark); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
+  .wpr-tr-bench { fill:none; stroke:#8a8a8a; stroke-width:2; stroke-dasharray:5 4; }
+  .wpr-tr-enddot { fill:var(--accent-dark); stroke:#fff; stroke-width:2; }
+  .wpr-tr-benchdot { fill:#8a8a8a; stroke:#fff; stroke-width:2; }
+  .wpr-tr-lowdot { fill:#fff; stroke:var(--accent-dark); stroke-width:2; }
+  .wpr-tr-endlbl { fill:var(--ink); font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; }
+  .wpr-tr-note { fill:var(--ink-light); font-family:'DM Sans',sans-serif; font-size:11px; }
+  .wpr-tr-bracket { fill:none; stroke:var(--ink-light); stroke-width:1.2; }
+  .wpr-tr-cross { stroke:var(--ink-mid); stroke-width:1; stroke-dasharray:2 3; }
+  .wpr-tr-hdot { fill:var(--accent-dark); stroke:#fff; stroke-width:2; }
+  .wpr-tr-hbench { fill:#8a8a8a; stroke:#fff; stroke-width:2; }
+  .wpr-tr-tipbox { fill:#fff; stroke:var(--rule); filter:drop-shadow(0 2px 6px rgba(20,40,40,0.14)); }
+  .wpr-tr-tiptxt { fill:var(--ink); font-family:'DM Sans',sans-serif; font-size:11.5px; }
+  .wpr-tr-tip-h { font-weight:700; }
+  .wpr-tr-tip-s { fill:var(--ink-light); }
+  .wpr-tr-hit { cursor:crosshair; }
+
+  /* Metro map + strip plot */
+  .wpr-map { padding:4px 16px 6px; }
+  .wpr-map-grid { display:grid; grid-template-columns:1fr 190px; gap:14px; align-items:start; }
+  @media (max-width:640px) {
+    /* The map takes the full width; the list below already ranks every city,
+       so the side column keeps only the Wausau callout. */
+    .wpr-map-grid { grid-template-columns:1fr; gap:6px; }
+    .wpr-map-rank { display:none; }
+    .wpr-map-callout { margin-top:4px; }
+  }
+  .wpr-map-svg { width:100%; max-width:440px; height:auto; display:block; margin:0 auto; }
+  .wpr-map-land { fill:#f3f4f2; stroke:#b9bfbd; stroke-width:1.1; stroke-linejoin:round; }
+  .wpr-map-water { fill:#5f8590; font-family:'DM Sans',sans-serif; font-style:italic; }
+  .wpr-map-ring { fill:none; stroke:var(--ink-mid); stroke-width:1.2; stroke-dasharray:4 3; }
+  .wpr-map-dot { stroke:#fff; stroke-width:1.8; cursor:pointer; }
+  .wpr-map-dot:hover, .wpr-map-dot:focus-visible { stroke:var(--ink); stroke-width:2; outline:none; }
+  .wpr-map-me { fill:none; stroke:var(--ink); stroke-width:1.6; }
+  .wpr-map-lbl { fill:var(--ink); font-family:'DM Sans',sans-serif; font-weight:700; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; }
+  .wpr-map-price { font-weight:500; fill:var(--ink-mid); }
+  .wpr-map-sub { fill:var(--ink-light); font-family:'DM Sans',sans-serif; paint-order:stroke; stroke:#fff; stroke-width:3px; }
+  .wpr-map-scale { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:11px; color:var(--ink-light); margin-top:4px; }
+  .wpr-map-scale div { display:inline-flex; align-items:center; gap:5px; }
+  .wpr-map-scale i { width:11px; height:11px; border-radius:50%; display:inline-block; }
+  .wpr-map-rank-h { font-size:10px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--ink-light); margin-bottom:4px; }
+  .wpr-map-rank-row { display:flex; align-items:center; gap:7px; font-size:12.5px; padding:3px 0; border-bottom:1px solid var(--rule-light); }
+  .wpr-map-rank-row.me { font-weight:700; }
+  .wpr-map-rank-dot { width:9px; height:9px; border-radius:50%; flex:none; }
+  .wpr-map-rank-n { flex:1; color:var(--ink); }
+  .wpr-map-rank-p { font-weight:600; color:var(--ink); }
+  .wpr-map-callout { margin-top:12px; padding:10px 11px; background:var(--accent-pale); border-left:3px solid var(--accent); border-radius:0 var(--radius) var(--radius) 0; font-size:12px; line-height:1.5; color:var(--ink-mid); }
+  .wpr-strip { margin-top:10px; padding-top:10px; border-top:1px solid var(--rule-light); }
+  .wpr-strip-svg { width:100%; height:auto; display:block; }
+  .wpr-strip-axis { stroke:#d4d8d7; stroke-width:1; }
+  .wpr-strip-avg { stroke:var(--ink-mid); stroke-width:1; stroke-dasharray:3 3; }
 
   .wpr-gas-footer { padding:8px 14px; border-top:1px solid var(--rule); display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--ink-faint); background:var(--paper-warm); }
   .wpr-gas-footer a { color:var(--accent); text-decoration:none; font-weight:500; }
@@ -209,9 +273,10 @@
     .wpr-trends-btn-divider { display:none; }  /* the range buttons wrap to their own row here */
     .wpr-metro-price { font-size:18px; }
     .wpr-metro-spark { display:none; }
-    .wpr-trends-stats { gap:5px; }
-    .wpr-trends-stat { min-width:0; flex:1 1 30%; padding:7px 6px; }
-    .wpr-trends-stat-value { font-size:16px; }
+    .wpr-tr, .wpr-map { padding-left:12px; padding-right:12px; }
+    .wpr-tr-title { font-size:19px; }
+    .wpr-tr-tiles { grid-template-columns:1fr 1fr; gap:6px; }
+    .wpr-tr-tile-v { font-size:19px; }
   }
 </style>
 </head>
@@ -227,7 +292,8 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=2"></script>
+<script src="./widget-logic.js?v=3"></script>
+<script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
   'use strict';
@@ -483,6 +549,9 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       });
     });
+    wireTrendChart();
+    wireMetroMap();
+    lastFrameW = frameW();
     const copyBtn = widget.querySelector('.wpr-summary-copy');
     if (copyBtn && data.summary && data.summary.blurb) {
       copyBtn.addEventListener('click', () => {
@@ -732,248 +801,432 @@
 
     return `
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
+      ${buildMetroMap()}
       <div class="wpr-sort-row" role="group" aria-label="Sort metro areas"><span class="wpr-sort-label">Sort</span>${sortBtns}</div>
       <div class="wpr-metro-list">${cards}</div>
     `;
   }
 
   // ── Trends Tab ──
-  function buildChart(entries) {
-    // Limit to selected time range
-    let cutoff = entries.length > trendRange ? entries.slice(-trendRange) : entries;
+  // Wisconsin (WPR's own daily statewide tracking) leads; the EIA Midwest weekly
+  // series is a dashed benchmark. Words and tiles come from L.trendStory() so the
+  // headline can never contradict the line. Every SVG here is drawn at the pixel
+  // width it will occupy (frameW()), so its text is the same size in a 300px
+  // phone frame and a 720px desktop one; a fixed 680-wide drawing scaled onto a
+  // phone shrank its labels to ~8px. Narrow canvases also get shorter labels.
+  const DAY_MS = 864e5;
+  const frameW = () => widget.clientWidth || 720;
+  const padX = () => (frameW() <= 520 ? 12 : 16);
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const money2 = v => '$' + v.toFixed(2);
+  const moneyH = v => '<span class="wpr-dollar">$</span>' + v.toFixed(2);
+  const signedCents = d => (d > 0.005 ? '+' : d < -0.005 ? '−' : '±') + L.centsText(d);
+  let chartModel = null;   // what wireTrendChart() needs to drive the crosshair
 
-    // Trim to start at the first full month
-    // (e.g. if range starts mid-October, skip to November 1st)
-    if (cutoff.length > 2) {
-      const firstDate = cutoff[0].date;
-      const firstMonth = firstDate.getMonth();
-      const firstYear = firstDate.getFullYear();
-      // Find the first entry that's in the next month
-      const nextMonthStart = cutoff.findIndex(e => {
-        const m = e.date.getMonth();
-        const y = e.date.getFullYear();
-        return (y > firstYear) || (y === firstYear && m > firstMonth);
-      });
-      if (nextMonthStart > 0 && nextMonthStart < cutoff.length - 2) {
-        cutoff = cutoff.slice(nextMonthStart);
-      }
-    }
-
-    const prices = cutoff.map(e => e.price);
-    const minP = Math.min(...prices);
-    const maxP = Math.max(...prices);
-
-    // Wisconsin overlay: our own daily statewide history, clipped to the chart's
-    // date window. Daily points on a weekly axis need time-based x, not index-based.
-    // The window END extends to the freshest series: EIA publishes weekly with up
-    // to ~2 weeks of lag, and cutting at its last point would hide the newest —
-    // most newsworthy — days of the Wisconsin line.
-    const wiAll = getWIEntries(activeFuel);
-    const t0 = cutoff[0].date.getTime();
-    const lastEIA = cutoff[cutoff.length - 1].date.getTime();
-    const lastWI = wiAll ? wiAll[wiAll.length - 1].date.getTime() : 0;
-    const t1 = Math.max(lastEIA, lastWI);
-    const span = (t1 - t0) || 1;
-    const wi = wiAll ? wiAll.filter(e => e.date.getTime() >= t0 && e.date.getTime() <= t1) : [];
-    const hasWI = wi.length >= 2;
-
-    // Chart dimensions
-    const W = 600, H = 280;
-    const padL = 48, padR = 16, padT = 20, padB = 40;
-    const chartW = W - padL - padR;
-    const chartH = H - padT - padB;
-    const xOf = t => padL + ((t - t0) / span) * chartW;
-
-    // Y-axis: only 4 ticks max for a cleaner look. The domain covers both series
-    // (the min/max annotations and stat tiles stay EIA-only).
-    const wiPrices = wi.map(e => e.price);
-    const domainMin = wiPrices.length ? Math.min(minP, ...wiPrices) : minP;
-    const domainMax = wiPrices.length ? Math.max(maxP, ...wiPrices) : maxP;
-    const niceMin = Math.floor(domainMin * 20) / 20;
-    const niceMax = Math.ceil(domainMax * 20) / 20;
-    const niceRange = niceMax - niceMin || 0.05;
-    const yTicks = [];
-    const rawStep = niceRange / 3;
-    const step = rawStep <= 0.05 ? 0.05 : rawStep <= 0.1 ? 0.1 : rawStep <= 0.25 ? 0.25 : 0.5;
-    for (let v = niceMin; v <= niceMax + 0.001; v += step) {
-      yTicks.push(v);
-    }
-
-    // Build points
-    const points = cutoff.map(e => {
-      const x = xOf(e.date.getTime());
-      const y = padT + (1 - (e.price - niceMin) / niceRange) * chartH;
-      return { x, y, price: e.price, date: e.date };
-    });
-
-    const wiPath = hasWI ? wi.map((e, i) => {
-      const x = xOf(e.date.getTime());
-      const y = padT + (1 - (e.price - niceMin) / niceRange) * chartH;
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join('') : '';
-
-    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
-    const areaPath = linePath + `L${points[points.length-1].x.toFixed(1)},${padT + chartH}L${points[0].x.toFixed(1)},${padT + chartH}Z`;
-
-    // Grid + Y labels (horizontal lines only)
-    let grid = '';
-    for (const tick of yTicks) {
-      const y = padT + (1 - (tick - niceMin) / niceRange) * chartH;
-      grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#e8e5de" stroke-width="0.5"/>`;
-      grid += `<text x="${padL - 6}" y="${y + 3.5}" text-anchor="end" class="wpr-chart-axis-label" style="font-family:'Source Sans 3',sans-serif">$${tick.toFixed(2)}</text>`;
-    }
-
-    // X-axis month labels (no vertical gridlines)
-    let xLabels = '';
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    let lastMonth = -1;
-    for (const p of points) {
-      const mo = p.date.getMonth();
-      if (mo !== lastMonth) {
-        lastMonth = mo;
-        xLabels += `<text x="${p.x}" y="${H - 8}" text-anchor="middle" class="wpr-chart-axis-label">${months[mo]}</text>`;
-      }
-    }
-
-    // Invisible hover hit areas + tooltip dots for each data point
-    const months_full = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    let hitAreas = '';
-    const hitW = chartW / Math.max(cutoff.length - 1, 1);
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      const weekOf = `${months_full[p.date.getMonth()]} ${p.date.getDate()}, ${p.date.getFullYear()}`;
-      hitAreas += `
-        <g class="wpr-chart-hover-group" data-idx="${i}">
-          <rect x="${p.x.toFixed(1) - hitW/2}" y="${padT}" width="${hitW}" height="${chartH}" fill="transparent" class="wpr-chart-hit"/>
-          <line x1="${p.x.toFixed(1)}" y1="${padT}" x2="${p.x.toFixed(1)}" y2="${padT + chartH}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3,3" class="wpr-chart-crosshair" opacity="0"/>
-          <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="var(--accent)" stroke="#fff" stroke-width="2" class="wpr-chart-dot" opacity="0"/>
-          <g class="wpr-chart-tooltip" opacity="0" transform="translate(${p.x.toFixed(1)}, ${Math.max(p.y - 14, padT + 4).toFixed(1)})">
-            <rect x="-42" y="-24" width="84" height="26" rx="4" fill="var(--ink)" opacity="0.9"/>
-            <text x="0" y="-10" text-anchor="middle" fill="#fff" font-size="9" font-family="'Source Sans 3',sans-serif" font-weight="600">$${p.price.toFixed(3)}</text>
-            <text x="0" y="-1" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="7" font-family="'DM Sans',sans-serif">${weekOf}</text>
-          </g>
-        </g>`;
-    }
-
-    // Summary stats
-    const lastPt = points[points.length - 1];
-    const firstPt = points[0];
-    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const totalChange = lastPt.price - firstPt.price;
-    const changePct = ((totalChange / firstPt.price) * 100).toFixed(1);
-    const changeSign = totalChange > 0 ? '+' : '';
-    const changeColor = totalChange > 0 ? 'var(--up)' : totalChange < 0 ? 'var(--down)' : 'var(--neutral)';
-    const absChange = (totalChange >= 0 ? '+' : '−') + '$' + Math.abs(totalChange).toFixed(2);
-    const baseLabel = `since ${months[firstPt.date.getMonth()]} ${firstPt.date.getFullYear()}`;
-
-    // Points to annotate on the curve
-    const maxPt = points[prices.indexOf(maxP)];
-    const minPt = points[prices.indexOf(minP)];
-
-    const rangeLabel = trendRange === 26 ? '6 Month' : '12 Month';
-
-    const legend = hasWI ? `
-      <div class="wpr-trends-legend">
-        <span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch" style="background:var(--accent)"></span>Midwest · EIA weekly</span>
-        <span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch" style="background:var(--ink-mid)"></span>Wisconsin · GasBuddy daily</span>
-      </div>` : '';
-
-    return `
-      <div class="wpr-trends-stats">
-        <div class="wpr-trends-stat wpr-trends-stat-feature">
-          <span class="wpr-trends-stat-label">${hasWI ? 'Midwest Latest' : 'Latest'}</span>
-          <span class="wpr-trends-stat-value"><span class="wpr-dollar">$</span>${lastPt.price.toFixed(3)}</span>
-        </div>
-        <div class="wpr-trends-stat">
-          <span class="wpr-trends-stat-label">${rangeLabel} Avg</span>
-          <span class="wpr-trends-stat-value"><span class="wpr-dollar">$</span>${avg.toFixed(3)}</span>
-        </div>
-        <div class="wpr-trends-stat">
-          <span class="wpr-trends-stat-label">${rangeLabel} Low</span>
-          <span class="wpr-trends-stat-value" style="color:var(--down)"><span class="wpr-dollar">$</span>${minP.toFixed(3)}</span>
-        </div>
-        <div class="wpr-trends-stat">
-          <span class="wpr-trends-stat-label">${rangeLabel} High</span>
-          <span class="wpr-trends-stat-value" style="color:var(--up)"><span class="wpr-dollar">$</span>${maxP.toFixed(3)}</span>
-        </div>
-        <div class="wpr-trends-stat">
-          <span class="wpr-trends-stat-label">Overall Change</span>
-          <span class="wpr-trends-stat-value" style="color:${changeColor}">${changeSign}${changePct}%</span>
-          <span class="wpr-trends-stat-sub" style="color:${changeColor}">${absChange} ${baseLabel}</span>
-        </div>
-      </div>
-      ${legend}
-      <svg viewBox="0 0 ${W} ${H}" class="wpr-trends-svg" role="img"
-           aria-label="Line chart of ${fuelLabel(activeFuel)} gas price over the ${rangeLabel}${hasWI ? ', Midwest benchmark and Wisconsin daily average' : ''}, overall change ${changeSign}${changePct}%.">
-        <title>${fuelLabel(activeFuel)} price trend — ${rangeLabel}</title>
-        <defs>
-          <linearGradient id="wprTrendArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/>
-            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/>
-          </linearGradient>
-        </defs>
-        ${grid}
-        <path d="${areaPath}" fill="url(#wprTrendArea)"/>
-        <line x1="${padL}" y1="${lastPt.y.toFixed(1)}" x2="${W - padR}" y2="${lastPt.y.toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,3" opacity="0.45"/>
-        ${hasWI ? `<path d="${wiPath}" fill="none" stroke="var(--ink-mid)" stroke-width="1.5" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
-        <path d="${linePath}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-        <circle cx="${minPt.x.toFixed(1)}" cy="${minPt.y.toFixed(1)}" r="3.5" fill="var(--down)" stroke="#fff" stroke-width="1.5"/>
-        <text x="${minPt.x.toFixed(1)}" y="${(minPt.y + 15).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--down)" font-family="'Source Sans 3',sans-serif">$${minP.toFixed(2)}</text>
-        <circle cx="${maxPt.x.toFixed(1)}" cy="${maxPt.y.toFixed(1)}" r="3.5" fill="var(--up)" stroke="#fff" stroke-width="1.5"/>
-        <text x="${maxPt.x.toFixed(1)}" y="${(maxPt.y - 8).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--up)" font-family="'Source Sans 3',sans-serif">$${maxP.toFixed(2)}</text>
-        <circle cx="${lastPt.x}" cy="${lastPt.y}" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1.5"/>
-        ${xLabels}
-        ${hitAreas}
-      </svg>
-    `;
+  function trendSeries() {
+    const days = trendRange * 7;
+    const wiAll = (getWIEntries(activeFuel) || []).map(e => ({ t: e.date.getTime(), price: e.price }));
+    const mwAll = (getEIAEntries(activeFuel) || []).map(e => ({ t: e.date.getTime(), price: e.price }));
+    const lastT = Math.max(wiAll.length ? wiAll[wiAll.length - 1].t : 0, mwAll.length ? mwAll[mwAll.length - 1].t : 0);
+    const start = lastT - days * DAY_MS;
+    const wi = wiAll.filter(p => p.t >= start);
+    const mw = mwAll.filter(p => p.t >= start);
+    // The weekly line starts at the left edge, not at its first in-window week.
+    const edge = L.valueAt(mwAll, start);
+    const mwDraw = edge != null && (!mw.length || mw[0].t > start) ? [{ t: start, price: edge }, ...mw] : mw;
+    return { days, start, end: lastT, wi, mw, mwDraw };
   }
 
+  function niceStep(range) {
+    return range <= 0.45 ? 0.1 : range <= 1.2 ? 0.25 : range <= 2.5 ? 0.5 : 1;
+  }
+
+  function buildTrendChart(W) {
+    const narrow = W < 560;
+    const { days, start, end, wi, mw, mwDraw } = trendSeries();
+    const story = L.trendStory(wi.length >= 2 ? wi : null, mw, days, activeFuel);
+    if (!story) { chartModel = null; return '<div class="wpr-trends-empty">Not enough historical data available.</div>'; }
+    const lead = story.leadIsWI ? wi : mwDraw;
+    const bench = story.leadIsWI ? mwDraw : [];
+
+    const H = narrow ? 272 : 300;
+    const Lp = narrow ? 40 : 48, T = 18, B = 28;
+    const R = story.leadIsWI ? (narrow ? 96 : 196) : (narrow ? 74 : 120);
+    const fs = 11.5;
+    const X = t => Lp + (t - start) / (end - start) * (W - Lp - R);
+    const prices = lead.map(p => p.price).concat(bench.map(p => p.price));
+    const step = niceStep(Math.max(...prices) - Math.min(...prices));
+    const lo = Math.floor(Math.min(...prices) / step) * step;
+    const hi = Math.max(Math.ceil(Math.max(...prices) / step) * step, lo + step * 2);
+    const Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const path = pts => pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.price).toFixed(1)}`).join('');
+
+    let svg = '';
+    for (let v = lo; v <= hi + 1e-9; v += step) {
+      svg += `<line x1="${Lp}" x2="${W - R + 6}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="wpr-tr-grid"/>`
+        + `<text x="${Lp - 7}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="wpr-tr-ax" style="font-size:${fs}px">${money2(v)}</text>`;
+    }
+    const d0 = new Date(start);
+    let every = narrow && days > 200 ? 2 : 1, n = 0;
+    for (let m = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 1)); m.getTime() <= end; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
+      const x = X(m.getTime());
+      svg += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${H - B}" y2="${H - B + 4}" class="wpr-tr-tick"/>`;
+      if (n++ % every === 0) svg += `<text x="${(x + 3).toFixed(1)}" y="${H - 9}" class="wpr-tr-ax" style="font-size:${fs}px">${MON[m.getUTCMonth()]}</text>`;
+    }
+
+    // The gap: shaded wherever Wisconsin runs above the Midwest.
+    let hasGap = false;
+    if (story.leadIsWI && bench.length >= 2) {
+      const span = wi.filter(p => L.valueAt(bench, p.t) != null);
+      if (span.length >= 2) {
+        const top = span.map(p => { const m = L.valueAt(bench, p.t); if (p.price > m + 0.005) hasGap = true; return `${X(p.t).toFixed(1)},${Y(Math.max(p.price, m)).toFixed(1)}`; });
+        const bot = span.map(p => `${X(p.t).toFixed(1)},${Y(L.valueAt(bench, p.t)).toFixed(1)}`).reverse();
+        if (hasGap) svg += `<path d="M${top.concat(bot).join('L')}Z" class="wpr-tr-gap"/>`;
+      }
+    }
+    const lp = path(lead);
+    svg += `<path d="${lp}L${X(lead[lead.length - 1].t).toFixed(1)},${H - B}L${X(lead[0].t).toFixed(1)},${H - B}Z" class="wpr-tr-area"/>`;
+    if (bench.length >= 2) svg += `<path d="${path(bench)}" class="wpr-tr-bench"/>`;
+    svg += `<path d="${lp}" class="wpr-tr-line"/>`;
+
+    // Low point
+    const lx = X(story.low.t), ly = Y(story.low.price);
+    const lowText = `Low ${money2(story.low.price)} · ${L.shortDate(story.low.t)}`;
+    const lowLeft = lx > W - R - 120;
+    svg += `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" class="wpr-tr-lowdot"/>`
+      + `<text x="${(lowLeft ? lx - 9 : lx + 9).toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="${lowLeft ? 'end' : 'start'}" class="wpr-tr-note" style="font-size:${fs}px">${lowText}</text>`;
+
+    // End labels, nudged apart when the two lines finish close together.
+    const last = story.last, ex = X(last.t);
+    let ey = Y(last.price);
+    const leadName = story.leadIsWI ? 'Wisconsin' : 'Midwest';
+    const sub = story.isHigh ? (story.covers ? (days > 200 ? '12-month high' : '6-month high') : 'highest tracked')
+      : story.isLow ? (story.covers ? (days > 200 ? '12-month low' : '6-month low') : 'lowest tracked') : L.shortDate(last.t);
+    svg += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="5" class="wpr-tr-enddot"/>`;
+    const labelX = (ex + 12).toFixed(1);
+    if (story.leadIsWI && story.mwLast) {
+      const mx = X(story.mwLast.t), my0 = Y(story.mwLast.price);
+      svg += `<circle cx="${mx.toFixed(1)}" cy="${my0.toFixed(1)}" r="4" class="wpr-tr-benchdot"/>`;
+      let a = ey, b = my0;
+      const minGap = narrow ? 34 : 32;
+      if (Math.abs(a - b) < minGap) { const mid = (a + b) / 2, dir = a <= b ? -1 : 1; a = mid + dir * minGap / 2; b = mid - dir * minGap / 2; }
+      const two = (y, name, price, note) => narrow
+        ? `<text x="${labelX}" y="${(y - 1).toFixed(1)}" class="wpr-tr-endlbl" style="font-size:${fs}px">${name}</text><text x="${labelX}" y="${(y + 13).toFixed(1)}" class="wpr-tr-note" style="font-size:${fs}px">${price}</text>`
+        : `<text x="${labelX}" y="${(y - 1).toFixed(1)}" class="wpr-tr-endlbl">${name} ${price}</text><text x="${labelX}" y="${(y + 14).toFixed(1)}" class="wpr-tr-note">${note}</text>`;
+      svg += two(a, 'Wisconsin', money2(last.price), sub);
+      svg += two(b, 'Midwest', money2(story.mwLast.price), 'EIA, week of ' + L.shortDate(story.mwLast.t));
+      if (!narrow && Math.abs(ey - my0) >= 22) {
+        const bx = ex + 150;
+        svg += `<path d="M${bx - 5},${ey.toFixed(1)}H${bx}V${my0.toFixed(1)}H${bx - 5}" class="wpr-tr-bracket"/>`
+          + `<text x="${bx + 5}" y="${((ey + my0) / 2 - 2).toFixed(1)}" class="wpr-tr-endlbl">${signedCents(story.gap)}</text>`
+          + `<text x="${bx + 5}" y="${((ey + my0) / 2 + 12).toFixed(1)}" class="wpr-tr-note" style="font-size:10px">gap</text>`;
+      }
+    } else {
+      svg += `<text x="${labelX}" y="${(ey - 1).toFixed(1)}" class="wpr-tr-endlbl" style="font-size:${fs}px">${narrow ? money2(last.price) : `${leadName} ${money2(last.price)}`}</text>`
+        + `<text x="${labelX}" y="${(ey + 13).toFixed(1)}" class="wpr-tr-note" style="font-size:${fs}px">${sub}</text>`;
+    }
+
+    // Crosshair (driven by wireTrendChart; hidden until hover, tap or arrow keys)
+    svg += `<g class="wpr-tr-hover" style="display:none">
+        <line class="wpr-tr-cross" y1="${T}" y2="${H - B}"/>
+        <circle class="wpr-tr-hdot" r="4.5"/><circle class="wpr-tr-hbench" r="4"/>
+        <g class="wpr-tr-tip"><rect rx="6" class="wpr-tr-tipbox"/><text class="wpr-tr-tiptxt"></text></g>
+      </g>
+      <rect class="wpr-tr-hit" x="${Lp}" y="${T}" width="${W - Lp - R}" height="${H - T - B}" fill="transparent"/>`;
+
+    chartModel = { W, H, T, B, Lp, R, X, Y, lead, bench: story.leadIsWI ? mw : [], leadIsWI: story.leadIsWI, narrow };
+
+    const aria = `${story.headline}. ${story.dek} Use the left and right arrow keys to read values.`;
+    return { story, hasGap, svg: `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>` };
+  }
 
   function renderTrends() {
     const fuels = ['regular', 'mid_grade', 'premium', 'diesel'];
     const ranges = [{ weeks: 26, label: '6 Month' }, { weeks: 52, label: '12 Month' }];
-
-    let fuelBtns = fuels.map(f =>
+    const fuelBtns = fuels.map(f =>
       `<button type="button" aria-pressed="${activeFuel === f}" class="wpr-gas-fuel-btn ${activeFuel === f ? 'active' : ''}" data-fuel="${f}">${fuelLabel(f)}</button>`
     ).join('');
-
-    let rangeBtns = ranges.map(r =>
+    const rangeBtns = ranges.map(r =>
       `<button type="button" aria-pressed="${trendRange === r.weeks}" class="wpr-gas-fuel-btn ${trendRange === r.weeks ? 'active' : ''}" data-range="${r.weeks}">${r.label}</button>`
     ).join('');
+    const controls = `<div class="wpr-gas-fuel-row wpr-trends-btn-row">${fuelBtns}<span class="wpr-trends-btn-divider"></span>${rangeBtns}</div>`;
 
-    let chartContent = '';
     if (!eiaAllData || usingSampleData) {
-      chartContent = '<div class="wpr-trends-empty">Loading historical data…</div>';
+      chartModel = null;
       loadEIAData().then(() => render());
-    } else {
-      const entries = getEIAEntries(activeFuel);
-      if (!entries || entries.length < 2) {
-        chartContent = '<div class="wpr-trends-empty">Not enough historical data available.</div>';
-      } else {
-        chartContent = buildChart(entries);
+      return controls + '<div class="wpr-trends-empty">Loading historical data…</div>';
+    }
+    const built = buildTrendChart(frameW() - 2 * padX());
+    if (typeof built === 'string') return controls + built;
+    const { story, hasGap, svg } = built;
+    const rangeLabel = trendRange === 26 ? 'last 6 months' : 'last 12 months';
+
+    const tiles = story.leadIsWI ? [
+      ['wpr-tr-tile-hero', 'Wisconsin today', moneyH(story.last.price), L.shortDate(story.last.t)],
+      ['', 'Since ' + L.shortDate(story.first.t), `<span class="${story.change > 0.005 ? 'up-color' : story.change < -0.005 ? 'down-color' : ''}">${signedCents(story.change)}</span>`,
+        `${story.change >= 0 ? '+' : '−'}${Math.abs(story.change / story.first.price * 100).toFixed(1)}% · from ${money2(story.first.price)}`],
+      ['', story.covers ? (trendRange === 26 ? '6-month low' : '12-month low') : 'Low since ' + L.shortDate(story.first.t), moneyH(story.low.price), L.shortDate(story.low.t)],
+      story.gap != null
+        ? ['', 'vs Midwest', `<span class="${story.gap > 0.005 ? 'up-color' : story.gap < -0.005 ? 'down-color' : ''}">${signedCents(story.gap)}</span>`, `Midwest ${money2(story.mwLast.price)} · ${L.shortDate(story.mwLast.t)}`]
+        : ['', 'High', moneyH(story.high.price), L.shortDate(story.high.t)],
+    ] : [
+      ['wpr-tr-tile-hero', 'Midwest latest', moneyH(story.last.price), 'week of ' + L.shortDate(story.last.t)],
+      ['', 'Since ' + L.shortDate(story.first.t), `<span class="${story.change > 0.005 ? 'up-color' : story.change < -0.005 ? 'down-color' : ''}">${signedCents(story.change)}</span>`, `from ${money2(story.first.price)}`],
+      ['', 'Low', moneyH(story.low.price), L.shortDate(story.low.t)],
+      ['', 'High', moneyH(story.high.price), L.shortDate(story.high.t)],
+    ];
+    const tileHtml = tiles.map(([cls, label, value, sub]) =>
+      `<div class="wpr-tr-tile ${cls}"><div class="wpr-tr-tile-l">${label}</div><div class="wpr-tr-tile-v">${value}</div><div class="wpr-tr-tile-s">${sub}</div></div>`).join('');
+
+    const legend = story.leadIsWI ? `
+      <div class="wpr-tr-legend">
+        <span><i class="wpr-tr-sw"></i>Wisconsin · WPR daily tracking</span>
+        <span><i class="wpr-tr-sw wpr-tr-sw-dash"></i>Midwest · U.S. EIA weekly</span>
+        ${hasGap ? '<span><i class="wpr-tr-sw wpr-tr-sw-gap"></i>Wisconsin above the Midwest</span>' : ''}
+      </div>` : `<div class="wpr-tr-legend"><span>U.S. EIA weekly Midwest benchmark${usingSampleData ? ' · sample data' : ''}</span></div>`;
+
+    return `${controls}
+      <div class="wpr-tr">
+        <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · ${rangeLabel}</div>
+        <h3 class="wpr-tr-title">${esc(story.headline)}</h3>
+        <p class="wpr-tr-dek">${esc(story.dek)}</p>
+        <div class="wpr-tr-tiles">${tileHtml}</div>
+        ${legend}
+        ${svg}
+      </div>`;
+  }
+
+  // Crosshair: one readout of both lines at any date — mouse, touch or arrow keys.
+  function wireTrendChart() {
+    const svg = widget.querySelector('.wpr-tr-svg');
+    if (!svg || !chartModel) return;
+    const m = chartModel, g = svg.querySelector('.wpr-tr-hover'), hit = svg.querySelector('.wpr-tr-hit');
+    const cross = g.querySelector('.wpr-tr-cross'), hdot = g.querySelector('.wpr-tr-hdot'), hb = g.querySelector('.wpr-tr-hbench');
+    const tip = g.querySelector('.wpr-tr-tip'), box = g.querySelector('.wpr-tr-tipbox'), txt = g.querySelector('.wpr-tr-tiptxt');
+    let idx = m.lead.length - 1;
+    const NS = 'http://www.w3.org/2000/svg';
+    const line = (text, y, cls) => { const t = document.createElementNS(NS, 'tspan'); t.setAttribute('x', 10); t.setAttribute('y', y); if (cls) t.setAttribute('class', cls); t.textContent = text; return t; };
+    function show(i) {
+      idx = Math.max(0, Math.min(m.lead.length - 1, i));
+      const p = m.lead[idx], x = m.X(p.t), y = m.Y(p.price);
+      g.style.display = '';
+      cross.setAttribute('x1', x); cross.setAttribute('x2', x);
+      hdot.setAttribute('cx', x); hdot.setAttribute('cy', y);
+      txt.replaceChildren();
+      const d = new Date(p.t);
+      txt.appendChild(line(`${MON[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`, 18, 'wpr-tr-tip-h'));
+      txt.appendChild(line(`${m.leadIsWI ? 'Wisconsin' : 'Midwest'}  ${money2(p.price)}`, 36));
+      let rows = 2;
+      const w = m.leadIsWI ? L.readingAtOrBefore(m.bench, p.t) : null;
+      if (w) {
+        hb.style.display = ''; hb.setAttribute('cx', m.X(w.t)); hb.setAttribute('cy', m.Y(w.price));
+        txt.appendChild(line(`Midwest  ${money2(w.price)}  (wk of ${L.shortDate(w.t)})`, 53));
+        const gap = p.price - w.price;
+        txt.appendChild(line(Math.abs(gap) < 0.005 ? 'Level with the Midwest' : `WI ${L.centsText(gap)} ${gap > 0 ? 'above' : 'below'}`, 70, 'wpr-tr-tip-s'));
+        rows = 4;
+      } else hb.style.display = 'none';
+      const bw = m.leadIsWI ? 196 : 130, bh = 12 + rows * 17;
+      box.setAttribute('width', bw); box.setAttribute('height', bh);
+      const tx = x + 12 + bw > m.W - 4 ? x - 12 - bw : x + 12;
+      tip.setAttribute('transform', `translate(${Math.max(m.Lp, tx)},${m.T + 4})`);
+    }
+    const hide = () => { g.style.display = 'none'; };
+    const at = evt => {
+      const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
+      const sx = pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+      let best = 0, bd = Infinity;
+      m.lead.forEach((p, i) => { const dd = Math.abs(m.X(p.t) - sx); if (dd < bd) { bd = dd; best = i; } });
+      return best;
+    };
+    hit.addEventListener('pointermove', e => show(at(e)));
+    hit.addEventListener('pointerdown', e => show(at(e)));
+    hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
+    svg.addEventListener('keydown', e => {
+      const stepBy = m.leadIsWI ? 1 : 1;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); show(idx - stepBy); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); show(idx + stepBy); }
+      else if (e.key === 'Home') { e.preventDefault(); show(0); }
+      else if (e.key === 'End') { e.preventDefault(); show(m.lead.length - 1); }
+      else if (e.key === 'Escape') hide();
+    });
+    svg.addEventListener('blur', hide);
+  }
+
+  // ── Metro map + strip plot ──
+  // Color answers one question — above or below the state average for the active
+  // fuel — diverging cool (cheaper) / gray (within 5¢) / warm (pricier).
+  const BIN_COLORS = ['#2d6259', '#7fb3aa', '#cfcfca', '#e39a88', '#b3362a'];
+  const FUEL_WORD = { regular: 'regular gas', mid_grade: 'mid-grade', premium: 'premium', diesel: 'diesel' };
+
+  // "An 87¢ spread", "a 61¢ spread": the article follows how the figure is spoken.
+  const spreadPhrase = c => (/^(8\d?|11|18)¢/.test(c) ? "An " : "A ") + c;
+
+  // Label collision needs real text widths; a per-character guess overstates
+  // them and pushed every candidate spot off the map.
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  function textW(str, size, weight = 700) {
+    measureCtx.font = `${weight} ${size}px "DM Sans", sans-serif`;
+    return measureCtx.measureText(str).width * 1.04;
+  }
+
+  function buildMetroMap() {
+    const outline = self.WPR_WI_OUTLINE;
+    const avg = data.statewide?.current_avg?.[activeFuel];
+    if (!outline || typeof avg !== 'number') return '';
+    const ranked = L.rankMetros(data.metros, activeFuel, avg).filter(r => L.CITY_COORDS[r.name]);
+    if (ranked.length < 3) return '';
+    const cheap = ranked[0], dear = ranked[ranked.length - 1];
+    const me = ranked.find(r => r.name === 'Wausau');
+    const [VW, VH] = outline.viewBox;
+    // The side column (rankings + callout) sits beside the map above 640px.
+    const colW = frameW() - 2 * padX(), mapW = frameW() > 640 ? colW - 204 : Math.min(colW, 440);
+    const u = VW / mapW, narrow = mapW < 400;   // viewBox units per screen px
+    const fs = 11.5 * u, r = 7.5 * u;
+    const pos = {};
+    ranked.forEach(m => { pos[m.name] = L.projectWI(L.CITY_COORDS[m.name][0], L.CITY_COORDS[m.name][1], outline.proj); });
+
+    let svg = `<path d="${outline.path}" class="wpr-map-land"/>`;
+    const [lkx, lky] = L.projectWI(43.55, -86.95, outline.proj);
+    svg += `<text x="${lkx.toFixed(0)}" y="${lky.toFixed(0)}" class="wpr-map-water" text-anchor="middle" style="font-size:${fs - 1}px">Lake</text><text x="${lkx.toFixed(0)}" y="${(lky + fs + 1).toFixed(0)}" class="wpr-map-water" text-anchor="middle" style="font-size:${fs - 1}px">Michigan</text>`;
+
+    // Boxes already taken (labels, dots, the ring caption) so labels never collide.
+    const taken = ranked.map(m => { const [x, y] = pos[m.name]; return { x0: x - r - 2, x1: x + r + 2, y0: y - r - 2, y1: y + r + 2, own: m.name }; });
+    const clear = (b, own) => b.x0 >= 2 && b.x1 <= VW - 2 && b.y0 >= 2 && b.y1 <= VH - 2
+      && !taken.some(t => t.own !== own && !(b.x1 < t.x0 || b.x0 > t.x1 || b.y1 < t.y0 || b.y0 > t.y1));
+
+    // Ring the central region when it holds most of the priciest metros.
+    const share = L.centralShare(ranked);
+    if (share.count >= 4) {
+      const pts = L.CENTRAL_WI.filter(n => pos[n]).map(n => pos[n]);
+      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+      const rx = (Math.max(...xs) - Math.min(...xs)) / 2 + 24, ry = (Math.max(...ys) - Math.min(...ys)) / 2 + 22;
+      svg += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" class="wpr-map-ring"/>`;
+      const cap1 = narrow ? 'Central WI' : 'Central Wisconsin';
+      const cap2 = share.count === share.of ? `all ${share.of} priciest${narrow ? '' : ' metros'}`
+        : narrow ? `${share.count} of ${share.of} priciest` : `${share.count} of the ${share.of} priciest metros`;
+      const cw = Math.max(textW(cap1, fs), textW(cap2, fs - 0.5, 400));
+      // First spot (two lines of text) that clears every dot: below-left, below-right, left, right.
+      const spots = [
+        [cx - rx * 0.62, cy + ry * 0.86 + fs, 'end'], [cx + rx * 0.62, cy + ry * 0.86 + fs, 'start'],
+        [cx - rx - 6, cy - fs * 0.4, 'end'], [cx + rx + 6, cy - fs * 0.4, 'start'],
+        [cx - rx * 0.55, cy - ry - fs - 8, 'end'], [cx + rx * 0.55, cy - ry - fs - 8, 'start'],
+      ];
+      const box = ([x, y, a]) => ({ x0: a === 'end' ? x - cw : x, x1: a === 'end' ? x : x + cw, y0: y - fs, y1: y + fs + 4, own: '' });
+      const spot = spots.find(sp => clear(box(sp), '')) || spots[0];
+      const [capX, capY, capA] = spot;
+      svg += `<text x="${capX.toFixed(1)}" y="${capY.toFixed(1)}" text-anchor="${capA}" class="wpr-map-lbl" style="font-size:${fs}px">${cap1}</text>`
+        + `<text x="${capX.toFixed(1)}" y="${(capY + fs + 2).toFixed(1)}" text-anchor="${capA}" class="wpr-map-sub" style="font-size:${fs - 0.5}px">${cap2}</text>`;
+      taken.push(box(spot));
+    }
+
+    // Dots: Wausau ringed; every dot is a button that opens its city in the list.
+    ranked.slice().sort((a, b) => L.CITY_COORDS[b.name][0] - L.CITY_COORDS[a.name][0]).forEach(m => {
+      const [x, y] = pos[m.name], rel = m.price - avg;
+      const desc = `${m.name} ${money2(m.price)}, ${Math.abs(rel) < 0.005 ? 'at' : L.centsText(rel) + (rel > 0 ? ' above' : ' below')} the state average`;
+      if (m.name === 'Wausau') svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r + 4}" class="wpr-map-me"/>`;
+      svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${BIN_COLORS[m.bin]}" class="wpr-map-dot" data-city="${esc(m.name)}" tabindex="0" role="button" aria-label="${esc(desc)}"><title>${esc(desc)}</title></circle>`;
+    });
+
+    // Labels: Wausau, the two extremes, then the big metros — each placed where it fits.
+    const want = ['Wausau', cheap.name, dear.name, 'Superior', 'Eau Claire', 'La Crosse', 'Green Bay', 'Madison', 'Milwaukee', 'Rhinelander'];
+    const seen = new Set();
+    for (const name of want) {
+      if (seen.has(name) || !pos[name]) continue;
+      seen.add(name);
+      const m = ranked.find(q => q.name === name), [x, y] = pos[name];
+      const w = textW(name + ' ', fs) + textW(money2(m.price), fs, 500);
+      const tries = [
+        [x + r + 4, y + fs * 0.35, 'start'], [x - r - 4 - (name === 'Wausau' ? 4 : 0), y + fs * 0.35, 'end'],
+        [x, y - r - 6, 'middle'], [x, y + r + fs + 4, 'middle'],
+      ];
+      for (const [tx, ty, anchor] of tries) {
+        const x0 = anchor === 'start' ? tx : anchor === 'end' ? tx - w : tx - w / 2;
+        const b = { x0, x1: x0 + w, y0: ty - fs, y1: ty + 3, own: name };
+        if (!clear(b, name)) continue;
+        taken.push(b);
+        svg += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anchor}" class="wpr-map-lbl" style="font-size:${fs}px">${esc(name)} <tspan class="wpr-map-price">${money2(m.price)}</tspan></text>`;
+        break;
       }
     }
 
-    const rangeLabel = ranges.find(r => r.weeks === trendRange)?.label || '6 Month';
-    const fuelName = fuelLabel(activeFuel);
-    const hasWI = !!getWIEntries(activeFuel);
-    const title = hasWI ? `${fuelName} · ${rangeLabel}` : `Midwest Region · ${fuelName} · ${rangeLabel}`;
-    const note = hasWI
-      ? 'The Wisconsin line is WPR&#8217;s own daily statewide tracking via GasBuddy; the Midwest line is the U.S. EIA&#8217;s weekly regional benchmark (tap or hover it for values).'
-      : 'Regional benchmark from the U.S. EIA — broader than the Wisconsin prices on the other tabs.';
+    const scale = L.PRICE_BINS.map((label, i) => `<div><i style="background:${BIN_COLORS[i]}"></i>${label}</div>`).join('');
+    const row = m => `<div class="wpr-map-rank-row${m.name === 'Wausau' ? ' me' : ''}"><span class="wpr-map-rank-dot" style="background:${BIN_COLORS[m.bin]}"></span><span class="wpr-map-rank-n">${esc(m.name)}</span><span class="wpr-map-rank-p">${moneyH(m.price)}</span></div>`;
+    let callout = '';
+    if (me) {
+      const rel = me.price - avg;
+      const where = Math.abs(rel) < 0.01 ? 'right at the state average' : `${L.centsText(rel)} ${rel > 0 ? 'above' : 'below'} the state average`;
+      const st = (data.metros.Wausau.stations || []).filter(s => typeof s.prices?.[activeFuel] === 'number')
+        .sort((a, b) => a.prices[activeFuel] - b.prices[activeFuel])[0];
+      callout = `<div class="wpr-map-callout"><b>Wausau ${money2(me.price)}</b> — ${where}, #${ranked.indexOf(me) + 1} cheapest of ${ranked.length}.${st ? ` Cheapest nearby: <b>${esc(st.name)}</b> at ${money2(st.prices[activeFuel])}.` : ''}</div>`;
+    }
 
     return `
-      <div class="wpr-gas-fuel-row wpr-trends-btn-row">
-        ${fuelBtns}
-        <span class="wpr-trends-btn-divider"></span>
-        ${rangeBtns}
-      </div>
-      <div class="wpr-trends-chart-wrap">
-        <div class="wpr-trends-title">${title}</div>
-        <div class="wpr-trends-note">${note}</div>
-        ${chartContent}
-      </div>
-    `;
+      <div class="wpr-map">
+        <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · state average ${money2(avg)}</div>
+        <h3 class="wpr-tr-title">Where ${FUEL_WORD[activeFuel] || 'gas'} costs more, and less, than the state average</h3>
+        <p class="wpr-tr-dek">${spreadPhrase(L.centsText(dear.price - cheap.price))} spread across the state: cheapest in <b>${esc(cheap.name)}</b> (${money2(cheap.price)}), priciest in <b>${esc(dear.name)}</b> (${money2(dear.price)}).</p>
+        <div class="wpr-map-grid">
+          <div>
+            <svg viewBox="0 0 ${VW} ${VH}" class="wpr-map-svg" role="group" aria-label="Map of Wisconsin metro ${fuelLabel(activeFuel).toLowerCase()} prices compared with the state average">${svg}</svg>
+            <div class="wpr-map-scale">${scale}</div>
+          </div>
+          <div class="wpr-map-side">
+            <div class="wpr-map-rank">
+              <div class="wpr-map-rank-h">Cheapest</div>${ranked.slice(0, 3).map(row).join('')}
+              <div class="wpr-map-rank-h" style="margin-top:10px">Priciest</div>${ranked.slice(-3).reverse().map(row).join('')}
+            </div>
+            ${callout}
+          </div>
+        </div>
+        ${buildStrip(ranked, avg, colW)}
+      </div>`;
+  }
+
+  // Every metro on one price line, so the whole spread is visible in ~90px.
+  function buildStrip(ranked, avg, W) {
+    const H = 116, Lp = 18, Rp = 18, cy = 58, fs = 11.5;
+    const lo0 = ranked[0].price, hi0 = ranked[ranked.length - 1].price;
+    const step = (hi0 - lo0) <= 0.45 ? 0.1 : (hi0 - lo0) <= 1 ? 0.2 : 0.5;
+    const lo = Math.floor(Math.min(lo0, avg) / step) * step, hi = Math.ceil(Math.max(hi0, avg) / step) * step;
+    const X = v => Lp + (v - lo) / (hi - lo) * (W - Lp - Rp);
+    let svg = `<line x1="${Lp}" x2="${W - Rp}" y1="${cy}" y2="${cy}" class="wpr-strip-axis"/>`;
+    for (let v = lo; v <= hi + 1e-9; v += step) svg += `<text x="${X(v).toFixed(1)}" y="${H - 4}" text-anchor="middle" class="wpr-tr-ax" style="font-size:${fs}px">${money2(v)}</text>`;
+    svg += `<line x1="${X(avg).toFixed(1)}" x2="${X(avg).toFixed(1)}" y1="${cy - 36}" y2="${cy + 26}" class="wpr-strip-avg"/>`
+      + `<text x="${X(avg).toFixed(1)}" y="${cy - 41}" text-anchor="middle" class="wpr-tr-note" style="font-size:${fs - 1}px">State ${money2(avg)}</text>`;
+    const placed = [];
+    for (const m of ranked) {
+      const x = X(m.price);
+      const used = placed.filter(p => Math.abs(p.x - x) < 10).map(p => p.dy);
+      const dy = [0, -10, 10, -20, 20].find(c => !used.includes(c)) ?? 0;
+      placed.push({ x, dy });
+      if (m.name === 'Wausau') svg += `<circle cx="${x.toFixed(1)}" cy="${cy + dy}" r="9" class="wpr-map-me"/>`;
+      svg += `<circle cx="${x.toFixed(1)}" cy="${cy + dy}" r="5.5" fill="${BIN_COLORS[m.bin]}" class="wpr-map-dot" data-city="${esc(m.name)}"><title>${esc(m.name)} ${money2(m.price)}</title></circle>`;
+    }
+    const lab = (m, y, anchor) => {
+      let x = X(m.price), a = anchor;
+      if (x < 50) a = 'start'; else if (x > W - 50) a = 'end';
+      return `<text x="${x.toFixed(1)}" y="${y}" text-anchor="${a}" class="wpr-map-lbl" style="font-size:${fs}px">${esc(m.name)}</text>`;
+    };
+    const me = ranked.find(m => m.name === 'Wausau');
+    svg += lab(ranked[0], cy - 29, 'middle') + lab(ranked[ranked.length - 1], cy - 29, 'middle');
+    if (me && me !== ranked[0] && me !== ranked[ranked.length - 1]) svg += lab(me, cy + 38, 'middle');
+    return `<div class="wpr-strip"><div class="wpr-map-rank-h">All ${ranked.length} metros on one line</div>
+      <svg viewBox="0 0 ${W} ${H}" class="wpr-strip-svg" role="img" aria-label="${esc(`${fuelLabel(activeFuel)} prices for ${ranked.length} metros, from ${money2(lo0)} in ${ranked[0].name} to ${money2(hi0)} in ${ranked[ranked.length - 1].name}; state average ${money2(avg)}`)}">${svg}</svg></div>`;
+  }
+
+  // Map and strip dots open that city's row (with its cheapest stations) in the list.
+  function wireMetroMap() {
+    widget.querySelectorAll('.wpr-map-dot[data-city]').forEach(dot => {
+      const open = () => {
+        expandedCity = dot.getAttribute('data-city');
+        render();
+        const card = [...widget.querySelectorAll('.wpr-metro-card[data-city]')].find(c => c.dataset.city === expandedCity);
+        if (card) { card.scrollIntoView({ block: 'center' }); card.focus({ preventScroll: true }); }
+      };
+      dot.addEventListener('click', open);
+      dot.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
   }
 
   // ── Home Heating Tab ──
@@ -1139,7 +1392,14 @@
   }
 
   // Re-post height when the embed width changes (reflow) or fonts finish loading.
-  window.addEventListener('resize', postHeight);
+  let lastFrameW = null, resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    postHeight();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (data && lastFrameW !== null && frameW() !== lastFrameW) render();
+    }, 150);
+  });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(postHeight);
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
