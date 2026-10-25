@@ -217,6 +217,17 @@ The image is regenerated on every scheduled run (via a headless Chromium screens
 `docs/digest.html`), so it always shows the latest prices. Design lives in
 `docs/digest.html`; the renderer is `scripts/render-digest.mjs`.
 
+### 8. Social media card
+
+The same runs also bake a **1080×1080 square** for Facebook and Instagram posts:
+
+`https://rowanflynnpilot.github.io/wpr-gas-prices/social.png`
+
+It shows the statewide regular average, the week's headline (for example "Wisconsin
+regular gas is up 30¢ in a week"), a 30-day line, and Wausau, the cheapest metro and
+the priciest metro. Download it from that URL and attach it to a post, with a link to
+the tracker page in the post text. Design lives in `docs/social.html`.
+
 ---
 
 ## Schedule
@@ -333,6 +344,7 @@ PRIORITY_METROS = ["Wausau", "Eau Claire", "Green Bay", "Appleton", "Madison", "
 | `requirements.txt` | Python dependencies (`requests`, `curl_cffi`) | Rarely |
 | `.github/workflows/update-gas-prices.yml` | Automation schedule | Rowan |
 | `docs/index.html` | The widget UI | Rowan |
+| `docs/social.png` | Square social media card, rebuilt each run | **Never by hand** |
 | `docs/annotations.json` | Newsroom notes on the trend chart | **The newsroom**, by hand (see above) |
 | `docs/wi-outline.js` | Wisconsin outline for the Metro tab map | **Never by hand** — `scripts/build-wi-outline.py` makes it |
 | `docs/gas_prices.json` | Live price data | **Never by hand** — the scraper owns it |

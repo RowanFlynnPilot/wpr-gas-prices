@@ -314,6 +314,11 @@ if (-not $SkipDigest) {
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "[warn] Digest render failed; publishing JSON anyway." -ForegroundColor Yellow
             }
+            # The square social card (Facebook / Instagram), from the same data.
+            node .\scripts\render-digest.mjs 'http://127.0.0.1:4180/social.html' 'docs/social.png' '.social-card' 1080 1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "[warn] Social card render failed; publishing JSON anyway." -ForegroundColor Yellow
+            }
         }
     } finally {
         if ($server -and -not $server.HasExited) {
@@ -329,7 +334,8 @@ $Tracked = @(
     'docs/eia_weekly.json',
     'docs/eia_context.json',
     'docs/eia_heating.json',
-    'docs/digest.png'
+    'docs/digest.png',
+    'docs/social.png'
 )
 foreach ($f in $Tracked) {
     if (Test-Path $f) { git add $f }

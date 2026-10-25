@@ -82,8 +82,9 @@ jobs:
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
         run: python scrape_gas_prices.py --output docs/gas_prices.json
 
-      # Bake the fresh data into a static PNG for the email newsletter (email can't
-      # embed the live widget). See scripts/render-digest.mjs.
+      # Bake the fresh data into static PNGs: the email newsletter digest (email
+      # can't embed the live widget) and the square social card for Facebook /
+      # Instagram posts. See scripts/render-digest.mjs.
       #
       # These run with `!cancelled()` rather than on success: the scraper is designed
       # to fail soft, but if it ever dies hard the digest must still be re-rendered
@@ -117,7 +118,7 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Render newsletter digest image
+      - name: Render newsletter digest and social card images
         id: render
         if: ${{ !cancelled() }}
         run: |
@@ -127,6 +128,7 @@ jobs:
             sleep 1
           done
           node scripts/render-digest.mjs http://127.0.0.1:4180/digest.html docs/digest.png
+          node scripts/render-digest.mjs http://127.0.0.1:4180/social.html docs/social.png .social-card 1080 1
 
       - name: Commit and push updated data
         if: ${{ !cancelled() }}
@@ -139,6 +141,7 @@ jobs:
           git add docs/eia_context.json || true
           git add docs/eia_heating.json || true
           git add docs/digest.png || true
+          git add docs/social.png || true
           if git diff --staged --quiet; then
             echo "No price changes detected, skipping commit."
           else

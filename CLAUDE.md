@@ -129,17 +129,19 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `.github/workflows/tests.yml` | CI: runs pytest on push/PR | Rarely |
 | `docs/index.html` | The widget UI, full 720px layout (reads the JSON) | Yes — design/colors |
 | `docs/index-compact.html` | Compact 360px widget variant for narrow embeds (same JSON) | Yes — keep in sync with index.html |
-| `docs/widget-logic.js` | Pure logic shared by both widgets (deltas, history ordering, station extremes, sorting, escaping, trend story, map bins) | Yes — with its tests; bump `?v=` in **all three** pages (index, compact, digest) |
+| `docs/widget-logic.js` | Pure logic shared by both widgets (deltas, history ordering, station extremes, sorting, escaping, trend story, map bins) | Yes — with its tests; bump `?v=` in **all four** pages (index, compact, digest, social) |
 | `docs/wi-outline.js` | Wisconsin outline path + projection constants for the Metro tab map | **Never by hand** — `scripts/build-wi-outline.py` generates it |
 | `scripts/build-wi-outline.py` | One-off: Natural Earth 1:10m states (lakes clipped) → projected, simplified `docs/wi-outline.js` | Rarely |
 | `tests/widget-logic.test.mjs` | Node tests for that file — evaluates the exact script the browser loads | Yes — when changing widget logic |
 | `tests/data-contract.test.mjs` | The **data contract**: real `docs/*.json` must satisfy what the widgets read; gates the update workflow's commit | Yes — when the JSON schema changes |
 | `docs/embed.js` | Host-side iframe autosize; unusable on WPR until Cloudflare allows `<script src>` in post saves | Rarely |
 | `docs/digest.html` | Newsletter digest **card** (reads the JSON) — rendered to a PNG for email | Yes — design |
-| `scripts/render-digest.mjs` | Playwright: screenshots `digest.html` → `docs/digest.png` (2×, Central TZ) | Rarely |
+| `docs/social.html` | 1080×1080 social **card** (reads the JSON + `widget-logic.js`) — rendered to `docs/social.png` | Yes — design |
+| `scripts/render-digest.mjs` | Playwright: screenshots a card page → PNG (`digest.html` → `digest.png` at 2×; `social.html` → `social.png` at 1080×1080, 1×; Central TZ) | Rarely |
 | `scripts/update-gas-prices.ps1` | **Standby** local runner (Task Scheduler); scrapes only when CI's data is stale | Yes |
 | `package.json` / `package-lock.json` | Node deps for the digest renderer (Playwright only) | Rarely |
 | `docs/digest.png` | Baked newsletter image (twice-daily) at a stable Pages URL | **Never by hand** — CI owns it |
+| `docs/social.png` | Baked 1080×1080 social card (twice-daily) at a stable Pages URL | **Never by hand** — the runners own it |
 | `docs/annotations.json` | Newsroom notes for the trend chart | **The newsroom**, by hand — format checked by `tests/annotations.test.mjs` |
 | `docs/wpr-logo.jpg` | WPR logo asset used by the digest card | Rarely |
 | `docs/gas_prices.json` | Main output | **Never by hand** — scraper owns it |
@@ -514,6 +516,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
     carry `if: ${{ !cancelled() }}` so a hard scraper failure can't skip the digest —
     AAA and EIA may have refreshed even when GasBuddy didn't. The PNG only *commits*
     when its pixels actually change, so an unchanged day is a no-op, not churn.
+  - **The social card rides along.** The same render step (`id: render`, so a failure
+    alerts via `DIGEST_OUTCOME`) also renders `docs/social.html` → `docs/social.png`
+    (`render-digest.mjs <url> <out> .social-card 1080 1`), and both runners commit it.
+    Its headline is `L.statewideStory()` on regular, so it says what the widget says.
+    Keep it exactly 1080×1080: the card overflows silently if text wraps.
   - **Mixed freshness is stated on the card.** It carries two sources with independent
     freshness; when `aaa.as_of` differs from `price_date` (GasBuddy blocked) an amber
     notice names both dates. Email readers can't check a timestamp — don't drop it.
