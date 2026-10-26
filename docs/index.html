@@ -331,6 +331,22 @@
   .wpr-gas-footer a { color:var(--accent); text-decoration:none; font-weight:500; }
   .wpr-gas-footer a:hover { text-decoration:underline; }
 
+  /* The narrowest frames (~300px): logo, title and price no longer fit side by
+     side at phone sizes, and the price used to run off the right edge. */
+  @media (max-width:360px) {
+    .wpr-gas-header-top { padding:12px 12px; gap:8px; }
+    .wpr-gas-header-left { gap:8px; min-width:0; }
+    .wpr-gas-logo { width:40px; height:40px; }
+    .wpr-gas-title { font-size:16px; }
+    .wpr-gas-kicker { letter-spacing:1.2px; }
+    .wpr-gas-hero-price { min-width:0; flex:none; }
+    .wpr-gas-hero-label { font-size:8px; letter-spacing:0.4px; }
+    .wpr-gas-hero-value { font-size:26px !important; }
+    .wpr-gas-hero-change { font-size:10px; white-space:nowrap; }
+    .wpr-gas-tab { font-size:11px !important; }
+    .wpr-gas-fuel-row { flex-wrap:wrap !important; gap:4px !important; }
+    .wpr-gas-fuel-btn { padding:5px 9px !important; font-size:11px !important; }
+  }
   @media (max-width:520px) {
     .wpr-gas-hero-value { font-size:30px; }
     .wpr-gas-tab { font-size:12px; padding:10px 2px; }

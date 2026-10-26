@@ -335,6 +335,10 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   so a typo surfaces on that commit's Tests run. It is deliberately **not** in the
   data contract: the update workflow runs the contract before each publish, and a
   newsroom typo must never block price updates. Never invent notes — it ships as `[]`.
+- **The narrowest frames (≤360px) get a tighter header.** Smaller logo/title, a
+  price block that can shrink (it had `min-width:130px` and ran off a 300px frame),
+  and fuel buttons that may wrap. Both widgets first paint a loading placeholder in
+  their own shape (`.wpr-skel-*`), and load `wpr-logo.jpg` rather than an inline copy.
 - **Tabs follow the ARIA tabs pattern.** One tab stop (roving `tabindex`), arrow
   keys / Home / End select, `aria-controls`/`aria-labelledby` link tab and panel,
   and `render()` restores focus by element id after every redraw (the Trends tab
