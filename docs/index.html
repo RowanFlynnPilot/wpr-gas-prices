@@ -417,6 +417,20 @@
   let usingSampleData = false;
   let trendRange = 26;
 
+  // Links can open a specific view, so a story can embed or link straight to it:
+  //   ?tab=heating   ?tab=metro&fuel=diesel   ?tab=trends&range=12   ?tab=heating&heat=heating_oil
+  // Unknown values are ignored (the default view shows), never an error.
+  (function applyViewFromUrl() {
+    let q;
+    try { q = new URLSearchParams(location.search); } catch (e) { return; }
+    const pick = (key, allowed) => { const v = (q.get(key) || '').toLowerCase().replace('-', '_'); return allowed.includes(v) ? v : null; };
+    activeTab = pick('tab', ['statewide', 'metro', 'trends', 'heating']) || activeTab;
+    activeFuel = pick('fuel', ['regular', 'mid_grade', 'premium', 'diesel']) || activeFuel;
+    heatingFuel = pick('heat', ['propane', 'heating_oil']) || heatingFuel;
+    const range = pick('range', ['6', '12']);
+    if (range) trendRange = range === '12' ? 52 : 26;
+  })();
+
   async function loadEIAData() {
     if (eiaAllData && !usingSampleData) return;
     const fresh = await fetchJson(EIA_DATA_URL + cacheBust());

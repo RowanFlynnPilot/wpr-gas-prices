@@ -335,6 +335,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   so a typo surfaces on that commit's Tests run. It is deliberately **not** in the
   data contract: the update workflow runs the contract before each publish, and a
   newsroom typo must never block price updates. Never invent notes — it ships as `[]`.
+- **Links open a specific view.** `applyViewFromUrl()` reads `?tab=`
+  (statewide/metro/trends/heating), `fuel=`, `range=6|12` and `heat=` once at
+  load; unknown values fall back silently. README gives embed codes for the
+  Heating (`clamp(1150px, calc(1980px - 153vw), 1500px)`) and Trends
+  (`clamp(820px, calc(1413px - 106vw), 1090px)`) tabs, measured 2026-10-25:
+  Heating 1424/1301/1155/1075/1035px and Trends 1055/985/867/790/790px at frame
+  widths 288/343/468/600/720 (frame ≈ viewport − 32px on phones).
 - **Muted text passes 4.5:1.** `--ink-faint` is `#6a6a6a` (was `#999`, 2.7:1) in
   both widgets, and numbers use tabular lining figures so columns line up.
 - **Every figure shows cents, in both widgets.** Prices use `fmtCents()` (the header's

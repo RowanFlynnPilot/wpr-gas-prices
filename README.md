@@ -170,6 +170,34 @@ In WordPress, add a **Custom HTML** block where the widget should appear.
 Both were tested on wausaupilotandreview.com (Sept 2026): they save without error and
 render in a post on the live theme.
 
+**Opening on a specific tab or fuel.** Add options to the address to open the full
+widget on a particular view, for example inside a story about heating costs:
+
+| Add to the address | Opens on |
+| --- | --- |
+| `?tab=heating` | Home Heating (`&heat=heating_oil` for the heating-oil chart) |
+| `?tab=trends` | Price Trends (`&range=12` for 12 months) |
+| `?tab=metro` | By Metro Area (map, calculator, city list) |
+| `&fuel=diesel` | Any tab, on that fuel: `regular`, `mid_grade`, `premium`, `diesel` |
+
+The same addresses work as plain links. Each tab is a different height, so an embed
+that opens on one needs its own height (measured Oct 25, 2026, with room for the
+off-season heating banner):
+
+```html
+<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/?tab=heating" title="Wisconsin home heating prices from Wausau Pilot &amp; Review" style="display:block;width:100%;max-width:720px;height:clamp(1150px, calc(1980px - 153vw), 1500px);margin:0 auto;border:0;"></iframe>
+```
+
+```html
+<iframe src="https://rowanflynnpilot.github.io/wpr-gas-prices/?tab=trends" title="Wisconsin gas price trends from Wausau Pilot &amp; Review" style="display:block;width:100%;max-width:720px;height:clamp(820px, calc(1413px - 106vw), 1090px);margin:0 auto;border:0;"></iframe>
+```
+
+Each newsroom note on the trend chart adds about 20px; add that to the Price Trends
+height if the chart carries several. The Metro tab is long (map, calculator, 22
+cities), so link to it rather than embedding it. These two codes contain no script tag.
+They haven't been saved into a live WordPress post yet. Test one in a draft before
+publishing, as with the earlier codes.
+
 > **Never put any `<script>` tag in a WPR embed — not even `<script src>`.**
 > Cloudflare's firewall in front of wausaupilotandreview.com blocks the save request
 > for any post containing one, and WordPress shows *"Updating failed. The response is
