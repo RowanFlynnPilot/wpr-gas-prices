@@ -625,17 +625,15 @@
         </div>
       </div>
       <div class="wpr-gas-tabs" role="tablist" aria-label="Gas price views">
-        <button type="button" role="tab" aria-selected="${activeTab === 'statewide'}" class="wpr-gas-tab ${activeTab === 'statewide' ? 'active' : ''}" data-tab="statewide">Statewide</button>
-        <button type="button" role="tab" aria-selected="${activeTab === 'metro'}" class="wpr-gas-tab ${activeTab === 'metro' ? 'active' : ''}" data-tab="metro">By Metro Area</button>
-        <button type="button" role="tab" aria-selected="${activeTab === 'trends'}" class="wpr-gas-tab ${activeTab === 'trends' ? 'active' : ''}" data-tab="trends">Price Trends</button>
-        <button type="button" role="tab" aria-selected="${activeTab === 'heating'}" class="wpr-gas-tab ${activeTab === 'heating' ? 'active' : ''}" data-tab="heating">Home Heating</button>
+        ${[['statewide', 'Statewide'], ['metro', 'By Metro Area'], ['trends', 'Price Trends'], ['heating', 'Home Heating']].map(([k, label]) =>
+          `<button type="button" role="tab" id="wpr-tab-${k}" aria-controls="wpr-panel" aria-selected="${activeTab === k}" tabindex="${activeTab === k ? 0 : -1}" class="wpr-gas-tab ${activeTab === k ? 'active' : ''}" data-tab="${k}">${label}</button>`).join('')}
       </div>
     `;
 
     const view = `${activeTab}|${activeFuel}|${trendRange}|${heatingFuel}`;
     const entering = view !== lastView;
     lastView = view;
-    html += `<div role="tabpanel" aria-live="polite"${entering ? ' class="wpr-enter"' : ''}>`;
+    html += `<div role="tabpanel" id="wpr-panel" aria-labelledby="wpr-tab-${activeTab}" aria-live="polite"${entering ? ' class="wpr-enter"' : ''}>`;
     if (activeTab === 'statewide') html += renderStatewide();
     else if (activeTab === 'metro') html += renderMetro();
     else if (activeTab === 'heating') html += renderHeating();
@@ -654,7 +652,11 @@
     // between the two pictures instead of snapping.
     const prevFills = {};
     widget.querySelectorAll('.wpr-map-svg .wpr-map-dot[data-city]').forEach(d => { prevFills[d.getAttribute('data-city')] = d.getAttribute('fill'); });
+    // Any redraw (including the Trends tab's second one when its data arrives)
+    // keeps keyboard focus on the element that had it, matched by id.
+    const focusedId = widget.contains(document.activeElement) ? document.activeElement.id : '';
     widget.innerHTML = html;
+    if (focusedId) widget.querySelector('#' + CSS.escape(focusedId))?.focus({ preventScroll: true });
     if (Object.keys(prevFills).length && !reduceMotion()) {
       const dots = [...widget.querySelectorAll('.wpr-map-svg .wpr-map-dot[data-city]')];
       const next = dots.map(d => d.getAttribute('fill'));
@@ -666,8 +668,22 @@
     }
     if (firstRender) { firstRender = false; countUpHero(prev?.price, currentPrice); }
 
-    widget.querySelectorAll('.wpr-gas-tab').forEach(t => {
-      t.addEventListener('click', () => { activeTab = t.dataset.tab; render(); });
+    // Tabs follow the ARIA tabs pattern: one tab stop, arrow keys / Home / End move
+    // between tabs and select them, and focus stays on the selected tab after the
+    // redraw (render() rebuilds the DOM).
+    const tabs = [...widget.querySelectorAll('.wpr-gas-tab')];
+    const selectTab = (k, focus) => {
+      activeTab = k; render();
+      if (focus) widget.querySelector(`#wpr-tab-${k}`)?.focus();
+    };
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => selectTab(t.dataset.tab, true));
+      t.addEventListener('keydown', e => {
+        const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+        if (to === undefined) return;
+        e.preventDefault();
+        selectTab(tabs[(to + tabs.length) % tabs.length].dataset.tab, true);
+      });
     });
     widget.querySelectorAll('.wpr-gas-fuel-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1192,7 +1208,7 @@
     if (notesSvg) svg = svg.slice(0, hoverAt) + notesSvg + svg.slice(hoverAt);
 
     const aria = `${story.headline}. ${story.dek} Use the left and right arrow keys to read values.`;
-    return { story, hasGap, notes, sharp: sharp && !sharp.small ? sharp : null, sharpSince, svg: `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>` };
+    return { story, hasGap, notes, sharp: sharp && !sharp.small ? sharp : null, sharpSince, svg: `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg wpr-tr-main" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>` };
   }
 
   function renderTrends() {
@@ -1267,7 +1283,10 @@
 
   // Crosshair: one readout of both lines at any date — mouse, touch or arrow keys.
   function wireTrendChart() {
-    const svg = widget.querySelector('.wpr-tr-svg');
+    // Only the Price Trends chart has a crosshair. Other charts share the .wpr-tr-svg
+    // styling, and wiring one of them with a leftover chartModel threw and skipped the
+    // rest of render()'s wiring (the heating tank buttons, the iframe height post).
+    const svg = activeTab === 'trends' ? widget.querySelector('.wpr-tr-svg.wpr-tr-main') : null;
     if (!svg || !chartModel) return;
     const m = chartModel, g = svg.querySelector('.wpr-tr-hover'), hit = svg.querySelector('.wpr-tr-hit');
     const cross = g.querySelector('.wpr-tr-cross'), hdot = g.querySelector('.wpr-tr-hdot'), hb = g.querySelector('.wpr-tr-hbench');

@@ -335,6 +335,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   so a typo surfaces on that commit's Tests run. It is deliberately **not** in the
   data contract: the update workflow runs the contract before each publish, and a
   newsroom typo must never block price updates. Never invent notes — it ships as `[]`.
+- **Tabs follow the ARIA tabs pattern.** One tab stop (roving `tabindex`), arrow
+  keys / Home / End select, `aria-controls`/`aria-labelledby` link tab and panel,
+  and `render()` restores focus by element id after every redraw (the Trends tab
+  redraws a second time when its data arrives). The crosshair wiring only touches
+  `.wpr-tr-main` on the Trends tab: other charts reuse `.wpr-tr-svg`, and wiring
+  the heating chart with a leftover `chartModel` once threw mid-`render()`, which
+  silently skipped the tank buttons and the iframe height post.
 - **Links open a specific view.** `applyViewFromUrl()` reads `?tab=`
   (statewide/metro/trends/heating), `fuel=`, `range=6|12` and `heat=` once at
   load; unknown values fall back silently. README gives embed codes for the
