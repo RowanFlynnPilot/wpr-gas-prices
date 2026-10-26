@@ -229,18 +229,27 @@
   .wpr-c-footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
   .wpr-c-footer a:hover { text-decoration: underline; }
 
-  .wpr-c-loading {
-    text-align: center;
-    padding: 40px 12px;
-    color: var(--ink-faint);
-    font-size: 12px;
-  }
+  /* Loading placeholder in the widget's own shape, so the first paint isn't a
+     line of text that jumps to a full widget. Replaced by the first render(). */
+  .wpr-skel-head { background:var(--ink); height:118px; }
+  .wpr-skel-bar { height:0; background:var(--paper-warm); border-bottom:1px solid var(--rule); }
+  .wpr-skel-body { padding:16px; display:grid; gap:12px; }
+  .wpr-skel-b { border-radius:6px; background:linear-gradient(90deg,#eceff0 25%,#f5f7f7 50%,#eceff0 75%) 0 0/200% 100%; animation:wpr-skel 1.4s ease-in-out infinite; }
+  @keyframes wpr-skel { from { background-position:100% 0; } to { background-position:-100% 0; } }
+  @media (prefers-reduced-motion: reduce) { .wpr-skel-b { animation:none; } }
 </style>
 </head>
 <body>
 
 <div class="wpr-compact" id="gasWidget">
-  <div class="wpr-c-loading">Loading gas prices…</div>
+  <div role="status" aria-label="Loading gas prices">
+    <div class="wpr-skel-head"></div>
+    <div class="wpr-skel-body">
+      <div class="wpr-skel-b" style="height:64px"></div>
+      <div class="wpr-skel-b" style="height:24px;width:80%;justify-self:center"></div>
+      <div class="wpr-skel-b" style="height:240px"></div>
+    </div>
+  </div>
 </div>
 <noscript>
   <div class="wpr-compact" style="text-align:center;padding:36px 16px;color:var(--ink-light);font-family:'DM Sans',sans-serif;">

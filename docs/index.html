@@ -30,6 +30,14 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   .wpr-gas { font-variant-numeric:lining-nums tabular-nums; font-family:'DM Sans',-apple-system,sans-serif; background:var(--paper); color:var(--ink); max-width:720px; margin:0 auto; border:1px solid var(--rule); border-radius:10px; overflow:hidden; line-height:1.45; box-shadow:0 6px 24px rgba(20,50,45,0.09); }
 
+  /* Loading placeholder in the widget's own shape, so the first paint isn't a
+     line of text that jumps to a full widget. Replaced by the first render(). */
+  .wpr-skel-head { background:var(--ink); height:96px; }
+  .wpr-skel-bar { height:44px; background:var(--paper-warm); border-bottom:1px solid var(--rule); }
+  .wpr-skel-body { padding:16px; display:grid; gap:12px; }
+  .wpr-skel-b { border-radius:6px; background:linear-gradient(90deg,#eceff0 25%,#f5f7f7 50%,#eceff0 75%) 0 0/200% 100%; animation:wpr-skel 1.4s ease-in-out infinite; }
+  @keyframes wpr-skel { from { background-position:100% 0; } to { background-position:-100% 0; } }
+  @media (prefers-reduced-motion: reduce) { .wpr-skel-b { animation:none; } }
   .wpr-gas-header { background:var(--ink); color:#fff; position:relative; }
   .wpr-gas-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--accent),var(--accent-light)); }
   .wpr-gas-header-top { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; gap:12px; }
@@ -364,7 +372,16 @@
 </head>
 <body>
 <div class="wpr-gas" id="gasWidget">
-  <div style="text-align:center;padding:40px;color:var(--ink-faint)">Loading gas prices…</div>
+  <div role="status" aria-label="Loading gas prices">
+    <div class="wpr-skel-head"></div><div class="wpr-skel-bar"></div>
+    <div class="wpr-skel-body">
+      <div class="wpr-skel-b" style="height:30px;width:60%;justify-self:center"></div>
+      <div class="wpr-skel-b" style="height:26px;width:85%"></div>
+      <div class="wpr-skel-b" style="height:104px"></div>
+      <div class="wpr-skel-b" style="height:96px"></div>
+      <div class="wpr-skel-b" style="height:150px"></div>
+    </div>
+  </div>
 </div>
 <noscript>
   <div class="wpr-gas" style="text-align:center;padding:40px;color:var(--ink-light);font-family:'DM Sans',sans-serif;">
