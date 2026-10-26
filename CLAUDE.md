@@ -540,6 +540,11 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
     carry `if: ${{ !cancelled() }}` so a hard scraper failure can't skip the digest —
     AAA and EIA may have refreshed even when GasBuddy didn't. The PNG only *commits*
     when its pixels actually change, so an unchanged day is a no-op, not churn.
+  - **The digest leads with the widget's headline.** `L.statewideStory()` on regular
+    (plus its "highest since …" line) sits under the masthead, so email, social card
+    and widget say the same thing; omitted if `widget-logic.js` didn't load. The card
+    uses lining tabular figures (Playfair's default old-style numerals mixed two
+    styles of number on one card).
   - **The social card rides along.** The same render step (`id: render`, so a failure
     alerts via `DIGEST_OUTCOME`) also renders `docs/social.html` → `docs/social.png`
     (`render-digest.mjs <url> <out> .social-card 1080 1`), and both runners commit it.

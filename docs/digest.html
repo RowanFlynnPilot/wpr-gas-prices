@@ -19,7 +19,9 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#e9edec; font-family:'DM Sans',-apple-system,sans-serif; }
 
-  .digest-card { width:480px; background:var(--paper); color:var(--ink); overflow:hidden;
+  /* Lining, tabular figures: Playfair's default old-style numerals dip below the
+     line ($4.07) and mixed with the flat ones elsewhere on the card. */
+  .digest-card { font-variant-numeric:lining-nums tabular-nums; width:480px; background:var(--paper); color:var(--ink); overflow:hidden;
     border:1px solid var(--rule); }
 
   /* Masthead */
@@ -29,6 +31,10 @@
   .dg-kicker { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--accent-light); }
   .dg-title { font-family:'Playfair Display',Georgia,serif; font-size:26px; font-weight:800; line-height:1.1; margin-top:1px; }
   .dg-date { font-size:11px; color:rgba(255,255,255,0.5); margin-top:4px; font-style:italic; }
+
+  /* Headline: the same sentence the widget and the social card lead with */
+  .dg-headline { padding:14px 20px 10px; border-bottom:1px solid var(--rule); font-family:'Playfair Display',Georgia,serif; font-size:21px; font-weight:700; line-height:1.2; }
+  .dg-headline-dek { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:400; color:var(--ink-light); margin-top:3px; }
 
   /* Hero */
   .dg-hero { display:flex; align-items:stretch; border-bottom:1px solid var(--rule); }
@@ -104,7 +110,7 @@
 (function () {
   'use strict';
   var DATA = './gas_prices.json', CTX = './eia_context.json', HIST = './gas_prices_history.json', HEAT = './eia_heating.json', LOGO = './wpr-logo.jpg';
-  var FUELS = [['regular','Regular'],['mid_grade','Mid'],['premium','Premium'],['diesel','Diesel']];
+  var FUELS = [['regular','Regular'],['mid_grade','Mid-Grade'],['premium','Premium'],['diesel','Diesel']];
 
   function done() { document.body.setAttribute('data-ready', '1'); }
   function bust() { return '?t=' + Math.floor(Date.now() / 600000); }
@@ -256,6 +262,24 @@
       }
     }
 
+    // Headline from WPR's daily statewide series (L.statewideStory), so the email
+    // says what the widget and the social card say. Omitted if the module didn't load.
+    var headHtml = '';
+    if (L && hist) {
+      var series = [];
+      L.sortedHistoryKeys(hist).forEach(function (k) {
+        var v = hist[k] && hist[k].statewide && hist[k].statewide.regular;
+        if (typeof v === 'number') series.push({ t: L.historyKeyTime(k), price: v });
+      });
+      var story = L.statewideStory(series, 'regular');
+      if (story) {
+        var cls = story.c7 != null && Math.abs(story.c7) >= 5 ? (story.c7 > 0 ? 'up' : 'down') : '';
+        var dek = story.extreme ? story.dek.replace(/^\$[\d.]+ a gallon today, /, '').replace(/^./, function (c) { return c.toUpperCase(); }) : '';
+        headHtml = '<div class="dg-headline ' + cls + '">' + story.headline
+          + (dek ? '<div class="dg-headline-dek">' + dek + '</div>' : '') + '</div>';
+      }
+    }
+
     var blurbText = (data.summary && data.summary.blurb) || '';
     var blurbHtml = blurbText ? '<div class="dg-blurb">' + blurbText + '</div>' : '';
 
@@ -273,6 +297,8 @@
       + '<div><div class="dg-kicker">Wausau Pilot &amp; Review · Fuel Watch</div>'
       + '<div class="dg-title">Wisconsin Gas Prices</div>'
       + '<div class="dg-date">' + longDate(data.price_date) + '</div></div></div>'
+
+      + headHtml
 
       + '<div class="dg-hero"><div class="dg-hero-main">'
       + '<div class="dg-hero-label">Statewide average · Regular</div>'
