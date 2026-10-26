@@ -40,6 +40,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   .wpr-compact {
+    font-variant-numeric: lining-nums tabular-nums;
     font-family: 'DM Sans', -apple-system, sans-serif;
     background: var(--paper);
     color: var(--ink);
@@ -99,9 +100,17 @@
 
   /* Hero price */
   .wpr-c-hero {
-    text-align: center;
-    padding: 14px 12px 10px;
+    padding: 10px 16px 8px;
     border-bottom: 1px solid var(--rule-light);
+  }
+  .wpr-c-hero-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .wpr-c-spark { flex: none; text-align: right; }
+  .wpr-c-spark svg { display: block; }
+  .wpr-c-spark-cap { font-size: 9px; color: var(--ink-faint); margin-top: 1px; }
+  .wpr-c-headline {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 13px; font-weight: 700; line-height: 1.25; margin-top: 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .wpr-c-hero-label {
     font-size: 9px;
@@ -156,7 +165,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 10px;
+    padding: 7px 10px;
     border-bottom: 1px solid var(--rule-light);
     border-radius: 6px;
     margin: 2px 0;
@@ -265,10 +274,6 @@
   let activeFuel = 'regular';
   const widget = document.getElementById('gasWidget');
 
-  function fmt(p) {
-    if (p == null) return '—';
-    return '<span class="wpr-dollar">$</span>' + p.toFixed(3);
-  }
   // Every figure shows cents, matching index.html.
   function fmtCents(p) {
     if (p == null) return '—';
@@ -327,6 +332,31 @@
     postHeight();
   }
 
+  // Statewide daily readings for one fuel from our history, [{ t, price }].
+  function statewideSeries(fuel) {
+    if (!historyData) return [];
+    return L.sortedHistoryKeys(historyData)
+      .map(k => ({ t: L.historyKeyTime(k), price: historyData[k]?.statewide?.[fuel] }))
+      .filter(p => typeof p.price === 'number');
+  }
+  // A 30-day line beside the price, colored by the month's direction.
+  function sparkline(series) {
+    if (series.length < 5) return '';
+    const lastT = series[series.length - 1].t;
+    const pts = series.filter(p => p.t >= lastT - 30 * 864e5);
+    if (pts.length < 5) return '';
+    const w = 104, h = 34, pad = 3;
+    const lo = Math.min(...pts.map(p => p.price)), hi = Math.max(...pts.map(p => p.price)), r = (hi - lo) || 1;
+    const c = pts.map((p, i) => `${(pad + i * (w - 2 * pad) / (pts.length - 1)).toFixed(1)},${(pad + (h - 2 * pad) * (1 - (p.price - lo) / r)).toFixed(1)}`);
+    const change = Math.round((pts[pts.length - 1].price - pts[0].price) * 100);
+    const color = change > 0 ? 'var(--up)' : change < 0 ? 'var(--down)' : 'var(--accent)';
+    const [ex, ey] = c[c.length - 1].split(',');
+    return `<div class="wpr-c-spark"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Statewide price over the last 30 days">`
+      + `<polyline points="${c.join(' ')}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`
+      + `<circle cx="${ex}" cy="${ey}" r="2.6" fill="${color}"/></svg>`
+      + `<div class="wpr-c-spark-cap">30 days · <b style="color:${color}">${change > 0 ? '+' : change < 0 ? '−' : '±'}${L.centsText(change / 100)}</b></div></div>`;
+  }
+
   function render() {
     if (!data) { renderError(); return; }
     const fresh = freshnessLabel();
@@ -335,6 +365,10 @@
     const yest = previousReading('statewide', activeFuel);
     const d = delta(price, yest?.price ?? null, { cents: true });
     const heroCompare = yest ? comparisonLabel(yest.key) : 'vs previous';
+    // The full widget's headline, shortened to one line: "Regular gas is up 30¢ in a week".
+    const series = statewideSeries(activeFuel);
+    const story = L.statewideStory(series, activeFuel);
+    const headline = story ? story.headline.replace(/^Wisconsin (.)/, (m, c) => c.toUpperCase()) : '';
     const metros = data.metros || {};
     const priority = data.priority_metros || PRIORITY_METROS;
 
@@ -369,9 +403,15 @@
         <div class="wpr-c-date${fresh.stale ? ' wpr-c-date-stale' : ''}" title="${fresh.title}">${fresh.text}</div>
       </div>
       <div class="wpr-c-hero">
-        <div class="wpr-c-hero-label">State Avg · ${fuelLabel(activeFuel)}</div>
-        <div class="wpr-c-hero-price">${fmtCents(price)}</div>
-        <div class="wpr-c-hero-change ${d.cls}">${d.text} ${heroCompare}</div>
+        <div class="wpr-c-hero-row">
+          <div>
+            <div class="wpr-c-hero-label">State Avg · ${fuelLabel(activeFuel)}</div>
+            <div class="wpr-c-hero-price">${fmtCents(price)}</div>
+            <div class="wpr-c-hero-change ${d.cls}">${d.text} ${heroCompare}</div>
+          </div>
+          ${sparkline(series)}
+        </div>
+        ${headline ? `<div class="wpr-c-headline" title="${esc(headline)}">${esc(headline)}</div>` : ''}
       </div>
       <div class="wpr-c-fuels">${fuelBtns}</div>
       <div class="wpr-c-metro-list">${metroRows}</div>

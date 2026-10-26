@@ -516,7 +516,8 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   containing a `<script` tag, *including* `<script src>` (verified 2026-09-15), and
   the editor reports it as "Updating failed. The response is not a valid JSON
   response." The README snippets are therefore **bare iframes**: compact fixed at
-  610px (it's 599px at every width), full at
+  610px (it's 604px at every width since its 2026-10-25 hero line + one-line
+  headline — keep the headline `nowrap` or narrow frames grow it), full at
   `clamp(960px, calc(1640px - 131vw), 1300px)` (re-measured 2026-09-19 after the phone
   layout got shorter: Statewide tab is 1193/1108/1078/989/956/919/901px at frame
   widths 288/328/343/398/468/600/720). If you change either widget's default-tab
