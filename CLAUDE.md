@@ -363,12 +363,17 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   source as the header): the week's move if it is 5¢+, else the month's, else
   "holding steady", plus "the highest since …" from our history. Below: today's
   cheapest/average/priciest station with the city compare, then AAA's
-  yesterday/week/month/year as change-since bars (zero at the edge when every
-  change has the same sign), the neighbor/U.S. strips, and the newsroom blurb in a
-  closed-by-default `<details>` with its Copy button. Its default height (re-measured
-  2026-10-25: 1140/914/950/931px at frame widths 288/468/600/720) still fits the
-  published `clamp(960px, calc(1640px - 131vw), 1300px)`; keep it under 960px at
-  600px+ or the embed code has to change.
+  yesterday/week/month/year as change-only bars titled "Change in AAA's statewide
+  average" (no AAA price level on the tab: a second "today" figure beside the
+  GasBuddy header read as a contradiction), `buildBorderStrip()` — Wisconsin and
+  its neighbors on one price line, all AAA, with the EIA U.S. average as a hollow,
+  footnoted dot — and the newsroom blurb in a closed-by-default `<details>`. Today's
+  price appears only in the header and the chart's end label; the middle card shows
+  the station price spread until a city is picked (inline "Compare" picker on the
+  range bar). WTI crude moved to the Price Trends hint line. Default height
+  (re-measured 2026-10-26: 991/944/879/938/932px at frame widths
+  288/343/468/600/720) fits the published `clamp(960px, calc(1640px - 131vw),
+  1300px)`; keep it under 960px at 600px+ or the embed code has to change.
 - **Statewide trend = AAA.** `parse_aaa()`/`scrape_aaa()` populate `data["aaa"]`; the
   Statewide "over time" bars and the blurb's trend both read it. The hero "vs
   yesterday" stays GasBuddy-history (same source as the hero number).
