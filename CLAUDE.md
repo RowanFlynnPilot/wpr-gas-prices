@@ -263,6 +263,15 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   (`heatingSummary().inSeason`) — an amber banner says the survey resumes in
   October and the cards show last winter's final week. Natural gas is a dated
   footnote strip. All of that logic is in `widget-logic.js` with tests.
+  Redesigned 2026-10-25: a headline from `L.heatingStory()` (the fuel with the
+  bigger year-over-year move in percent leads, phrased for the time of season);
+  each card leads with the **fill-up cost** and its year-ago change, with tank-size
+  buttons from `L.HEATING_TANKS` (propane 250/500/1000 gal at an 80% fill, oil
+  275/330) remembered in `localStorage` (`wpr-gas-tank-<fuel>`); prices in cents.
+  The season chart is drawn at real pixel width (it was a fixed 600-wide drawing,
+  ~5px text on phones), marks last winter's matching week (`L.sameWeekLastSeason()`,
+  ±10 days) with a bracket and the gap, and mirrors its labels left late in the
+  season. Natural gas gets a 13-month sparkline.
 - **Trends tab leads with Wisconsin.** `getWIEntries()` reads the daily statewide
   series from `gas_prices_history.json`; it is the solid line, the tiles and the
   headline, and the EIA weekly Midwest series is a dashed benchmark with the gap

@@ -191,8 +191,52 @@
     return Math.round(pricePerGallon * gallons);
   }
 
+  // Common residential tank sizes and the delivery that "fills" each. Propane tanks
+  // are filled to 80% (the rest is vapor space); heating-oil deliveries are quoted
+  // as the tank's capacity, as before.
+  const HEATING_TANKS = {
+    propane: [{ gallons: 250, fill: 200 }, { gallons: 500, fill: 400 }, { gallons: 1000, fill: 800 }],
+    heating_oil: [{ gallons: 275, fill: 275 }, { gallons: 330, fill: 330 }],
+  };
+
+  // Last winter's reading nearest the same day of the season (± `tol` days): the
+  // honest "this week last year" for a chart that overlays two winters.
+  function sameWeekLastSeason(prevPoints, day, tol = 10) {
+    let best = null;
+    for (const p of prevPoints || []) {
+      const gap = Math.abs(p.day - day);
+      if (gap <= tol && (!best || gap < Math.abs(best.day - day))) best = p;
+    }
+    return best;
+  }
+
+  // Headline for the Home Heating tab: the fuel whose year-over-year move is
+  // largest in percent leads; the other fuel goes in the dek. `items` are
+  // [{ label, sum }] with `sum` from heatingSummary().
+  function heatingStory(items) {
+    const ok = (items || []).filter(i => i && i.sum);
+    if (!ok.length) return null;
+    const pct = i => (i.sum.yearAgo ? Math.abs(i.sum.latest.price / i.sum.yearAgo.price - 1) : -1);
+    const lead = ok.slice().sort((a, b) => pct(b) - pct(a))[0];
+    const month = new Date(isoTime(lead.sum.latest.date)).getUTCMonth() + 1;
+    const phase = !lead.sum.inSeason ? '' : month >= 10 ? ' heading into winter' : month <= 2 ? ' this winter' : ' as winter winds down';
+    const move = i => {
+      const d = i.sum.latest.price - i.sum.yearAgo.price;
+      return Math.abs(d) < 0.005 ? 'about where it was a year ago' : `${centsText(d)} ${d > 0 ? 'higher' : 'lower'} than a year ago`;
+    };
+    const headline = lead.sum.yearAgo
+      ? (lead.sum.inSeason ? `${lead.label} is ${move(lead)}${phase}` : `${lead.label} ended last winter ${move(lead).replace('than a year ago', 'than the winter before')}`)
+      : `${lead.label} is $${lead.sum.latest.price.toFixed(2)} a gallon${phase}`;
+    const other = ok.find(i => i !== lead && i.sum.yearAgo);
+    const dek = [
+      other ? `${other.label} is ${move(other)}.` : '',
+      `Statewide dealer averages, week of ${shortDate(isoTime(lead.sum.latest.date))}.`,
+    ].filter(Boolean).join(' ');
+    return { lead: lead.label, headline, dek };
+  }
+
   // ── Shared formatting ──
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS =['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function shortDate(ms) {
     const d = new Date(ms);
     return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
@@ -458,7 +502,7 @@
     FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
     isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
-    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp, NOTE_MAX, validNote, notesInWindow,
+    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp, NOTE_MAX, validNote, notesInWindow, HEATING_TANKS, sameWeekLastSeason, heatingStory,
     CITY_COORDS, CENTRAL_WI, projectWI, PRICE_BINS, priceBin, rankMetros, centralShare,
   };
 })();

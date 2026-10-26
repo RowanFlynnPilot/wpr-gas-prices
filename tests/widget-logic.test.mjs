@@ -333,3 +333,25 @@ test('notesInWindow: valid notes in range, for the fuel, oldest first; junk is d
   assert.deepEqual(plain(L.notesInWindow(notes, start, end, 'diesel').map(n => n.text)), ['Refinery outage']);
   assert.deepEqual(plain(L.notesInWindow(null, start, end, 'regular')), []);
 });
+
+test('heatingStory: the bigger year-over-year move (in percent) leads, timed to the season', () => {
+  const sum = (date, price, ya, inSeason = true) => ({ latest: { date, price }, yearAgo: ya == null ? null : { price: ya }, inSeason });
+  const s = L.heatingStory([
+    { label: 'Propane', sum: sum('2026-10-19', 1.94, 1.73) },        // +12%
+    { label: 'Heating oil', sum: sum('2026-10-19', 5.786, 3.076) },  // +88%
+  ]);
+  assert.equal(s.headline, 'Heating oil is $2.71 higher than a year ago heading into winter');
+  assert.equal(s.dek, 'Propane is 21¢ higher than a year ago. Statewide dealer averages, week of Oct 19.');
+  assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2027-01-11', 2.0, 2.1) }]).headline, 'Propane is 10¢ lower than a year ago this winter');
+  assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2026-03-30', 2.0, 1.8, false) }]).headline,
+    'Propane ended last winter 20¢ higher than the winter before');
+  assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2026-10-05', 1.82, null) }]).headline, 'Propane is $1.82 a gallon heading into winter');
+  assert.equal(L.heatingStory([]), null);
+});
+
+test('sameWeekLastSeason: nearest day within tolerance, else nothing', () => {
+  const prev = [{ day: 0, price: 1.7 }, { day: 14, price: 1.72 }, { day: 21, price: 1.73 }];
+  assert.equal(L.sameWeekLastSeason(prev, 18).price, 1.73);
+  assert.equal(L.sameWeekLastSeason(prev, 45), null);
+  assert.equal(L.sameWeekLastSeason([], 5), null);
+});

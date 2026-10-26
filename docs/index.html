@@ -148,14 +148,22 @@
   .wpr-heat-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 14px 4px; }
   .wpr-heat-card { background:#fff; border:1px solid var(--rule-light); border-radius:var(--radius); padding:14px 14px 12px; box-shadow:0 1px 3px rgba(20,50,45,0.05); min-width:0; }
   .wpr-heat-card-label { font-size:9px; text-transform:uppercase; letter-spacing:0.7px; color:var(--ink-faint); font-weight:700; }
-  .wpr-heat-card-value { font-family:'Playfair Display',Georgia,serif; font-size:28px; font-weight:700; line-height:1.05; margin-top:4px; }
   .wpr-heat-card-unit { font-family:'DM Sans',sans-serif; font-size:11px; font-weight:400; color:var(--ink-faint); margin-left:2px; }
   .wpr-heat-card-asof { font-size:10px; color:var(--ink-faint); margin-top:2px; }
   .wpr-heat-card-empty { font-size:12px; color:var(--ink-faint); font-style:italic; padding:14px 0; }
   .wpr-heat-card-row { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--ink-light); margin-top:7px; }
   .wpr-heat-card-row b { font-weight:600; text-align:right; }
-  .wpr-heat-fill { margin-top:9px; padding-top:9px; border-top:1px solid var(--rule-light); font-size:11px; color:var(--ink-mid); line-height:1.45; }
-  .wpr-heat-fill strong { font-family:'Playfair Display',Georgia,serif; font-size:16px; color:var(--accent-dark); }
+  .wpr-heat-card-value { font-family:'Playfair Display',Georgia,serif; font-size:32px; font-weight:700; line-height:1.05; margin-top:4px; color:var(--ink); }
+  .wpr-heat-card-yoy { font-size:12px; font-weight:700; margin-top:2px; }
+  .wpr-heat-tanks { display:flex; flex-wrap:wrap; gap:5px; margin:9px 0 3px; }
+  .wpr-heat-tank { font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600; color:var(--ink-mid); background:var(--paper-warm); border:1.5px solid var(--rule-light); border-radius:14px; padding:3px 9px; cursor:pointer; }
+  .wpr-heat-tank.active { background:var(--accent-dark); border-color:var(--accent-dark); color:#fff; }
+  .wpr-heat-tank:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .wpr-heat-card-row:first-of-type { margin-top:9px; padding-top:8px; border-top:1px solid var(--rule-light); }
+  .wpr-heat-gas { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:8px 16px 4px; padding:12px 14px; border:1px solid var(--rule-light); border-radius:var(--radius); background:#fff; }
+  .wpr-heat-gas-v { font-family:'Playfair Display',Georgia,serif; font-size:22px; font-weight:700; margin-top:2px; }
+  .wpr-heat-gas-s { display:block; font-family:'DM Sans',sans-serif; font-size:11.5px; font-weight:500; color:var(--ink-light); margin-top:2px; }
+  .wpr-heat-gas-spark { flex:none; }
   .wpr-heat-banner { margin:10px 14px 0; padding:9px 12px; background:#fdf6e7; border:1px solid #e8cf9a; border-radius:4px; font-size:11.5px; line-height:1.5; color:#7a5b1e; }
   .wpr-heat-note { text-align:center; font-size:10px; color:var(--ink-faint); padding:2px 18px 12px; line-height:1.45; }
   .wpr-trends-legend-dashed { background:none; border-top:2px dashed var(--ink-light); height:0; }
@@ -238,6 +246,8 @@
   .wpr-tr-notes { margin:6px 0 2px; padding-left:22px; font-size:12px; line-height:1.5; color:var(--ink-mid); }
   .wpr-tr-notes li::marker { color:#6b5216; font-weight:700; }
   .wpr-tr-notes b { font-weight:600; color:var(--ink); margin-right:4px; }
+  /* A paper-colored outline so a label stays readable where a line runs under it. */
+  .wpr-tr-halo { paint-order:stroke; stroke:var(--paper); stroke-width:4px; stroke-linejoin:round; }
   .wpr-tr-hit { cursor:crosshair; }
 
   /* Fill-up calculator */
@@ -310,7 +320,8 @@
     .wpr-gas-hero-value { font-size:30px; }
     .wpr-gas-tab { font-size:12px; padding:10px 2px; }
     .wpr-heat-card { padding:11px 10px 10px; }
-    .wpr-heat-card-value { font-size:22px; }
+    .wpr-heat-card-value { font-size:26px; }
+    .wpr-heat-gas { margin-left:12px; margin-right:12px; }
     .wpr-heat-card-row { flex-direction:column; gap:1px; }
     .wpr-heat-card-row b { text-align:left; }
     /* Phones keep the three cards side by side. Stacking them cost ~280px of
@@ -356,7 +367,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=8"></script>
+<script src="./widget-logic.js?v=9"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -664,6 +675,11 @@
     widget.querySelectorAll('.wpr-fill-veh').forEach(b => b.addEventListener('click', () => {
       fillVehicle = b.dataset.vehicle; store.set('vehicle', fillVehicle); render();
       widget.querySelector(`.wpr-fill-veh[data-vehicle="${fillVehicle}"]`)?.focus({ preventScroll: true });
+    }));
+    widget.querySelectorAll('.wpr-heat-tank').forEach(b => b.addEventListener('click', () => {
+      const [fuel, gal] = b.dataset.tank.split(':');
+      heatTank[fuel] = +gal; store.set('tank-' + fuel, gal); render();
+      widget.querySelector(`.wpr-heat-tank[data-tank="${b.dataset.tank}"]`)?.focus({ preventScroll: true });
     }));
     const fillSel = widget.querySelector('#fillCity');
     if (fillSel) fillSel.addEventListener('change', () => {
@@ -1574,6 +1590,15 @@
     return `${amount}${unit} ${diff > 0 ? 'higher' : 'lower'} than ${phrase}`;
   }
 
+  // Tank choice per fuel, remembered in this browser only (see `store`).
+  const heatTank = {
+    propane: +store.get('tank-propane', 500),
+    heating_oil: +store.get('tank-heating_oil', 275),
+  };
+  const usd0 = v => '$' + Math.round(Math.abs(v)).toLocaleString('en-US');
+
+  // Each card leads with the number a household acts on: what filling the tank
+  // costs now and against a year ago. The per-gallon price and its moves follow.
   function renderHeatingCard(key) {
     const spec = HEATING_FUELS[key];
     const sum = L.heatingSummary(heatingData?.[key], Date.now());
@@ -1585,79 +1610,133 @@
     // Week-over-week only within the same season — October's first reading must
     // not be compared against the previous March.
     const sameSeasonPrev = sum.prev && L.seasonOf(sum.prev.date) === sum.season ? sum.prev : null;
-    const wk = sameSeasonPrev ? delta(cur, sameSeasonPrev.price) : null;
+    const wk = sameSeasonPrev ? delta(cur, sameSeasonPrev.price, { cents: true }) : null;
     const yr = sum.yearAgo ? centsClause(cur, sum.yearAgo.price, 'a year ago') : '';
     const yrCls = !sum.yearAgo ? '' : cur > sum.yearAgo.price + 0.005 ? 'up-color' : cur < sum.yearAgo.price - 0.005 ? 'down-color' : 'flat-color';
-    const fill = L.fillCost(cur, spec.gallons);
-    const fillYr = sum.yearAgo ? L.fillCost(sum.yearAgo.price, spec.gallons) : null;
+    const tanks = L.HEATING_TANKS[key];
+    const tank = tanks.find(t => t.gallons === heatTank[key]) || tanks[1] || tanks[0];
+    const fill = L.fillCost(cur, tank.fill);
+    const fillYr = sum.yearAgo ? L.fillCost(sum.yearAgo.price, tank.fill) : null;
     const fillDiff = fill != null && fillYr != null ? fill - fillYr : null;
+    const tankBtns = tanks.map(t =>
+      `<button type="button" class="wpr-heat-tank ${t === tank ? 'active' : ''}" aria-pressed="${t === tank}" data-tank="${key}:${t.gallons}">${t.gallons.toLocaleString('en-US')} gal</button>`
+    ).join('');
+    const fillNote = key === 'propane' ? `${tank.fill} gallons: a ${tank.gallons}-gallon tank filled to 80%` : `${tank.fill} gallons: a full ${tank.gallons}-gallon tank`;
     return `
       <div class="wpr-heat-card">
-        <div class="wpr-heat-card-label">${spec.label} · residential</div>
-        <div class="wpr-heat-card-value">${fmt(cur)}<span class="wpr-heat-card-unit">/gal</span></div>
-        <div class="wpr-heat-card-asof">Week of ${longIsoDate(sum.latest.date)}</div>
+        <div class="wpr-heat-card-label">${spec.label} · fill-up</div>
+        <div class="wpr-heat-card-value">${fill != null ? usd0(fill) : '—'}</div>
+        ${fillDiff != null ? `<div class="wpr-heat-card-yoy ${fillDiff > 0 ? 'up-color' : fillDiff < 0 ? 'down-color' : 'flat-color'}">${fillDiff === 0 ? 'same as' : `${usd0(fillDiff)} ${fillDiff > 0 ? 'more' : 'less'} than`} a year ago</div>` : ''}
+        <div class="wpr-heat-tanks" role="group" aria-label="${spec.label} tank size">${tankBtns}</div>
+        <div class="wpr-heat-card-asof">${fillNote}</div>
+        <div class="wpr-heat-card-row"><span>Price per gallon</span><b>${fmtCents(cur)} <span class="wpr-heat-card-unit">wk of ${L.shortDate(L.isoTime(sum.latest.date))}</span></b></div>
         <div class="wpr-heat-card-row"><span>vs previous week</span><b class="${wk ? wk.cls : 'flat-color'}">${wk ? wk.text : 'first reading of the season'}</b></div>
-        <div class="wpr-heat-card-row"><span>vs a year ago</span><b class="${yrCls}">${yr || '—'}</b></div>
-        ${fill != null ? `<div class="wpr-heat-fill">Filling ${spec.tank}: <strong>$${fill.toLocaleString('en-US')}</strong>${fillDiff ? ` <span class="${fillDiff > 0 ? 'up-color' : 'down-color'}">(${fillDiff > 0 ? '+' : '−'}$${Math.abs(fillDiff).toLocaleString('en-US')} vs last year)</span>` : ''}</div>` : ''}
+        <div class="wpr-heat-card-row"><span>vs a year ago</span><b class="${yrCls}">${yr ? yr.replace(' than a year ago', '') : '—'}</b></div>
       </div>`;
   }
 
-  // This winter's line over last winter's, both on a days-since-October-1 axis.
-  function buildSeasonChart(series, fuelLabel) {
+  // This winter over last on a days-since-October-1 axis, drawn at the pixel
+  // width it occupies like the other charts. The question a reader brings is
+  // "is it worse than last year?", so the matching week of last winter is marked
+  // and the gap between the two is labelled.
+  function buildSeasonChart(series, label) {
     const sum = L.heatingSummary(series, Date.now());
     if (!sum) return '<div class="wpr-trends-empty">No data available.</div>';
     const cur = L.seasonPoints(series, sum.season);
     const prev = L.seasonPoints(series, sum.season - 1);
     if (cur.length + prev.length < 2) return '<div class="wpr-trends-empty">Not enough data yet this season.</div>';
 
-    const W = 600, H = 250, padL = 48, padR = 16, padT = 20, padB = 34;
-    const chartW = W - padL - padR, chartH = H - padT - padB;
-    const DAYS = 190;  // 1 Oct → ~8 Apr
+    const W = frameW() - 2 * padX(), narrow = W < 460;
+    const H = narrow ? 230 : 250, Lp = narrow ? 40 : 46, Rp = narrow ? 62 : 84, T = 14, B = 26, fs = 11.5;
+    const DAYS = 182;   // 1 Oct → 1 Apr
     const all = [...cur, ...prev].map(p => p.price);
-    const niceMin = Math.floor(Math.min(...all) * 10) / 10, niceMax = Math.ceil(Math.max(...all) * 10) / 10;
-    const niceRange = niceMax - niceMin || 0.1;
-    const x = day => padL + Math.min(Math.max(day, 0), DAYS) / DAYS * chartW;
-    const y = price => padT + (1 - (price - niceMin) / niceRange) * chartH;
-    const path = pts => pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.day).toFixed(1)},${y(p.price).toFixed(1)}`).join('');
+    const step = niceStep(Math.max(...all) - Math.min(...all));
+    const lo = Math.floor(Math.min(...all) / step) * step;
+    const hi = Math.max(Math.ceil(Math.max(...all) / step) * step, lo + 2 * step);
+    const X = day => Lp + Math.min(Math.max(day, 0), DAYS) / DAYS * (W - Lp - Rp);
+    const Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const path = pts => pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.day).toFixed(1)},${Y(p.price).toFixed(1)}`).join('');
 
-    let grid = '';
-    const step = niceRange / 4 <= 0.1 ? 0.1 : niceRange / 4 <= 0.25 ? 0.25 : 0.5;
-    for (let v = niceMin; v <= niceMax + 0.001; v += step) {
-      grid += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" stroke="#e8e5de" stroke-width="0.5"/>`
-        + `<text x="${padL - 6}" y="${y(v) + 3.5}" text-anchor="end" class="wpr-chart-axis-label" style="font-family:'Source Sans 3',sans-serif">$${v.toFixed(2)}</text>`;
+    let svg = '';
+    for (let v = lo; v <= hi + 1e-9; v += step) {
+      svg += `<line x1="${Lp}" x2="${W - Rp + 4}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="wpr-tr-grid"/>`
+        + `<text x="${Lp - 7}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="wpr-tr-ax" style="font-size:${fs}px">${money2(v)}</text>`;
     }
-    let xLabels = '';
-    [['Oct', 0], ['Nov', 31], ['Dec', 61], ['Jan', 92], ['Feb', 123], ['Mar', 151]].forEach(([m, d]) => {
-      xLabels += `<text x="${x(d + 15)}" y="${H - 8}" text-anchor="middle" class="wpr-chart-axis-label">${m}</text>`;
+    [['Oct', 0], ['Nov', 31], ['Dec', 61], ['Jan', 92], ['Feb', 123], ['Mar', 151]].forEach(([m, d], i) => {
+      const x = X(d);
+      svg += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${H - B}" y2="${H - B + 4}" class="wpr-tr-tick"/>`;
+      if (!narrow || i % 2 === 0) svg += `<text x="${(x + 3).toFixed(1)}" y="${H - 8}" class="wpr-tr-ax" style="font-size:${fs}px">${m}</text>`;
     });
-    const dots = pts => pts.map(p =>
-      `<circle cx="${x(p.day).toFixed(1)}" cy="${y(p.price).toFixed(1)}" r="6" fill="transparent" class="wpr-chart-hit"><title>${longIsoDate(p.date)}: $${p.price.toFixed(3)}</title></circle>`).join('');
-    const last = cur[cur.length - 1];
+
+    const lastCur = cur[cur.length - 1], lastPrev = prev[prev.length - 1];
+    if (prev.length > 1) svg += `<path d="${path(prev)}" class="wpr-tr-bench"/>`;
+    if (cur.length > 1) {
+      svg += `<path d="${path(cur)}" class="wpr-tr-line wpr-draw" pathLength="1"/>`;
+    }
+    // Last winter's line is labelled where it ends (right margin).
+    if (lastPrev) {
+      svg += `<text x="${(X(lastPrev.day) + 8).toFixed(1)}" y="${(Y(lastPrev.price) + 4).toFixed(1)}" class="wpr-tr-note" style="font-size:${fs}px">${narrow ? 'Last yr' : L.seasonLabel(sum.season - 1)}</text>`;
+    }
+    if (lastCur) {
+      const x = X(lastCur.day), y = Y(lastCur.price);
+      const match = sum.inSeason ? L.sameWeekLastSeason(prev, lastCur.day) : null;
+      svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" class="wpr-tr-enddot"/>`;
+      // Everything sits to the right of the latest point: a bracket joining it to
+      // the same week last winter, both prices beside their dots, and the gap in
+      // the middle (or after last year's price when the two are close).
+      // Late in the season the point is near the right edge: mirror to the left.
+      const flip = x + 200 > W, sx = flip ? -1 : 1;
+      const lbl = (yy, text, cls, size) => `<text x="${(x + sx * 18).toFixed(1)}" y="${(yy + 4).toFixed(1)}" text-anchor="${flip ? 'end' : 'start'}" class="${cls} wpr-tr-halo" style="font-size:${size}px">${text}</text>`;
+      if (!match) {
+        svg += lbl(y, `${money2(lastCur.price)} <tspan class="wpr-tr-note" style="font-weight:400">${sum.inSeason ? 'this week' : 'last reading'}</tspan>`, 'wpr-tr-endlbl', 12.5);
+      } else {
+        const my = Y(match.price), gap = lastCur.price - match.price, apart = Math.abs(y - my);
+        let ty = y, my2 = my;
+        if (apart < 30) { const mid = (y + my) / 2, dir = y <= my ? -1 : 1; ty = mid + dir * 15; my2 = mid - dir * 15; }
+        svg += `<circle cx="${x.toFixed(1)}" cy="${my.toFixed(1)}" r="4.5" class="wpr-tr-benchdot"/>`
+          + `<path d="M${(x + sx * 7).toFixed(1)},${y.toFixed(1)}H${(x + sx * 11).toFixed(1)}V${my.toFixed(1)}H${(x + sx * 7).toFixed(1)}" class="wpr-tr-bracket"/>`
+          + lbl(ty, `${money2(lastCur.price)} <tspan class="wpr-tr-note" style="font-weight:400">this week</tspan>`, 'wpr-tr-endlbl', 12.5)
+          + lbl(my2, `${money2(match.price)} same week last year${apart < 46 ? ` · <tspan style="font-weight:700">${signedCents(gap)}</tspan>` : ''}`, 'wpr-tr-note', fs);
+        if (apart >= 46) svg += lbl((y + my) / 2, signedCents(gap), 'wpr-tr-endlbl', 13);
+      }
+    }
+    // Invisible hit targets keep the per-week values one hover/tap away.
+    const hits = pts => pts.map(p =>
+      `<circle cx="${X(p.day).toFixed(1)}" cy="${Y(p.price).toFixed(1)}" r="7" fill="transparent" class="wpr-chart-hit"><title>${longIsoDate(p.date)}: ${money2(p.price)}</title></circle>`).join('');
+    svg += hits(prev) + hits(cur);
+    const aria = `${label} this winter compared with last winter, October through March.` + (lastCur ? ` Latest ${money2(lastCur.price)} a gallon.` : '');
     return `
-      <div class="wpr-trends-legend">
-        <span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch" style="background:var(--accent)"></span>${L.seasonLabel(sum.season)}${sum.inSeason ? ' (this winter)' : ''}</span>
-        ${prev.length ? `<span class="wpr-trends-legend-item"><span class="wpr-trends-legend-swatch wpr-trends-legend-dashed"></span>${L.seasonLabel(sum.season - 1)}</span>` : ''}
+      <div class="wpr-tr-legend">
+        <span><i class="wpr-tr-sw"></i>${L.seasonLabel(sum.season)}${sum.inSeason ? ' · this winter' : ''}</span>
+        ${prev.length ? `<span><i class="wpr-tr-sw wpr-tr-sw-dash"></i>${L.seasonLabel(sum.season - 1)} · last winter</span>` : ''}
       </div>
-      <svg viewBox="0 0 ${W} ${H}" class="wpr-trends-svg" role="img"
-           aria-label="${fuelLabel} price this winter compared with last winter, October through March.">
-        <title>${fuelLabel} — ${L.seasonLabel(sum.season)} vs ${L.seasonLabel(sum.season - 1)}</title>
-        ${grid}
-        ${prev.length > 1 ? `<path d="${path(prev)}" fill="none" stroke="var(--ink-light)" stroke-width="1.6" stroke-dasharray="4,3" opacity="0.8" stroke-linejoin="round"/>` : ''}
-        ${cur.length > 1 ? `<path d="${path(cur)}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
-        ${last ? `<circle cx="${x(last.day).toFixed(1)}" cy="${y(last.price).toFixed(1)}" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1.5"/>` : ''}
-        ${xLabels}
-        ${dots(prev)}${dots(cur)}
-      </svg>`;
+      <svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg" role="img" aria-label="${esc(aria)}">${svg}</svg>`;
+  }
+
+  // Natural gas is monthly and ~3 months late: a dated figure with a 13-month line.
+  function gasSparkline(series) {
+    const pts = (series || []).filter(p => typeof p.price === 'number' && !isNaN(L.isoTime(p.date)))
+      .sort((a, b) => L.isoTime(a.date) - L.isoTime(b.date)).slice(-13);
+    if (pts.length < 4) return '';
+    const w = 110, h = 26, pad = 3;
+    const lo = Math.min(...pts.map(p => p.price)), hi = Math.max(...pts.map(p => p.price)), r = (hi - lo) || 1;
+    const c = pts.map((p, i) => `${(pad + i * (w - 2 * pad) / (pts.length - 1)).toFixed(1)},${(pad + (h - 2 * pad) * (1 - (p.price - lo) / r)).toFixed(1)}`);
+    const [ex, ey] = c[c.length - 1].split(',');
+    return `<svg class="wpr-heat-gas-spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Natural gas, last ${pts.length} months">`
+      + `<polyline points="${c.join(' ')}" fill="none" stroke="var(--accent-dark)" stroke-width="1.6" stroke-linejoin="round"/>`
+      + `<circle cx="${ex}" cy="${ey}" r="2.6" fill="var(--accent-dark)"/></svg>`;
   }
 
   function renderHeating() {
     if (!heatingData) {
       return '<div class="wpr-trends-empty">Heating fuel data is temporarily unavailable.</div>';
     }
-    const anchor = L.heatingSummary(heatingData.propane, Date.now()) || L.heatingSummary(heatingData.heating_oil, Date.now());
+    const sums = Object.fromEntries(Object.keys(HEATING_FUELS).map(k => [k, L.heatingSummary(heatingData[k], Date.now())]));
+    const anchor = sums.propane || sums.heating_oil;
     const banner = anchor && !anchor.inSeason ? `
       <div class="wpr-heat-banner">The weekly heating-fuel survey runs <strong>October through March</strong>.
         Showing last winter's final readings (week of ${longIsoDate(anchor.latest.date)}); this winter's first reading arrives in early October.</div>` : '';
+    const story = L.heatingStory(Object.entries(HEATING_FUELS).map(([k, s]) => ({ label: s.label, sum: sums[k] })));
 
     const fuelBtns = Object.entries(HEATING_FUELS).map(([k, s]) =>
       `<button type="button" aria-pressed="${heatingFuel === k}" class="wpr-gas-fuel-btn ${heatingFuel === k ? 'active' : ''}" data-heat="${k}">${s.label}</button>`
@@ -1665,18 +1744,28 @@
 
     const gas = L.heatingSummary(heatingData.natural_gas, Date.now());
     const gasStrip = gas ? `
-      <div class="wpr-ctx-strip" title="Source: U.S. EIA, monthly">
-        <span class="wpr-ctx-item"><span class="wpr-ctx-label">Natural gas</span><span class="wpr-ctx-value">$${gas.latest.price.toFixed(2)}<span class="wpr-ctx-unit">/Mcf</span></span><span class="wpr-ctx-rel flat-color">${monthYear(gas.latest.date)}${gas.yearAgo ? ` · ${centsClause(gas.latest.price, gas.yearAgo.price, 'a year ago', '/Mcf')}` : ''}</span></span>
+      <div class="wpr-heat-gas">
+        <div>
+          <div class="wpr-map-rank-h">Natural gas · residential · monthly</div>
+          <div class="wpr-heat-gas-v">$${gas.latest.price.toFixed(2)}<span class="wpr-heat-card-unit">/Mcf</span>
+            <span class="wpr-heat-gas-s">${monthYear(gas.latest.date)}${gas.yearAgo ? ` · ${centsClause(gas.latest.price, gas.yearAgo.price, 'a year ago', '/Mcf')}` : ''}</span></div>
+        </div>
+        ${gasSparkline(heatingData.natural_gas)}
       </div>
       <div class="wpr-heat-note">Natural gas is a monthly statewide figure published about three months late; utility bills also carry fixed charges not included here.</div>` : '';
 
     return `
-      <div class="wpr-state-section-label" style="padding-top:12px">Wisconsin residential heating fuels · weekly via U.S. EIA</div>
+      ${story ? `
+        <div class="wpr-tr wpr-st-story" style="padding-top:14px">
+          <div class="wpr-tr-kicker">Home heating · Wisconsin residential · weekly via U.S. EIA</div>
+          <h3 class="wpr-tr-title">${esc(story.headline)}</h3>
+          <p class="wpr-tr-dek">${esc(story.dek)}</p>
+        </div>` : ''}
       ${banner}
       <div class="wpr-heat-grid">${renderHeatingCard('propane')}${renderHeatingCard('heating_oil')}</div>
       <div class="wpr-gas-fuel-row">${fuelBtns}</div>
-      <div class="wpr-trends-chart-wrap">
-        <div class="wpr-trends-title">${HEATING_FUELS[heatingFuel].label} · this winter vs last</div>
+      <div class="wpr-tr">
+        <div class="wpr-tr-kicker">${HEATING_FUELS[heatingFuel].label} · this winter vs last</div>
         ${buildSeasonChart(heatingData[heatingFuel], HEATING_FUELS[heatingFuel].label)}
       </div>
       ${gasStrip}
