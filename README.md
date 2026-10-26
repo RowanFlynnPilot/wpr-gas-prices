@@ -197,8 +197,9 @@ height if the chart carries several. The Metro tab is long (map, calculator, 22
 cities), so link to it rather than embedding it. These two codes contain no script tag.
 The Home Heating code was tested on wausaupilotandreview.com (Oct 25, 2026): it saves
 as a draft without error and fits in the live theme on desktop and at 320–414px phone
-widths, with room left for the off-season banner. The Price Trends code uses the same
-markup and was measured the same way, but hasn't been saved in a post yet.
+widths, with room left for the off-season banner. The Price Trends code was tested the
+same way and also saves cleanly and fits, but with less room to spare (about 20–30px),
+so add about 20px per newsroom note on that chart.
 
 > **Never put any `<script>` tag in a WPR embed — not even `<script src>`.**
 > Cloudflare's firewall in front of wausaupilotandreview.com blocks the save request

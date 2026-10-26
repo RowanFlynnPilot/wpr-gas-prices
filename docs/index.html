@@ -1126,7 +1126,9 @@
         + `<text x="${Lp - 7}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="wpr-tr-ax" style="font-size:${fs}px">${money2(v)}</text>`;
     }
     const d0 = new Date(start);
-    let every = narrow && days > 200 ? 2 : 1, n = 0;
+    // Label every other month when a month is too narrow for its label (~300px phones).
+    const monthPx = (W - Lp - R) / (days / 30.4);
+    let every = monthPx < 32 ? 2 : 1, n = 0;
     for (let m = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 1)); m.getTime() <= end; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
       const x = X(m.getTime());
       svg += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${H - B}" y2="${H - B + 4}" class="wpr-tr-tick"/>`;
