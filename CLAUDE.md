@@ -283,6 +283,14 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   Midwest-only if there's no Wisconsin history. The x-axis is **time-based, not
   index-based** (daily and weekly points must align). A crosshair reads both lines
   at any date (pointer, touch, or arrow keys on the focused chart).
+  The gap is shaded **both ways** (warm above, cool below) and the dek adds
+  `L.gapContext()` when today reverses the usual gap ("Wisconsin was below the
+  Midwest on 155 of 163 days"). `L.sharpestWeek()` marks the window's biggest
+  seven-day move (≥10¢) as a thick segment, labelled in place on desktop
+  ("+43¢ in a week · biggest since …" via `L.lastMoveAsBig()` over the full
+  history) and named in the legend on phones. The tiles add what the chart can't
+  say — since-start change, sharpest week, days above the Midwest, range — rather
+  than repeating the end labels. A hint under the chart says it can be read.
 - **Every chart SVG is drawn at the pixel width it occupies** (`frameW()`), and
   re-rendered when the frame width changes. A fixed 680-wide drawing scaled onto a
   phone shrank its labels to ~8px; now chart text is 10–12px at every width.

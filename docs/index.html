@@ -248,6 +248,13 @@
   .wpr-tr-notes b { font-weight:600; color:var(--ink); margin-right:4px; }
   /* A paper-colored outline so a label stays readable where a line runs under it. */
   .wpr-tr-halo { paint-order:stroke; stroke:var(--paper); stroke-width:4px; stroke-linejoin:round; }
+  .wpr-tr-gap-below { fill:rgba(62,132,122,0.14); }
+  .wpr-tr-sw-gap-below { height:10px; border:0; background:rgba(62,132,122,0.2); }
+  .wpr-tr-surge { fill:none; stroke-width:5; stroke-linecap:round; stroke-linejoin:round; opacity:0.85; }
+  .wpr-tr-surge.up { stroke:#b3362a; } .wpr-tr-surge.down { stroke:var(--accent); }
+  .wpr-tr-sw-surge { border-top-width:5px; border-top-color:#b3362a; } .wpr-tr-sw-surge.down { border-top-color:var(--accent); }
+  .wpr-tr-tile-of { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--ink-light); }
+  .wpr-tr-hint { font-size:11px; color:var(--ink-faint); text-align:right; margin-top:2px; }
   .wpr-tr-hit { cursor:crosshair; }
 
   /* Fill-up calculator */
@@ -367,7 +374,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=9"></script>
+<script src="./widget-logic.js?v=10"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -1049,7 +1056,7 @@
 
     const H = narrow ? 272 : 300;
     const Lp = narrow ? 40 : 48, T = 18, B = 28;
-    const R = story.leadIsWI ? (narrow ? 96 : 196) : (narrow ? 74 : 120);
+    const R = story.leadIsWI ? (narrow ? 96 : 176) : (narrow ? 74 : 120);
     const fs = 11.5;
     const X = t => Lp + (t - start) / (end - start) * (W - Lp - R);
     const prices = lead.map(p => p.price).concat(bench.map(p => p.price));
@@ -1072,25 +1079,49 @@
       if (n++ % every === 0) svg += `<text x="${(x + 3).toFixed(1)}" y="${H - 9}" class="wpr-tr-ax" style="font-size:${fs}px">${MON[m.getUTCMonth()]}</text>`;
     }
 
-    // The gap: shaded wherever Wisconsin runs above the Midwest.
-    let hasGap = false;
+    // The gap, both ways: warm where Wisconsin runs above the Midwest, cool where
+    // it runs below. Shading only "above" hid the summer, when Wisconsin was the
+    // cheaper of the two almost every day.
+    const hasGap = { above: false, below: false };
     if (story.leadIsWI && bench.length >= 2) {
       const span = wi.filter(p => L.valueAt(bench, p.t) != null);
       if (span.length >= 2) {
-        const top = span.map(p => { const m = L.valueAt(bench, p.t); if (p.price > m + 0.005) hasGap = true; return `${X(p.t).toFixed(1)},${Y(Math.max(p.price, m)).toFixed(1)}`; });
-        const bot = span.map(p => `${X(p.t).toFixed(1)},${Y(L.valueAt(bench, p.t)).toFixed(1)}`).reverse();
-        if (hasGap) svg += `<path d="M${top.concat(bot).join('L')}Z" class="wpr-tr-gap"/>`;
+        const pt = (t, v) => `${X(t).toFixed(1)},${Y(v).toFixed(1)}`;
+        const mid = span.map(p => pt(p.t, L.valueAt(bench, p.t))).reverse();
+        const up = span.map(p => { const m = L.valueAt(bench, p.t); if (p.price > m + 0.005) hasGap.above = true; return pt(p.t, Math.max(p.price, m)); });
+        const dn = span.map(p => { const m = L.valueAt(bench, p.t); if (p.price < m - 0.005) hasGap.below = true; return pt(p.t, Math.min(p.price, m)); });
+        if (hasGap.above) svg += `<path d="M${up.concat(mid).join('L')}Z" class="wpr-tr-gap"/>`;
+        if (hasGap.below) svg += `<path d="M${dn.concat(mid).join('L')}Z" class="wpr-tr-gap-below"/>`;
       }
     }
     const lp = path(lead);
     svg += `<path d="${lp}L${X(lead[lead.length - 1].t).toFixed(1)},${H - B}L${X(lead[0].t).toFixed(1)},${H - B}Z" class="wpr-tr-area"/>`;
     if (bench.length >= 2) svg += `<path d="${path(bench)}" class="wpr-tr-bench"/>`;
     svg += `<path d="${lp}" class="wpr-tr-line wpr-draw" pathLength="1"/>`;
+    // The window's sharpest seven-day move, when it is big enough to be news.
+    const sharp = story.leadIsWI ? L.sharpestWeek(wi) : null;
+    let sharpSince = null;
+    if (sharp && Math.abs(sharp.change) >= 0.10) {
+      const fullWI = (getWIEntries(activeFuel) || []).map(e => ({ t: e.date.getTime(), price: e.price }));
+      sharpSince = L.lastMoveAsBig(fullWI, sharp);
+      const seg = wi.filter(p => p.t >= sharp.from.t && p.t <= sharp.to.t);
+      const top = Math.min(...seg.map(p => Y(p.price))), bottom = Math.max(...seg.map(p => Y(p.price)));
+      // Above the move when there's room under the top of the plot, else below it.
+      const ly = top - 22 >= T + 12 ? top - 22 : bottom + 18;
+      const cx = Math.min(Math.max((X(sharp.from.t) + X(sharp.to.t)) / 2, Lp + 70), W - R - 70);
+      const words = `${signedCents(sharp.change)} in a week`;
+      const since = sharpSince ? `biggest since ${L.shortDate(sharpSince)}` : 'biggest WPR has tracked';
+      svg += `<path d="${path(seg)}" class="wpr-tr-surge ${sharp.change > 0 ? 'up' : 'down'}"/>`;
+      // On a phone there's no room to label it in place; the legend and tile name it.
+      if (!narrow) svg += `<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" class="wpr-tr-endlbl wpr-tr-halo" style="font-size:12px">${words}</text>`
+        + `<text x="${cx.toFixed(1)}" y="${(ly + 14).toFixed(1)}" text-anchor="middle" class="wpr-tr-note wpr-tr-halo" style="font-size:${fs - 1}px">${since}</text>`;
+    } else if (sharp) { sharp.small = true; }
 
     // Low point
     const lx = X(story.low.t), ly = Y(story.low.price);
     const lowText = `Low ${money2(story.low.price)} · ${L.shortDate(story.low.t)}`;
-    const lowLeft = lx > W - R - 120;
+    // Whichever side of the point has room: never over the y-axis labels or into the gutter.
+    const lowLeft = lx + 9 + textW(lowText, fs, 400) > W - R && lx - 9 - textW(lowText, fs, 400) >= Lp;
     svg += `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" class="wpr-tr-lowdot"/>`
       + `<text x="${(lowLeft ? lx - 9 : lx + 9).toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="${lowLeft ? 'end' : 'start'}" class="wpr-tr-note" style="font-size:${fs}px">${lowText}</text>`;
 
@@ -1114,7 +1145,7 @@
       svg += two(a, 'Wisconsin', money2(last.price), sub);
       svg += two(b, 'Midwest', money2(story.mwLast.price), 'EIA, week of ' + L.shortDate(story.mwLast.t));
       if (!narrow && Math.abs(ey - my0) >= 22) {
-        const bx = ex + 150;
+        const bx = ex + 128;
         svg += `<path d="M${bx - 5},${ey.toFixed(1)}H${bx}V${my0.toFixed(1)}H${bx - 5}" class="wpr-tr-bracket"/>`
           + `<text x="${bx + 5}" y="${((ey + my0) / 2 - 2).toFixed(1)}" class="wpr-tr-endlbl">${signedCents(story.gap)}</text>`
           + `<text x="${bx + 5}" y="${((ey + my0) / 2 + 12).toFixed(1)}" class="wpr-tr-note" style="font-size:10px">gap</text>`;
@@ -1147,7 +1178,7 @@
     if (notesSvg) svg = svg.slice(0, hoverAt) + notesSvg + svg.slice(hoverAt);
 
     const aria = `${story.headline}. ${story.dek} Use the left and right arrow keys to read values.`;
-    return { story, hasGap, notes, svg: `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>` };
+    return { story, hasGap, notes, sharp: sharp && !sharp.small ? sharp : null, sharpSince, svg: `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>` };
   }
 
   function renderTrends() {
@@ -1168,19 +1199,27 @@
     }
     const built = buildTrendChart(frameW() - 2 * padX());
     if (typeof built === 'string') return controls + built;
-    const { story, hasGap, notes, svg } = built;
+    const { story, hasGap, notes, sharp, svg } = built;
+    const { wi: winWI, mw: winMW } = trendSeries();
+    const share = story.leadIsWI ? L.gapShare(winWI, winMW) : null;
+    const dek = [story.dek, story.leadIsWI ? L.gapContext(share, story.gap) : ''].filter(Boolean).join(' ');
     const noteKey = notes.length ? `<ol class="wpr-tr-notes">${notes.map(n =>
       `<li><b>${L.shortDate(n.t)}</b> ${esc(n.text)}</li>`).join('')}</ol>` : '';
     const rangeLabel = trendRange === 26 ? 'last 6 months' : 'last 12 months';
 
+    // The chart already labels today, the low and the gap; the tiles add what it
+    // can't say at a glance.
+    const moveCls = c => (c > 0.005 ? 'up-color' : c < -0.005 ? 'down-color' : '');
     const tiles = story.leadIsWI ? [
-      ['wpr-tr-tile-hero', 'Wisconsin today', moneyH(story.last.price), L.shortDate(story.last.t)],
-      ['', 'Since ' + L.shortDate(story.first.t), `<span class="${story.change > 0.005 ? 'up-color' : story.change < -0.005 ? 'down-color' : ''}">${signedCents(story.change)}</span>`,
+      ['wpr-tr-tile-hero', 'Since ' + L.shortDate(story.first.t), `<span class="${moveCls(story.change)}">${signedCents(story.change)}</span>`,
         `${story.change >= 0 ? '+' : '−'}${Math.abs(story.change / story.first.price * 100).toFixed(1)}% · from ${money2(story.first.price)}`],
-      ['', story.covers ? (trendRange === 26 ? '6-month low' : '12-month low') : 'Low since ' + L.shortDate(story.first.t), moneyH(story.low.price), L.shortDate(story.low.t)],
-      story.gap != null
-        ? ['', 'vs Midwest', `<span class="${story.gap > 0.005 ? 'up-color' : story.gap < -0.005 ? 'down-color' : ''}">${signedCents(story.gap)}</span>`, `Midwest ${money2(story.mwLast.price)} · ${L.shortDate(story.mwLast.t)}`]
+      sharp
+        ? ['', 'Sharpest week', `<span class="${moveCls(sharp.change)}">${signedCents(sharp.change)}</span>`, `${L.shortDate(sharp.from.t)} – ${L.shortDate(sharp.to.t)}`]
         : ['', 'High', moneyH(story.high.price), L.shortDate(story.high.t)],
+      share && share.total >= 14
+        ? ['', 'Above the Midwest', `${share.above}<span class="wpr-tr-tile-of"> of ${share.total}</span>`, 'days in this stretch']
+        : ['', 'Low', moneyH(story.low.price), L.shortDate(story.low.t)],
+      ['', 'Range', L.centsText(story.high.price - story.low.price), `${money2(story.low.price)} to ${money2(story.high.price)}`],
     ] : [
       ['wpr-tr-tile-hero', 'Midwest latest', moneyH(story.last.price), 'week of ' + L.shortDate(story.last.t)],
       ['', 'Since ' + L.shortDate(story.first.t), `<span class="${story.change > 0.005 ? 'up-color' : story.change < -0.005 ? 'down-color' : ''}">${signedCents(story.change)}</span>`, `from ${money2(story.first.price)}`],
@@ -1194,17 +1233,20 @@
       <div class="wpr-tr-legend">
         <span><i class="wpr-tr-sw"></i>Wisconsin · WPR daily tracking</span>
         <span><i class="wpr-tr-sw wpr-tr-sw-dash"></i>Midwest · U.S. EIA weekly</span>
-        ${hasGap ? '<span><i class="wpr-tr-sw wpr-tr-sw-gap"></i>Wisconsin above the Midwest</span>' : ''}
+        ${hasGap.above ? '<span><i class="wpr-tr-sw wpr-tr-sw-gap"></i>Wisconsin higher</span>' : ''}
+        ${hasGap.below ? '<span><i class="wpr-tr-sw wpr-tr-sw-gap-below"></i>Wisconsin lower</span>' : ''}
+        ${sharp ? `<span><i class="wpr-tr-sw wpr-tr-sw-surge ${sharp.change > 0 ? 'up' : 'down'}"></i>Sharpest week</span>` : ''}
       </div>` : `<div class="wpr-tr-legend"><span>U.S. EIA weekly Midwest benchmark${usingSampleData ? ' · sample data' : ''}</span></div>`;
 
     return `${controls}
       <div class="wpr-tr">
         <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · ${rangeLabel}</div>
         <h3 class="wpr-tr-title">${esc(story.headline)}</h3>
-        <p class="wpr-tr-dek">${esc(story.dek)}</p>
+        <p class="wpr-tr-dek">${esc(dek)}</p>
         <div class="wpr-tr-tiles">${tileHtml}</div>
         ${legend}
         ${svg}
+        <div class="wpr-tr-hint">Hover or tap the chart to read any day.</div>
         ${noteKey}
       </div>`;
   }

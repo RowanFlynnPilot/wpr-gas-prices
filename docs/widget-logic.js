@@ -310,6 +310,54 @@
     return { leadIsWI, first, last, low, high, change, mwLast, gap, covers, isHigh, isLow, headline, dek };
   }
 
+  // How many of Wisconsin's daily readings sat above the Midwest weekly line
+  // (interpolated), counting only days the Midwest series covers.
+  function gapShare(wi, mw) {
+    let above = 0, total = 0;
+    for (const p of wi || []) {
+      const m = valueAt(mw, p.t);
+      if (m == null) continue;
+      total += 1;
+      if (p.price > m + 0.005) above += 1;
+    }
+    return { above, total };
+  }
+  // A sentence for the dek when today's gap reverses the usual one; '' otherwise.
+  function gapContext(share, gap) {
+    if (!share || share.total < 14 || gap == null) return '';
+    const frac = share.above / share.total;
+    if (gap > 0.005 && frac < 0.4) return `Wisconsin was below the Midwest on ${share.total - share.above} of ${share.total} days in this stretch.`;
+    if (gap < -0.005 && frac > 0.6) return `Wisconsin was above the Midwest on ${share.above} of ${share.total} days in this stretch.`;
+    return '';
+  }
+
+  // The biggest seven-day move in a daily series: { from, to, change } where the
+  // earlier reading is 5–10 days back (runs miss days). null under ~2 weeks of data.
+  function sharpestWeek(series) {
+    let best = null;
+    for (const p of series || []) {
+      const q = readingAtOrBefore(series, p.t - 7 * MS_DAY);
+      if (!q || p.t - q.t > 10 * MS_DAY || p.t - q.t < 5 * MS_DAY) continue;
+      const change = p.price - q.price;
+      if (!best || Math.abs(change) > Math.abs(best.change)) best = { from: q, to: p, change };
+    }
+    return best;
+  }
+  // When an equally large same-direction weekly move last happened before `move`,
+  // in the full history: its end time, or null if there was none ("fastest yet").
+  function lastMoveAsBig(series, move) {
+    if (!move) return null;
+    let found = null;
+    for (const p of series || []) {
+      if (p.t >= move.from.t) break;
+      const q = readingAtOrBefore(series, p.t - 7 * MS_DAY);
+      if (!q || p.t - q.t > 10 * MS_DAY || p.t - q.t < 5 * MS_DAY) continue;
+      const c = p.price - q.price;
+      if (Math.sign(c) === Math.sign(move.change) && Math.abs(c) >= Math.abs(move.change) - 0.0005) found = p.t;
+    }
+    return found;
+  }
+
   // ── Metro map ──
   // City coordinates for the 22 scraped metros (CITIES in scrape_gas_prices.py).
   // The data contract test fails if the scraper gains a city that isn't here.
@@ -502,7 +550,7 @@
     FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
     isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
-    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp, NOTE_MAX, validNote, notesInWindow, HEATING_TANKS, sameWeekLastSeason, heatingStory,
+    shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp, NOTE_MAX, validNote, notesInWindow, HEATING_TANKS, sameWeekLastSeason, heatingStory, gapShare, gapContext, sharpestWeek, lastMoveAsBig,
     CITY_COORDS, CENTRAL_WI, projectWI, PRICE_BINS, priceBin, rankMetros, centralShare,
   };
 })();

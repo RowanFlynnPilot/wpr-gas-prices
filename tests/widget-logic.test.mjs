@@ -355,3 +355,25 @@ test('sameWeekLastSeason: nearest day within tolerance, else nothing', () => {
   assert.equal(L.sameWeekLastSeason(prev, 45), null);
   assert.equal(L.sameWeekLastSeason([], 5), null);
 });
+
+test('gapShare + gapContext: say so when today reverses the usual gap', () => {
+  const wi = daily(Array.from({ length: 30 }, (_, i) => (i < 25 ? 3.9 : 4.3)));
+  const mw = [{ t: wi[0].t, price: 4.0 }, { t: wi[29].t, price: 4.0 }];
+  const share = L.gapShare(wi, mw);
+  assert.deepEqual(plain(share), { above: 5, total: 30 });
+  assert.equal(L.gapContext(share, 0.3), 'Wisconsin was below the Midwest on 25 of 30 days in this stretch.');
+  assert.equal(L.gapContext(share, -0.1), '');                     // below now, below usually: nothing to add
+  assert.equal(L.gapContext({ above: 1, total: 5 }, 0.3), '');      // too few days to generalize
+});
+
+test('sharpestWeek + lastMoveAsBig: biggest 7-day move, and when one that big last happened', () => {
+  // A 20¢ week early on, flat, then a 30¢ week at the end.
+  const p = Array.from({ length: 60 }, (_, i) => (i < 7 ? 3.8 + i * (0.2 / 7) : i < 53 ? 4.0 : 4.0 + (i - 52) * (0.3 / 7)));
+  const s = daily(p);
+  const w = L.sharpestWeek(s);
+  assert.equal(Math.round(w.change * 100), 30);
+  assert.equal(w.to.t, s[59].t);
+  assert.equal(L.lastMoveAsBig(s, w), null);                        // nothing as big before it
+  assert.ok(L.lastMoveAsBig(s, { from: s[59], to: s[59], change: 0.15 }) != null); // the early 20¢ week counts
+  assert.equal(L.sharpestWeek(daily([4, 4.1])), null);
+});
