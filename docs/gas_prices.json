@@ -2,61 +2,63 @@
   "source": "GasBuddy",
   "source_url": "https://www.gasbuddy.com/gasprices/wisconsin",
   "state": "Wisconsin",
-  "price_date": "10/26/26",
-  "scraped_at": "2026-10-26T20:19:01.597842+00:00",
+  "price_date": "10/27/26",
+  "scraped_at": "2026-10-27T08:40:29.940372+00:00",
   "statewide": {
     "current_avg": {
-      "regular": 4.411,
+      "regular": 4.388,
       "mid_grade": 5.023,
-      "premium": 5.603,
-      "diesel": 6.395
+      "premium": 5.572,
+      "diesel": 6.38
     },
     "low": {
       "regular": 3.96,
       "mid_grade": 4.44,
       "premium": 4.84,
-      "diesel": 5.94
+      "diesel": 5.59
     },
     "high": {
-      "regular": 4.7,
+      "regular": 4.72,
       "mid_grade": 5.67,
       "premium": 6.49,
-      "diesel": 6.99
+      "diesel": 6.97
     }
   },
   "metros": {
     "Wausau": {
       "current_avg": {
-        "regular": 4.43,
-        "premium": 5.61,
-        "diesel": 6.413,
-        "mid_grade": 5.091
+        "regular": 4.419,
+        "mid_grade": 5.129,
+        "premium": 5.608,
+        "diesel": 6.412
       },
       "low": {
         "regular": 4.39,
+        "mid_grade": 4.89,
         "premium": 5.26,
-        "diesel": 6.2,
-        "mid_grade": 4.69
+        "diesel": 6.2
       },
       "high": {
-        "regular": 4.59,
-        "premium": 5.98,
-        "diesel": 6.49,
-        "mid_grade": 5.49
+        "regular": 4.49,
+        "mid_grade": 5.49,
+        "premium": 5.79,
+        "diesel": 6.49
       },
       "station_count": {
         "regular": 20,
-        "premium": 16,
-        "diesel": 13,
-        "mid_grade": 9
+        "mid_grade": 7,
+        "premium": 13,
+        "diesel": 11
       },
       "stations": [
         {
-          "name": "Mobil",
+          "name": "Citgo",
           "prices": {
-            "regular": 4.39
+            "regular": 4.39,
+            "mid_grade": 4.99,
+            "premium": 5.59
           },
-          "address": "802 E Wausau Ave, Wausau"
+          "address": "102 N 3rd Ave, Wausau"
         },
         {
           "name": "Kwik Trip",
@@ -66,6 +68,14 @@
             "diesel": 6.49
           },
           "address": "200 E Kent St, Wausau"
+        },
+        {
+          "name": "Mobil",
+          "prices": {
+            "regular": 4.39,
+            "premium": 5.79
+          },
+          "address": "802 E Wausau Ave, Wausau"
         },
         {
           "name": "BP",
@@ -86,21 +96,21 @@
           "address": "320 W Thomas St, Wausau"
         },
         {
-          "name": "Citgo",
+          "name": "BP",
           "prices": {
             "regular": 4.39,
-            "mid_grade": 4.99,
-            "premium": 5.59
+            "diesel": 6.49
           },
-          "address": "102 N 3rd Ave, Wausau"
+          "address": "2100 N Mountain Rd, Wausau"
         },
         {
-          "name": "Kwik Trip",
+          "name": "Amoco",
           "prices": {
             "regular": 4.39,
-            "premium": 5.59
+            "mid_grade": 4.89,
+            "premium": 5.49
           },
-          "address": "3853 N 6th St, Wausau"
+          "address": "407 N 3rd Ave, Wausau"
         },
         {
           "name": "Kwik Trip",
@@ -110,30 +120,21 @@
             "diesel": 6.39
           },
           "address": "2203 N 6th St, Wausau"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.39,
-            "premium": 5.59,
-            "diesel": 6.49
-          },
-          "address": "1304 W Campus Dr, Wausau"
         }
       ]
     },
     "Stevens Point": {
       "current_avg": {
-        "regular": 4.639,
-        "premium": 6.012,
-        "diesel": 6.423,
-        "mid_grade": 5.384
+        "regular": 4.62,
+        "premium": 5.939,
+        "diesel": 6.412,
+        "mid_grade": 5.298
       },
       "low": {
         "regular": 4.49,
-        "premium": 5.77,
-        "diesel": 6.29,
-        "mid_grade": 5.15
+        "premium": 5.59,
+        "diesel": 6.38,
+        "mid_grade": 4.89
       },
       "high": {
         "regular": 4.69,
@@ -143,9 +144,9 @@
       },
       "station_count": {
         "regular": 20,
-        "premium": 17,
-        "diesel": 12,
-        "mid_grade": 10
+        "premium": 15,
+        "diesel": 13,
+        "mid_grade": 9
       },
       "stations": [
         {
@@ -154,13 +155,6 @@
             "regular": 4.49
           },
           "address": "1000 Main St, Junction CIty"
-        },
-        {
-          "name": "Cenex",
-          "prices": {
-            "regular": 4.57
-          },
-          "address": "168 N Main St, Amherst"
         },
         {
           "name": "Shell",
@@ -172,13 +166,30 @@
           "address": "2733 Stanley St, Stevens Point"
         },
         {
-          "name": "Kwik Trip",
+          "name": "Cenex",
           "prices": {
-            "regular": 4.6,
-            "premium": 5.8,
+            "regular": 4.57
+          },
+          "address": "168 N Main St, Amherst"
+        },
+        {
+          "name": "Mobil",
+          "prices": {
+            "regular": 4.59,
+            "mid_grade": 5.29,
+            "premium": 5.83
+          },
+          "address": "232 W Clark St, Stevens Point"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 4.59,
+            "mid_grade": 4.89,
+            "premium": 5.59,
             "diesel": 6.49
           },
-          "address": "3258 Church St, Stevens Point"
+          "address": "9762 Cr-kk, Amherst"
         },
         {
           "name": "Kwik Trip",
@@ -190,61 +201,70 @@
           "address": "5311 Old Hwy 18, Stevens Point"
         },
         {
-          "name": "BP",
+          "name": "Kwik Trip",
           "prices": {
             "regular": 4.6,
-            "mid_grade": 5.4,
-            "premium": 6.2,
-            "diesel": 6.29
-          },
-          "address": "4928 Main St, Stevens Point"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.63,
-            "premium": 5.83,
-            "diesel": 6.39
-          },
-          "address": "3533 Stanley St, Stevens Point"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.63,
-            "premium": 5.83,
+            "premium": 5.8,
             "diesel": 6.39
           },
           "address": "1600 Maria Dr, Stevens Point"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.6,
+            "premium": 5.8,
+            "diesel": 6.39
+          },
+          "address": "3533 Stanley St, Stevens Point"
         }
       ]
     },
     "Wisconsin Rapids": {
       "current_avg": {
-        "regular": 4.623,
-        "premium": 5.916,
-        "diesel": 6.409,
-        "mid_grade": 5.436
+        "regular": 4.612,
+        "mid_grade": 5.334,
+        "diesel": 6.38,
+        "premium": 5.84
       },
       "low": {
         "regular": 4.49,
-        "premium": 5.47,
+        "mid_grade": 4.99,
         "diesel": 6.29,
-        "mid_grade": 4.99
+        "premium": 5.19
       },
       "high": {
-        "regular": 4.69,
-        "premium": 6.29,
+        "regular": 4.72,
+        "mid_grade": 5.67,
         "diesel": 6.49,
-        "mid_grade": 5.67
+        "premium": 6.29
       },
       "station_count": {
         "regular": 20,
-        "premium": 12,
+        "mid_grade": 11,
         "diesel": 10,
-        "mid_grade": 7
+        "premium": 13
       },
       "stations": [
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 4.49,
+            "mid_grade": 5.24,
+            "diesel": 6.29
+          },
+          "address": "1727 N Central Ave, Marshfield"
+        },
+        {
+          "name": "Weiler",
+          "prices": {
+            "regular": 4.49,
+            "mid_grade": 5.07,
+            "premium": 5.19,
+            "diesel": 6.29
+          },
+          "address": "600 N Central Ave, Marshfield"
+        },
         {
           "name": "BP",
           "prices": {
@@ -256,11 +276,11 @@
           "address": "3912 County Road P, Blenker"
         },
         {
-          "name": "BP",
+          "name": "Weiler",
           "prices": {
             "regular": 4.49
           },
-          "address": "1727 N Central Ave, Marshfield"
+          "address": "2401 E 4th St, Marshfield"
         },
         {
           "name": "CITGO",
@@ -270,22 +290,6 @@
             "diesel": 6.49
           },
           "address": "3738 Wi-80, Dexterville"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 4.59,
-            "diesel": 6.38
-          },
-          "address": "100 Market St, Nekoosa"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 4.59,
-            "premium": 6.29
-          },
-          "address": "2421 48th St S, Wisconsin Rapids"
         },
         {
           "name": "Mobil",
@@ -300,51 +304,66 @@
         {
           "name": "BP",
           "prices": {
-            "regular": 4.62
+            "regular": 4.59,
+            "mid_grade": 5.34,
+            "diesel": 6.29
           },
-          "address": "3553 8th St S, Wisconsin Rapids"
+          "address": "6775 State Highway 13 34, Rudolph"
         },
         {
-          "name": "CITGO",
+          "name": "BP",
           "prices": {
-            "regular": 4.63
+            "regular": 4.62,
+            "premium": 5.79
           },
-          "address": "3660 8th St S, Wisconsin Rapids"
+          "address": "3553 8th St S, Wisconsin Rapids"
         }
       ]
     },
     "Marshfield": {
       "current_avg": {
-        "regular": 4.645,
-        "premium": 5.578,
-        "diesel": 6.347,
-        "mid_grade": 5.305
+        "regular": 4.615,
+        "mid_grade": 5.183,
+        "diesel": 6.303,
+        "premium": 5.492
       },
       "low": {
         "regular": 4.49,
-        "premium": 5.37,
+        "mid_grade": 5.07,
         "diesel": 6.29,
-        "mid_grade": 5.07
+        "premium": 5.19
       },
       "high": {
         "regular": 4.69,
-        "premium": 6.28,
+        "mid_grade": 5.24,
         "diesel": 6.39,
-        "mid_grade": 5.54
+        "premium": 5.98
       },
       "station_count": {
-        "regular": 11,
-        "premium": 6,
-        "diesel": 7,
-        "mid_grade": 4
+        "regular": 12,
+        "mid_grade": 6,
+        "diesel": 8,
+        "premium": 6
       },
       "stations": [
         {
           "name": "BP",
           "prices": {
-            "regular": 4.49
+            "regular": 4.49,
+            "mid_grade": 5.24,
+            "diesel": 6.29
           },
           "address": "1727 N Central Ave, Marshfield"
+        },
+        {
+          "name": "Weiler",
+          "prices": {
+            "regular": 4.49,
+            "mid_grade": 5.07,
+            "premium": 5.19,
+            "diesel": 6.29
+          },
+          "address": "600 N Central Ave, Marshfield"
         },
         {
           "name": "Weiler",
@@ -357,6 +376,13 @@
           "address": "2005 N Central Ave, Marshfield"
         },
         {
+          "name": "Weiler",
+          "prices": {
+            "regular": 4.49
+          },
+          "address": "2401 E 4th St, Marshfield"
+        },
+        {
           "name": "Kwik Trip",
           "prices": {
             "regular": 4.67,
@@ -366,73 +392,55 @@
           "address": "2001 N Peach Ave, Marshfield"
         },
         {
-          "name": "BP",
+          "name": "Kwik Trip",
           "prices": {
             "regular": 4.67,
-            "mid_grade": 5.54,
-            "diesel": 6.39
+            "premium": 5.47,
+            "diesel": 6.29
           },
-          "address": "1000 N Central Ave, Marshfield"
+          "address": "1600 W McMillan St, Marshfield"
         },
         {
           "name": "Kwik Trip",
           "prices": {
             "regular": 4.67,
             "premium": 5.47,
-            "diesel": 6.39
+            "diesel": 6.29
           },
           "address": "101 N Central Ave, Marshfield"
         },
         {
-          "name": "Weiler",
-          "prices": {
-            "regular": 4.67,
-            "mid_grade": 5.07,
-            "premium": 5.39,
-            "diesel": 6.29
-          },
-          "address": "600 N Central Ave, Marshfield"
-        },
-        {
           "name": "BP",
           "prices": {
             "regular": 4.67,
+            "mid_grade": 5.24,
             "diesel": 6.29
           },
-          "address": "1502 S Central Ave, Marshfield"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 4.69,
-            "mid_grade": 5.54,
-            "premium": 6.28
-          },
-          "address": "539 S Central Ave, Marshfield"
+          "address": "1000 N Central Ave, Marshfield"
         }
       ]
     },
     "Rhinelander": {
       "current_avg": {
-        "regular": 4.614,
-        "diesel": 6.359,
+        "regular": 4.606,
+        "diesel": 6.376,
         "mid_grade": 5.03,
-        "premium": 5.563
+        "premium": 5.537
       },
       "low": {
         "regular": 4.49,
-        "diesel": 6.21,
+        "diesel": 6.19,
         "mid_grade": 5.03,
         "premium": 5.43
       },
       "high": {
-        "regular": 4.63,
+        "regular": 4.66,
         "diesel": 6.49,
         "mid_grade": 5.03,
-        "premium": 5.63
+        "premium": 5.59
       },
       "station_count": {
-        "regular": 9,
+        "regular": 8,
         "diesel": 7,
         "mid_grade": 1,
         "premium": 3
@@ -449,7 +457,7 @@
         {
           "name": "Holiday",
           "prices": {
-            "regular": 4.63,
+            "regular": 4.59,
             "mid_grade": 5.03,
             "premium": 5.43,
             "diesel": 6.39
@@ -459,9 +467,18 @@
         {
           "name": "Kwik Trip",
           "prices": {
+            "regular": 4.59,
+            "premium": 5.59,
+            "diesel": 6.39
+          },
+          "address": "235 S Eisenhower Pkwy, Rhinelander"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
             "regular": 4.63,
-            "premium": 5.63,
-            "diesel": 6.49
+            "premium": 5.59,
+            "diesel": 6.39
           },
           "address": "1539 N Stevens St, Rhinelander"
         },
@@ -476,7 +493,8 @@
         {
           "name": "Shell",
           "prices": {
-            "regular": 4.63
+            "regular": 4.63,
+            "diesel": 6.49
           },
           "address": "2219  Stevens St, Rhinelander"
         },
@@ -488,19 +506,10 @@
           "address": "308 S Courtney St, Rhinelander"
         },
         {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.63,
-            "premium": 5.63,
-            "diesel": 6.39
-          },
-          "address": "235 S Eisenhower Pkwy, Rhinelander"
-        },
-        {
           "name": "Krist",
           "prices": {
-            "regular": 4.63,
-            "diesel": 6.21
+            "regular": 4.66,
+            "diesel": 6.19
           },
           "address": "724 Lincoln St, Rhinelander"
         }
@@ -508,27 +517,27 @@
     },
     "Merrill": {
       "current_avg": {
-        "regular": 4.563,
-        "mid_grade": 5.213,
-        "premium": 5.822,
-        "diesel": 6.5
+        "regular": 4.559,
+        "mid_grade": 5.19,
+        "premium": 5.764,
+        "diesel": 6.513
       },
       "low": {
         "regular": 4.39,
         "mid_grade": 4.99,
         "premium": 5.45,
-        "diesel": 6.15
+        "diesel": 6.19
       },
       "high": {
         "regular": 4.69,
-        "mid_grade": 5.44,
+        "mid_grade": 5.34,
         "premium": 6.49,
         "diesel": 6.89
       },
       "station_count": {
         "regular": 19,
-        "mid_grade": 4,
-        "premium": 8,
+        "mid_grade": 5,
+        "premium": 7,
         "diesel": 12
       },
       "stations": [
@@ -550,6 +559,13 @@
           "address": "N11790 Cr-l, Heafford Junction"
         },
         {
+          "name": "Marathon",
+          "prices": {
+            "regular": 4.4
+          },
+          "address": "706 N 4th St, Tomahawk"
+        },
+        {
           "name": "Kwik Trip",
           "prices": {
             "regular": 4.45,
@@ -568,17 +584,10 @@
           "address": "981 N 4th St, Tomahawk"
         },
         {
-          "name": "Krist",
-          "prices": {
-            "regular": 4.47,
-            "diesel": 6.15
-          },
-          "address": "105 S Center Ave, Merrill"
-        },
-        {
           "name": "BP",
           "prices": {
             "regular": 4.49,
+            "mid_grade": 5.2,
             "diesel": 6.55
           },
           "address": "1727 E Somo Ave, Tomahawk"
@@ -591,20 +600,19 @@
           "address": "W11069 Us-8, Tripoli"
         },
         {
-          "name": "BP",
+          "name": "Cenex",
           "prices": {
-            "regular": 4.49,
-            "diesel": 6.89
+            "regular": 4.57
           },
-          "address": "1329 N 4th St, Tomahawk"
+          "address": "504 E 2nd St, Merrill"
         }
       ]
     },
     "Mosinee": {
       "current_avg": {
         "regular": 4.693,
-        "mid_grade": 5.44,
-        "premium": 6.02,
+        "mid_grade": 5.443,
+        "premium": 6.023,
         "diesel": 6.49
       },
       "low": {
@@ -615,7 +623,7 @@
       },
       "high": {
         "regular": 4.7,
-        "mid_grade": 5.44,
+        "mid_grade": 5.45,
         "premium": 6.19,
         "diesel": 6.49
       },
@@ -626,6 +634,16 @@
         "diesel": 2
       },
       "stations": [
+        {
+          "name": "Shell",
+          "prices": {
+            "regular": 4.69,
+            "mid_grade": 5.44,
+            "premium": 6.19,
+            "diesel": 6.49
+          },
+          "address": "1121 Western Ave, Mosinee"
+        },
         {
           "name": "Shell",
           "prices": {
@@ -644,16 +662,6 @@
           "address": "500 Cherry St, Mosinee"
         },
         {
-          "name": "Shell",
-          "prices": {
-            "regular": 4.69,
-            "mid_grade": 5.44,
-            "premium": 6.19,
-            "diesel": 6.49
-          },
-          "address": "1121 Western Ave, Mosinee"
-        },
-        {
           "name": "Mobil",
           "prices": {
             "regular": 4.69
@@ -664,8 +672,8 @@
           "name": "BP",
           "prices": {
             "regular": 4.7,
-            "mid_grade": 5.44,
-            "premium": 6.18
+            "mid_grade": 5.45,
+            "premium": 6.19
           },
           "address": "1108 Western Avenue, Mosinee"
         },
@@ -681,13 +689,13 @@
     "Antigo": {
       "current_avg": {
         "regular": 4.502,
-        "premium": 5.842,
-        "diesel": 6.397,
+        "premium": 5.754,
+        "diesel": 6.387,
         "mid_grade": 5.365
       },
       "low": {
         "regular": 4.47,
-        "premium": 5.75,
+        "premium": 5.67,
         "diesel": 6.17,
         "mid_grade": 5.24
       },
@@ -708,7 +716,7 @@
           "name": "Kwik Trip",
           "prices": {
             "regular": 4.47,
-            "premium": 5.89,
+            "premium": 5.67,
             "diesel": 6.49
           },
           "address": "455 Wi-64, Antigo"
@@ -722,6 +730,15 @@
           "address": "2120 Neva Rd, Antigo"
         },
         {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.47,
+            "premium": 5.67,
+            "diesel": 6.39
+          },
+          "address": "815 S Superior St, Antigo"
+        },
+        {
           "name": "Krist",
           "prices": {
             "regular": 4.47,
@@ -732,13 +749,12 @@
           "address": "104 Superior St, Antigo"
         },
         {
-          "name": "Kwik Trip",
+          "name": "FS Fast Stop",
           "prices": {
-            "regular": 4.47,
-            "premium": 5.89,
-            "diesel": 6.49
+            "regular": 4.49,
+            "diesel": 6.28
           },
-          "address": "815 S Superior St, Antigo"
+          "address": "2300 Hwy 45 N, Antigo"
         },
         {
           "name": "Marathon",
@@ -749,14 +765,6 @@
           "address": "702 Superior St, Antigo"
         },
         {
-          "name": "FS Fast Stop",
-          "prices": {
-            "regular": 4.49,
-            "diesel": 6.28
-          },
-          "address": "2300 Hwy 45 N, Antigo"
-        },
-        {
           "name": "BP",
           "prices": {
             "regular": 4.49,
@@ -765,39 +773,41 @@
           "address": "N4005 US Highway 45, Antigo"
         },
         {
-          "name": "Fleet Farm",
+          "name": "Shell",
           "prices": {
             "regular": 4.49,
-            "diesel": 6.39
+            "mid_grade": 5.24,
+            "premium": 5.89,
+            "diesel": 6.49
           },
-          "address": "2511 Neva Rd, Antigo"
+          "address": "709 S Superior St, Antigo"
         }
       ]
     },
     "Eau Claire": {
       "current_avg": {
-        "regular": 4.083,
-        "premium": 5.151,
-        "diesel": 6.354,
-        "mid_grade": 4.599
+        "regular": 4.049,
+        "mid_grade": 4.561,
+        "premium": 5.111,
+        "diesel": 6.352
       },
       "low": {
         "regular": 3.96,
+        "mid_grade": 4.46,
         "premium": 4.96,
-        "diesel": 6.14,
-        "mid_grade": 4.46
+        "diesel": 6.14
       },
       "high": {
-        "regular": 4.27,
-        "premium": 5.69,
-        "diesel": 6.39,
-        "mid_grade": 4.77
+        "regular": 4.19,
+        "mid_grade": 4.75,
+        "premium": 5.64,
+        "diesel": 6.39
       },
       "station_count": {
         "regular": 20,
-        "premium": 15,
-        "diesel": 15,
-        "mid_grade": 7
+        "mid_grade": 7,
+        "premium": 17,
+        "diesel": 17
       },
       "stations": [
         {
@@ -828,24 +838,6 @@
           "address": "2929 Meadowlark Ln, Altoona"
         },
         {
-          "name": "Express Mart",
-          "prices": {
-            "regular": 3.99,
-            "mid_grade": 4.49,
-            "premium": 4.99,
-            "diesel": 6.39
-          },
-          "address": "810 N Bridge St, Chippewa Falls"
-        },
-        {
-          "name": "Cenex",
-          "prices": {
-            "regular": 3.99,
-            "diesel": 6.39
-          },
-          "address": "E19390 Us-12, Augusta"
-        },
-        {
           "name": "Cenex",
           "prices": {
             "regular": 3.99,
@@ -856,19 +848,38 @@
           "address": "19756 Cr-x, Chippewa Falls"
         },
         {
-          "name": "Woodman's",
+          "name": "Cenex",
+          "prices": {
+            "regular": 3.99,
+            "diesel": 6.39
+          },
+          "address": "E19390 Us-12, Augusta"
+        },
+        {
+          "name": "Express Mart",
           "prices": {
             "regular": 3.99,
             "mid_grade": 4.49,
-            "premium": 5.03,
+            "premium": 4.99,
             "diesel": 6.39
           },
-          "address": "2855 Woodman Dr, Altoona"
+          "address": "810 N Bridge St, Chippewa Falls"
+        },
+        {
+          "name": "Casey's",
+          "prices": {
+            "regular": 3.99,
+            "premium": 4.99,
+            "diesel": 6.39
+          },
+          "address": "2375 Saint Andrews Dr, Altoona"
         },
         {
           "name": "Cenex",
           "prices": {
-            "regular": 3.99
+            "regular": 3.99,
+            "premium": 4.99,
+            "diesel": 6.39
           },
           "address": "1456 Kennedy Rd, Chippewa Falls"
         }
@@ -876,28 +887,28 @@
     },
     "Green Bay": {
       "current_avg": {
-        "regular": 4.362,
-        "mid_grade": 5.075,
-        "diesel": 6.329,
-        "premium": 5.751
+        "regular": 4.329,
+        "premium": 5.769,
+        "mid_grade": 5.121,
+        "diesel": 6.193
       },
       "low": {
         "regular": 3.99,
-        "mid_grade": 4.84,
-        "diesel": 6.07,
-        "premium": 5.14
+        "premium": 5.14,
+        "mid_grade": 4.79,
+        "diesel": 5.59
       },
       "high": {
-        "regular": 4.49,
-        "mid_grade": 5.29,
-        "diesel": 6.69,
-        "premium": 6.39
+        "regular": 4.44,
+        "premium": 6.49,
+        "mid_grade": 5.49,
+        "diesel": 6.69
       },
       "station_count": {
         "regular": 20,
-        "mid_grade": 8,
-        "diesel": 12,
-        "premium": 14
+        "premium": 14,
+        "mid_grade": 14,
+        "diesel": 12
       },
       "stations": [
         {
@@ -908,15 +919,6 @@
           "address": "2600 Niagara Trail, Green Bay"
         },
         {
-          "name": "Krist",
-          "prices": {
-            "regular": 4.22,
-            "mid_grade": 5.22,
-            "diesel": 6.12
-          },
-          "address": "2531 Babcock Rd, Green Bay"
-        },
-        {
           "name": "Costco",
           "prices": {
             "regular": 4.22,
@@ -925,14 +927,13 @@
           "address": "2355 Costco Way, Bellevue"
         },
         {
-          "name": "Woodman's",
+          "name": "Krist",
           "prices": {
-            "regular": 4.24,
-            "mid_grade": 4.84,
-            "premium": 5.14,
-            "diesel": 6.09
+            "regular": 4.22,
+            "mid_grade": 5.22,
+            "diesel": 6.12
           },
-          "address": "2400 Dousman St, Green Bay"
+          "address": "2531 Babcock Rd, Green Bay"
         },
         {
           "name": "Shell",
@@ -945,41 +946,57 @@
           "address": "2530 Babcock Rd, Ashwaubenon"
         },
         {
-          "name": "Krist",
+          "name": "Woodman's",
           "prices": {
-            "regular": 4.29
+            "regular": 4.24,
+            "mid_grade": 4.84,
+            "premium": 5.14,
+            "diesel": 6.09
           },
-          "address": "1180 E Mason St, Green Bay"
-        },
-        {
-          "name": "Krist Food Mart",
-          "prices": {
-            "regular": 4.37
-          },
-          "address": "907 Main St, Oconto"
+          "address": "2400 Dousman St, Green Bay"
         },
         {
           "name": "Krist",
           "prices": {
-            "regular": 4.37,
+            "regular": 4.27,
+            "mid_grade": 5.49,
             "diesel": 6.07
           },
-          "address": "224 N Chestnut Ave, Oconto Falls"
+          "address": "916 Main St, Suring"
+        },
+        {
+          "name": "Marathon",
+          "prices": {
+            "regular": 4.29,
+            "mid_grade": 4.79,
+            "premium": 5.29,
+            "diesel": 5.59
+          },
+          "address": "1300 S Military Ave, Green Bay"
+        },
+        {
+          "name": "Krist",
+          "prices": {
+            "regular": 4.29,
+            "mid_grade": 5.49,
+            "premium": 5.79
+          },
+          "address": "1180 E Mason St, Green Bay"
         }
       ]
     },
     "Appleton": {
       "current_avg": {
-        "regular": 4.316,
-        "premium": 5.471,
-        "diesel": 6.262,
-        "mid_grade": 4.853
+        "regular": 4.278,
+        "premium": 5.534,
+        "diesel": 6.228,
+        "mid_grade": 4.836
       },
       "low": {
         "regular": 3.99,
         "premium": 5.18,
         "diesel": 5.94,
-        "mid_grade": 4.69
+        "mid_grade": 4.59
       },
       "high": {
         "regular": 4.39,
@@ -989,11 +1006,20 @@
       },
       "station_count": {
         "regular": 20,
-        "premium": 15,
-        "diesel": 9,
-        "mid_grade": 12
+        "premium": 16,
+        "diesel": 12,
+        "mid_grade": 11
       },
       "stations": [
+        {
+          "name": "MotoMart",
+          "prices": {
+            "regular": 3.99,
+            "premium": 5.39,
+            "diesel": 6.09
+          },
+          "address": "3225 W Glenpark Dr, Appleton"
+        },
         {
           "name": "Costco",
           "prices": {
@@ -1023,6 +1049,15 @@
           "address": "911 W College Ave, Appleton"
         },
         {
+          "name": "CITGO",
+          "prices": {
+            "regular": 4.19,
+            "mid_grade": 4.59,
+            "premium": 5.79
+          },
+          "address": "111 W Wisconsin Ave, Appleton"
+        },
+        {
           "name": "Woodman's",
           "prices": {
             "regular": 4.19,
@@ -1042,41 +1077,21 @@
           "address": "3640 W College Ave, Appleton"
         },
         {
-          "name": "Mobil",
+          "name": "Marathon",
           "prices": {
             "regular": 4.29,
-            "mid_grade": 4.79,
-            "premium": 5.29
+            "diesel": 6.49
           },
-          "address": "4320 W Prospect Ave, Appleton"
-        },
-        {
-          "name": "CITGO",
-          "prices": {
-            "regular": 4.34,
-            "mid_grade": 4.92,
-            "premium": 5.53,
-            "diesel": 6.29
-          },
-          "address": "2775 W Wisconsin Ave, Appleton"
-        },
-        {
-          "name": "Mobil",
-          "prices": {
-            "regular": 4.34,
-            "mid_grade": 4.74,
-            "diesel": 6.29
-          },
-          "address": "275 S Bluemound Dr, Appleton"
+          "address": "1920 E Wisconsin Ave, Appleton"
         }
       ]
     },
     "Madison": {
       "current_avg": {
-        "regular": 4.271,
-        "premium": 5.507,
-        "diesel": 6.425,
-        "mid_grade": 4.968
+        "regular": 4.272,
+        "premium": 5.546,
+        "diesel": 6.353,
+        "mid_grade": 4.975
       },
       "low": {
         "regular": 4.19,
@@ -1086,43 +1101,17 @@
       },
       "high": {
         "regular": 4.39,
-        "premium": 6.09,
-        "diesel": 6.84,
-        "mid_grade": 5.19
+        "premium": 6.19,
+        "diesel": 6.49,
+        "mid_grade": 5.39
       },
       "station_count": {
         "regular": 20,
-        "premium": 16,
-        "diesel": 13,
-        "mid_grade": 9
+        "premium": 14,
+        "diesel": 8,
+        "mid_grade": 8
       },
       "stations": [
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.19,
-            "premium": 5.39,
-            "diesel": 6.49
-          },
-          "address": "1706 Windsor St, Sun Prairie"
-        },
-        {
-          "name": "Garden Asian Market",
-          "prices": {
-            "regular": 4.19,
-            "mid_grade": 4.69,
-            "premium": 5.09
-          },
-          "address": "6136 University Ave, Middleton"
-        },
-        {
-          "name": "Costco",
-          "prices": {
-            "regular": 4.19,
-            "premium": 5.39
-          },
-          "address": "2850 Hoepker Rd, Sun Prairie"
-        },
         {
           "name": "Kwik Trip",
           "prices": {
@@ -1138,7 +1127,15 @@
             "regular": 4.19,
             "premium": 5.39
           },
-          "address": "1000 Batker Ct, Verona"
+          "address": "2850 Hoepker Rd, Sun Prairie"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.19,
+            "diesel": 6.49
+          },
+          "address": "9 Tower Dr, Sun Prairie"
         },
         {
           "name": "Woodman's",
@@ -1166,79 +1163,53 @@
             "diesel": 6.19
           },
           "address": "3817 Milwaukee St, Madison"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.19,
+            "premium": 5.39,
+            "diesel": 6.49
+          },
+          "address": "1706 Windsor St, Sun Prairie"
+        },
+        {
+          "name": "Garden Asian Market",
+          "prices": {
+            "regular": 4.19,
+            "mid_grade": 4.69,
+            "premium": 5.09
+          },
+          "address": "6136 University Ave, Middleton"
         }
       ]
     },
     "Milwaukee": {
       "current_avg": {
-        "regular": 4.211,
-        "mid_grade": 4.882,
-        "premium": 5.376,
-        "diesel": 6.35
+        "regular": 4.21,
+        "premium": 5.373,
+        "diesel": 6.39,
+        "mid_grade": 4.942
       },
       "low": {
         "regular": 4.09,
-        "mid_grade": 4.59,
         "premium": 4.84,
-        "diesel": 5.99
+        "diesel": 5.99,
+        "mid_grade": 4.75
       },
       "high": {
-        "regular": 4.29,
-        "mid_grade": 5.49,
+        "regular": 4.39,
         "premium": 5.99,
-        "diesel": 6.99
+        "diesel": 6.79,
+        "mid_grade": 5.49
       },
       "station_count": {
-        "regular": 19,
-        "mid_grade": 12,
-        "premium": 14,
-        "diesel": 6
+        "regular": 20,
+        "premium": 18,
+        "diesel": 8,
+        "mid_grade": 12
       },
       "stations": [
-        {
-          "name": "Sam's Club",
-          "prices": {
-            "regular": 4.09,
-            "premium": 4.84,
-            "diesel": 5.99
-          },
-          "address": "8050 N 124th St, Milwaukee"
-        },
-        {
-          "name": "Mobil",
-          "prices": {
-            "regular": 4.09,
-            "mid_grade": 5.09,
-            "premium": 5.79
-          },
-          "address": "1127 E Oklahoma Ave, Milwaukee"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 4.09,
-            "mid_grade": 4.79,
-            "premium": 5.69
-          },
-          "address": "1203 E Oklahoma Ave, Milwaukee"
-        },
-        {
-          "name": "Woodman's",
-          "prices": {
-            "regular": 4.09,
-            "mid_grade": 4.89,
-            "premium": 5.39
-          },
-          "address": "W124n8145 Wi-145, Menomonee Falls"
-        },
-        {
-          "name": "Costco",
-          "prices": {
-            "regular": 4.09,
-            "premium": 4.84
-          },
-          "address": "443 Pewaukee Rd, Pewaukee"
-        },
         {
           "name": "Costco",
           "prices": {
@@ -1257,26 +1228,72 @@
           "address": "1906 Kirkland Way, Oconomowoc"
         },
         {
-          "name": "Star",
+          "name": "Woodman's",
           "prices": {
-            "regular": 4.19,
-            "mid_grade": 5.49,
-            "premium": 5.89
+            "regular": 4.09,
+            "mid_grade": 4.89,
+            "premium": 5.39,
+            "diesel": 6.49
           },
-          "address": "5656 N 76th St, Milwaukee"
+          "address": "W124n8145 Wi-145, Menomonee Falls"
+        },
+        {
+          "name": "Costco",
+          "prices": {
+            "regular": 4.09,
+            "premium": 4.84
+          },
+          "address": "443 Pewaukee Rd, Pewaukee"
+        },
+        {
+          "name": "Woodman's",
+          "prices": {
+            "regular": 4.09,
+            "mid_grade": 5.09,
+            "premium": 5.39,
+            "diesel": 6.69
+          },
+          "address": "1620 E Main St, Waukesha"
+        },
+        {
+          "name": "Sam's Club",
+          "prices": {
+            "regular": 4.09,
+            "premium": 4.84,
+            "diesel": 5.99
+          },
+          "address": "8050 N 124th St, Milwaukee"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 4.09,
+            "mid_grade": 4.79,
+            "premium": 5.69
+          },
+          "address": "1203 E Oklahoma Ave, Milwaukee"
+        },
+        {
+          "name": "Mobil",
+          "prices": {
+            "regular": 4.09,
+            "mid_grade": 5.09,
+            "premium": 5.79
+          },
+          "address": "1127 E Oklahoma Ave, Milwaukee"
         }
       ]
     },
     "La Crosse": {
       "current_avg": {
         "regular": 4.14,
-        "premium": 5.327,
-        "diesel": 6.455,
-        "mid_grade": 4.573
+        "premium": 5.34,
+        "diesel": 6.46,
+        "mid_grade": 4.64
       },
       "low": {
         "regular": 4.09,
-        "premium": 5.09,
+        "premium": 5.29,
         "diesel": 6.09,
         "mid_grade": 4.44
       },
@@ -1284,15 +1301,47 @@
         "regular": 4.19,
         "premium": 5.39,
         "diesel": 6.64,
-        "mid_grade": 4.69
+        "mid_grade": 4.79
       },
       "station_count": {
         "regular": 20,
-        "premium": 16,
-        "diesel": 13,
+        "premium": 14,
+        "diesel": 15,
         "mid_grade": 3
       },
       "stations": [
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.09,
+            "premium": 5.29,
+            "diesel": 6.49
+          },
+          "address": "1276 Crossing Meadows Dr, Onalaska"
+        },
+        {
+          "name": "Woodman's",
+          "prices": {
+            "regular": 4.09
+          },
+          "address": "9515 Wi-16, Onalaska"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.09,
+            "premium": 5.29
+          },
+          "address": "1802 E Main St, Onalaska"
+        },
+        {
+          "name": "Hansen's IGA",
+          "prices": {
+            "regular": 4.09,
+            "diesel": 6.49
+          },
+          "address": "1800 Commercial St, Bangor"
+        },
         {
           "name": "Kwik Trip",
           "prices": {
@@ -1312,32 +1361,6 @@
           "address": "985 W Wi-16, West Salem"
         },
         {
-          "name": "Hansen's IGA",
-          "prices": {
-            "regular": 4.09,
-            "diesel": 6.49
-          },
-          "address": "1800 Commercial St, Bangor"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.09,
-            "premium": 5.29,
-            "diesel": 6.49
-          },
-          "address": "1276 Crossing Meadows Dr, Onalaska"
-        },
-        {
-          "name": "Woodman's",
-          "prices": {
-            "regular": 4.09,
-            "mid_grade": 4.59,
-            "premium": 5.09
-          },
-          "address": "9515 Wi-16, Onalaska"
-        },
-        {
           "name": "Stop N Go",
           "prices": {
             "regular": 4.09,
@@ -1353,41 +1376,33 @@
             "diesel": 6.49
           },
           "address": "9421 Wi-16, Onalaska"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.09,
-            "premium": 5.29
-          },
-          "address": "1802 E Main St, Onalaska"
         }
       ]
     },
     "Fond du Lac": {
       "current_avg": {
-        "regular": 4.435,
-        "mid_grade": 5.053,
-        "premium": 5.926,
-        "diesel": 6.339
+        "regular": 4.41,
+        "mid_grade": 5.033,
+        "premium": 5.848,
+        "diesel": 6.323
       },
       "low": {
         "regular": 4.19,
         "mid_grade": 4.55,
         "premium": 5.33,
-        "diesel": 6.09
+        "diesel": 5.89
       },
       "high": {
         "regular": 4.69,
         "mid_grade": 5.35,
-        "premium": 6.34,
+        "premium": 6.29,
         "diesel": 6.74
       },
       "station_count": {
         "regular": 20,
-        "mid_grade": 15,
-        "premium": 16,
-        "diesel": 14
+        "mid_grade": 14,
+        "premium": 15,
+        "diesel": 15
       },
       "stations": [
         {
@@ -1446,6 +1461,16 @@
           "address": "976 S Main St, Fond du Lac"
         },
         {
+          "name": "BP",
+          "prices": {
+            "regular": 4.32,
+            "mid_grade": 5.09,
+            "premium": 5.83,
+            "diesel": 6.39
+          },
+          "address": "948 S Rolling Meadows Dr, Fond du Lac"
+        },
+        {
           "name": "Amoco",
           "prices": {
             "regular": 4.33,
@@ -1454,28 +1479,18 @@
             "diesel": 6.17
           },
           "address": "N5789 Military Rd, Fond du Lac"
-        },
-        {
-          "name": "Love's Travel Stop",
-          "prices": {
-            "regular": 4.33,
-            "mid_grade": 4.83,
-            "premium": 5.33,
-            "diesel": 6.74
-          },
-          "address": "191 W Rolling Meadows Dr, Fond du Lac"
         }
       ]
     },
     "Janesville": {
       "current_avg": {
-        "regular": 4.502,
-        "mid_grade": 5.008,
-        "premium": 5.605,
-        "diesel": 6.492
+        "regular": 4.415,
+        "mid_grade": 4.946,
+        "premium": 5.537,
+        "diesel": 6.506
       },
       "low": {
-        "regular": 4.39,
+        "regular": 4.29,
         "mid_grade": 4.69,
         "premium": 5.09,
         "diesel": 6.04
@@ -1488,29 +1503,38 @@
       },
       "station_count": {
         "regular": 20,
-        "mid_grade": 14,
-        "premium": 17,
-        "diesel": 18
+        "mid_grade": 17,
+        "premium": 20,
+        "diesel": 14
       },
       "stations": [
         {
-          "name": "Speedway",
+          "name": "BP",
           "prices": {
-            "regular": 4.39,
-            "mid_grade": 4.89,
-            "premium": 5.39,
-            "diesel": 6.04
+            "regular": 4.29,
+            "mid_grade": 5.09,
+            "premium": 5.29
           },
-          "address": "2781 Milwaukee Rd, Beloit"
+          "address": "1840 Beloit Ave, Janesville"
         },
         {
-          "name": "Exxon",
+          "name": "Marathon",
           "prices": {
             "regular": 4.39,
-            "mid_grade": 5.09,
-            "premium": 5.59
+            "mid_grade": 5.04,
+            "premium": 5.34,
+            "diesel": 6.29
           },
-          "address": "3420 Milton Ave, Janesville"
+          "address": "2760 Prairie Ave, Beloit"
+        },
+        {
+          "name": "CITGO",
+          "prices": {
+            "regular": 4.39,
+            "mid_grade": 4.69,
+            "premium": 5.09
+          },
+          "address": "1888 Shopiere Rd, Beloit"
         },
         {
           "name": "Mobil",
@@ -1523,6 +1547,25 @@
           "address": "3222 Us-14 E, Janesville"
         },
         {
+          "name": "Exxon",
+          "prices": {
+            "regular": 4.39,
+            "mid_grade": 5.09,
+            "premium": 5.59
+          },
+          "address": "3420 Milton Ave, Janesville"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 4.39,
+            "mid_grade": 4.89,
+            "premium": 5.59,
+            "diesel": 6.39
+          },
+          "address": "3961 Milton Ave, Janesville"
+        },
+        {
           "name": "BP",
           "prices": {
             "regular": 4.39,
@@ -1533,57 +1576,26 @@
           "address": "505 Peck Ave, Clinton"
         },
         {
-          "name": "Woodman’s",
+          "name": "Casey's",
           "prices": {
             "regular": 4.39,
-            "mid_grade": 4.99,
-            "premium": 5.59,
-            "diesel": 6.89
+            "premium": 5.94,
+            "diesel": 6.39
           },
-          "address": "2826 Milton Ave, Janesville"
-        },
-        {
-          "name": "Woodman's",
-          "prices": {
-            "regular": 4.39,
-            "mid_grade": 5.19,
-            "premium": 5.59,
-            "diesel": 6.89
-          },
-          "address": "2819 N Lexington Dr, Janesville"
-        },
-        {
-          "name": "Pilot",
-          "prices": {
-            "regular": 4.39,
-            "mid_grade": 4.69,
-            "premium": 5.09,
-            "diesel": 6.97
-          },
-          "address": "3001 Milwaukee Rd, Beloit"
-        },
-        {
-          "name": "Mobil",
-          "prices": {
-            "regular": 4.49,
-            "mid_grade": 4.99,
-            "premium": 5.59,
-            "diesel": 6.49
-          },
-          "address": "1009 N Washington St, Janesville"
+          "address": "2350 Cranston Rd, Beloit"
         }
       ]
     },
     "Kenosha": {
       "current_avg": {
-        "regular": 4.506,
-        "premium": 5.669,
-        "diesel": 6.444,
-        "mid_grade": 5.088
+        "regular": 4.507,
+        "premium": 5.662,
+        "diesel": 6.477,
+        "mid_grade": 5.121
       },
       "low": {
         "regular": 4.17,
-        "premium": 4.99,
+        "premium": 5.13,
         "diesel": 6.19,
         "mid_grade": 4.79
       },
@@ -1591,13 +1603,13 @@
         "regular": 4.69,
         "premium": 6.49,
         "diesel": 6.59,
-        "mid_grade": 5.29
+        "mid_grade": 5.39
       },
       "station_count": {
         "regular": 20,
-        "premium": 15,
-        "diesel": 7,
-        "mid_grade": 9
+        "premium": 13,
+        "diesel": 10,
+        "mid_grade": 7
       },
       "stations": [
         {
@@ -1624,24 +1636,6 @@
           "address": "2828 75th St, Kenosha"
         },
         {
-          "name": "Kenosha Gas Stop",
-          "prices": {
-            "regular": 4.34,
-            "mid_grade": 4.79,
-            "premium": 4.99
-          },
-          "address": "2207 60th St, Kenosha"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.39,
-            "premium": 5.39,
-            "diesel": 6.49
-          },
-          "address": "12224 74th St, Kenosha"
-        },
-        {
           "name": "Woodman's",
           "prices": {
             "regular": 4.39,
@@ -1650,6 +1644,15 @@
             "diesel": 6.19
           },
           "address": "7145 120th Ave, Kenosha"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.39,
+            "premium": 5.39,
+            "diesel": 6.39
+          },
+          "address": "12224 74th St, Kenosha"
         },
         {
           "name": "Ultimate",
@@ -1663,21 +1666,29 @@
           "name": "Shell",
           "prices": {
             "regular": 4.49,
+            "mid_grade": 5.39,
             "premium": 6.49
           },
           "address": "5922 Sheridan Rd, Kenosha"
+        },
+        {
+          "name": "Mobil",
+          "prices": {
+            "regular": 4.54
+          },
+          "address": "4924 Sheridan Rd, Kenosha"
         }
       ]
     },
     "Oshkosh": {
       "current_avg": {
-        "regular": 4.388,
-        "mid_grade": 4.983,
-        "premium": 5.655,
-        "diesel": 6.242
+        "regular": 4.384,
+        "mid_grade": 4.971,
+        "premium": 5.624,
+        "diesel": 6.249
       },
       "low": {
-        "regular": 4.36,
+        "regular": 4.29,
         "mid_grade": 4.69,
         "premium": 5.19,
         "diesel": 5.94
@@ -1685,22 +1696,25 @@
       "high": {
         "regular": 4.39,
         "mid_grade": 5.19,
-        "premium": 6.06,
+        "premium": 5.89,
         "diesel": 6.49
       },
       "station_count": {
-        "regular": 20,
-        "mid_grade": 13,
-        "premium": 18,
-        "diesel": 13
+        "regular": 19,
+        "mid_grade": 11,
+        "premium": 17,
+        "diesel": 12
       },
       "stations": [
         {
-          "name": "Krist",
+          "name": "BP",
           "prices": {
-            "regular": 4.36
+            "regular": 4.29,
+            "mid_grade": 4.99,
+            "premium": 5.69,
+            "diesel": 6.39
           },
-          "address": "1305 S Commercial St, Neenah"
+          "address": "3700 Jackson St, Oshkosh"
         },
         {
           "name": "Mobil",
@@ -1709,6 +1723,16 @@
             "diesel": 5.99
           },
           "address": "521 S Commercial St, Neenah"
+        },
+        {
+          "name": "Citgo",
+          "prices": {
+            "regular": 4.38,
+            "mid_grade": 4.99,
+            "premium": 5.49,
+            "diesel": 6.29
+          },
+          "address": "975 Racine Rd, Menasha"
         },
         {
           "name": "Amoco",
@@ -1724,72 +1748,64 @@
           "name": "Kwik Trip",
           "prices": {
             "regular": 4.39,
-            "premium": 5.39,
-            "diesel": 6.49
-          },
-          "address": "901 Racine Rd, Menasha"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.39,
-            "premium": 5.69,
-            "diesel": 6.49
-          },
-          "address": "2175 S Memorial Dr, Appleton"
-        },
-        {
-          "name": "Marathon",
-          "prices": {
-            "regular": 4.39,
-            "mid_grade": 5.19,
-            "premium": 5.89
-          },
-          "address": "209 Racine St, Menasha"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.39,
-            "premium": 5.39,
-            "diesel": 6.39
-          },
-          "address": "1400 W American Dr, Neenah"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.39,
             "premium": 5.69,
             "diesel": 6.49
           },
           "address": "903 S Green Bay Rd, Neenah"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.39,
+            "premium": 5.39,
+            "diesel": 6.29
+          },
+          "address": "1400 W American Dr, Neenah"
+        },
+        {
+          "name": "BP",
+          "prices": {
+            "regular": 4.39,
+            "mid_grade": 4.95,
+            "premium": 5.69,
+            "diesel": 5.95
+          },
+          "address": "901 Appleton Rd, Menasha"
+        },
+        {
+          "name": "Mobil",
+          "prices": {
+            "regular": 4.39,
+            "mid_grade": 5.04,
+            "premium": 5.89
+          },
+          "address": "904 Green Bay Rd, Neenah"
         }
       ]
     },
     "Racine": {
       "current_avg": {
-        "regular": 4.343,
-        "mid_grade": 4.878,
-        "premium": 5.46,
-        "diesel": 6.416
+        "regular": 4.285,
+        "mid_grade": 4.857,
+        "premium": 5.411,
+        "diesel": 6.356
       },
       "low": {
         "regular": 4.15,
-        "mid_grade": 4.68,
+        "mid_grade": 4.65,
         "premium": 5.14,
-        "diesel": 6.25
+        "diesel": 6.15
       },
       "high": {
         "regular": 4.59,
         "mid_grade": 5.09,
-        "premium": 5.79,
+        "premium": 5.69,
         "diesel": 6.59
       },
       "station_count": {
         "regular": 20,
-        "mid_grade": 12,
-        "premium": 16,
+        "mid_grade": 13,
+        "premium": 17,
         "diesel": 10
       },
       "stations": [
@@ -1803,6 +1819,15 @@
           "address": "601 N Milwaukee St, Waterford"
         },
         {
+          "name": "ZEB'S",
+          "prices": {
+            "regular": 4.15,
+            "mid_grade": 4.75,
+            "premium": 5.35
+          },
+          "address": "109 N Milwaukee St, Waterford"
+        },
+        {
           "name": "Waterford Food Mart",
           "prices": {
             "regular": 4.15,
@@ -1812,13 +1837,33 @@
           "address": "232 W Main St, Waterford"
         },
         {
-          "name": "ZEB'S",
+          "name": "MJ Petroleum",
           "prices": {
             "regular": 4.15,
-            "mid_grade": 4.75,
-            "premium": 5.35
+            "mid_grade": 4.65,
+            "premium": 5.15,
+            "diesel": 6.15
           },
-          "address": "109 N Milwaukee St, Waterford"
+          "address": "1436 Main St, Union Grove"
+        },
+        {
+          "name": "Main St Convenience",
+          "prices": {
+            "regular": 4.19,
+            "mid_grade": 4.85,
+            "premium": 5.45,
+            "diesel": 6.19
+          },
+          "address": "802 Main St, Union Grove"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.19,
+            "premium": 5.39,
+            "diesel": 6.59
+          },
+          "address": "7155 Durand Ave, Sturtevant"
         },
         {
           "name": "BP",
@@ -1830,67 +1875,47 @@
           "address": "1645 Main Street, Union Grove"
         },
         {
-          "name": "AD United Petroleum",
+          "name": "Mobil",
           "prices": {
             "regular": 4.25
           },
-          "address": "1917 16th St, Racine"
-        },
-        {
-          "name": "Main St Convenience",
-          "prices": {
-            "regular": 4.25,
-            "mid_grade": 4.85,
-            "premium": 5.45,
-            "diesel": 6.25
-          },
-          "address": "802 Main St, Union Grove"
-        },
-        {
-          "name": "MJ Petroleum",
-          "prices": {
-            "regular": 4.29
-          },
-          "address": "1100 6th St, Racine"
-        },
-        {
-          "name": "CITGO",
-          "prices": {
-            "regular": 4.35,
-            "mid_grade": 4.95,
-            "premium": 5.55,
-            "diesel": 6.39
-          },
-          "address": "611 S Sylvania Ave, Sturtevant"
+          "address": "740 Main St, Union Grove"
         }
       ]
     },
     "Sheboygan": {
       "current_avg": {
-        "regular": 4.391,
-        "mid_grade": 4.94,
-        "premium": 5.626,
-        "diesel": 6.372
+        "regular": 4.368,
+        "mid_grade": 5.048,
+        "premium": 5.688,
+        "diesel": 6.379
       },
       "low": {
-        "regular": 4.19,
+        "regular": 4.14,
         "mid_grade": 4.79,
-        "premium": 5.39,
+        "premium": 5.35,
         "diesel": 6.15
       },
       "high": {
-        "regular": 4.59,
-        "mid_grade": 5.19,
-        "premium": 5.99,
+        "regular": 4.49,
+        "mid_grade": 5.29,
+        "premium": 6.09,
         "diesel": 6.74
       },
       "station_count": {
         "regular": 20,
-        "mid_grade": 8,
-        "premium": 14,
+        "mid_grade": 10,
+        "premium": 13,
         "diesel": 10
       },
       "stations": [
+        {
+          "name": "Fischers",
+          "prices": {
+            "regular": 4.14
+          },
+          "address": "4554 S 12th St, Sheboygan"
+        },
         {
           "name": "Sunoco",
           "prices": {
@@ -1899,14 +1924,11 @@
           "address": "1166 Fond Du Lac Ave, Sheboygan Falls"
         },
         {
-          "name": "Minit Mart",
+          "name": "Sehgal Fuel Depot",
           "prices": {
-            "regular": 4.19,
-            "mid_grade": 4.91,
-            "premium": 5.84,
-            "diesel": 6.15
+            "regular": 4.29
           },
-          "address": "820 Commerce Ln, Kohler"
+          "address": "103 N Main St, Cedar Grove"
         },
         {
           "name": "Alfaa",
@@ -1918,20 +1940,33 @@
           "address": "1211 Weeden Creek Rd, Sheboygan"
         },
         {
-          "name": "Sehgal Fuel Depot",
+          "name": "Minit Mart",
           "prices": {
-            "regular": 4.29
+            "regular": 4.29,
+            "mid_grade": 4.91,
+            "premium": 5.84,
+            "diesel": 6.15
           },
-          "address": "103 N Main St, Cedar Grove"
+          "address": "820 Commerce Ln, Kohler"
         },
         {
           "name": "Mobil",
           "prices": {
             "regular": 4.32,
             "mid_grade": 4.89,
+            "premium": 5.62,
             "diesel": 6.29
           },
           "address": "3 W Union Ave, Cedar Grove"
+        },
+        {
+          "name": "Kwik Trip",
+          "prices": {
+            "regular": 4.35,
+            "premium": 5.35,
+            "diesel": 6.3
+          },
+          "address": "4220 Cr-j, Sheboygan"
         },
         {
           "name": "Shell",
@@ -1942,63 +1977,73 @@
             "diesel": 6.3
           },
           "address": "4912 Vanguard Dr, Sheboygan"
-        },
-        {
-          "name": "BP",
-          "prices": {
-            "regular": 4.37
-          },
-          "address": "415 Broadway St, Sheboygan Falls"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.37,
-            "premium": 5.59,
-            "diesel": 6.49
-          },
-          "address": "4220 Cr-j, Sheboygan"
         }
       ]
     },
     "Superior": {
       "current_avg": {
-        "regular": 4.364,
-        "diesel": 6.438,
-        "premium": 5.322,
-        "mid_grade": 4.76
+        "regular": 4.342,
+        "mid_grade": 4.76,
+        "premium": 5.365,
+        "diesel": 6.435
       },
       "low": {
-        "regular": 4.29,
-        "diesel": 6.36,
+        "regular": 4.23,
+        "mid_grade": 4.73,
         "premium": 5.13,
-        "mid_grade": 4.73
+        "diesel": 6.36
       },
       "high": {
         "regular": 4.39,
-        "diesel": 6.49,
-        "premium": 5.39,
-        "mid_grade": 4.79
+        "mid_grade": 4.79,
+        "premium": 5.8,
+        "diesel": 6.49
       },
       "station_count": {
-        "regular": 12,
-        "diesel": 12,
-        "premium": 10,
-        "mid_grade": 2
+        "regular": 13,
+        "mid_grade": 2,
+        "premium": 11,
+        "diesel": 12
       },
       "stations": [
         {
+          "name": "Holiday",
+          "prices": {
+            "regular": 4.23,
+            "mid_grade": 4.73,
+            "premium": 5.13,
+            "diesel": 6.39
+          },
+          "address": "4827 E 2nd St, Superior"
+        },
+        {
           "name": "Kimmes Tire",
           "prices": {
-            "regular": 4.29,
-            "diesel": 6.39
+            "regular": 4.29
           },
           "address": "6327 Tower Ave, Superior"
         },
         {
+          "name": "Krist",
+          "prices": {
+            "regular": 4.3,
+            "premium": 5.8,
+            "diesel": 6.36
+          },
+          "address": "2821 E 2nd St, Superior"
+        },
+        {
+          "name": "Krist",
+          "prices": {
+            "regular": 4.3,
+            "diesel": 6.36
+          },
+          "address": "4204 E 2nd St, Superior"
+        },
+        {
           "name": "Kwik Trip",
           "prices": {
-            "regular": 4.33,
+            "regular": 4.3,
             "premium": 5.33,
             "diesel": 6.39
           },
@@ -2012,24 +2057,6 @@
             "diesel": 6.39
           },
           "address": "2128 E 2nd St, Superior"
-        },
-        {
-          "name": "Krist",
-          "prices": {
-            "regular": 4.36,
-            "diesel": 6.36
-          },
-          "address": "4204 E 2nd St, Superior"
-        },
-        {
-          "name": "Holiday",
-          "prices": {
-            "regular": 4.36,
-            "mid_grade": 4.73,
-            "premium": 5.13,
-            "diesel": 6.39
-          },
-          "address": "4827 E 2nd St, Superior"
         },
         {
           "name": "BP",
@@ -2048,52 +2075,52 @@
             "diesel": 6.49
           },
           "address": "918 Belknap St, Superior"
-        },
-        {
-          "name": "Kwik Trip",
-          "prices": {
-            "regular": 4.39,
-            "premium": 5.39,
-            "diesel": 6.49
-          },
-          "address": "6007 Tower Ave, Superior"
         }
       ]
     },
     "Waukesha": {
       "current_avg": {
-        "regular": 4.46,
-        "premium": 5.534,
-        "diesel": 6.43,
-        "mid_grade": 4.998
+        "regular": 4.396,
+        "mid_grade": 4.984,
+        "premium": 5.474,
+        "diesel": 6.46
       },
       "low": {
-        "regular": 4.29,
+        "regular": 4.09,
+        "mid_grade": 4.75,
         "premium": 4.99,
-        "diesel": 6.29,
-        "mid_grade": 4.79
+        "diesel": 6.39
       },
       "high": {
-        "regular": 4.69,
-        "premium": 5.89,
-        "diesel": 6.49,
-        "mid_grade": 5.29
+        "regular": 4.59,
+        "mid_grade": 5.19,
+        "premium": 5.69,
+        "diesel": 6.69
       },
       "station_count": {
         "regular": 20,
-        "premium": 17,
-        "diesel": 10,
-        "mid_grade": 10
+        "mid_grade": 10,
+        "premium": 16,
+        "diesel": 10
       },
       "stations": [
         {
-          "name": "Kwik Trip",
+          "name": "Woodman's",
+          "prices": {
+            "regular": 4.09,
+            "mid_grade": 5.09,
+            "premium": 5.39,
+            "diesel": 6.69
+          },
+          "address": "1620 E Main St, Waukesha"
+        },
+        {
+          "name": "CITGO Waukesha",
           "prices": {
             "regular": 4.29,
-            "premium": 5.39,
-            "diesel": 6.49
+            "premium": 5.27
           },
-          "address": "924 Fleetfoot Dr, Waukesha"
+          "address": "114 E Broadway St, Waukesha"
         },
         {
           "name": "Phillips 66",
@@ -2108,7 +2135,7 @@
           "name": "24/7 Petroleum",
           "prices": {
             "regular": 4.37,
-            "premium": 5.77
+            "premium": 5.67
           },
           "address": "1605 Summit Ave, Waukesha"
         },
@@ -2122,21 +2149,11 @@
           "address": "1709 Summit Ave, Waukesha"
         },
         {
-          "name": "CITGO Waukesha",
+          "name": "Meijer",
           "prices": {
-            "regular": 4.39,
-            "premium": 5.27
+            "regular": 4.39
           },
-          "address": "114 E Broadway St, Waukesha"
-        },
-        {
-          "name": "HomeTown",
-          "prices": {
-            "regular": 4.39,
-            "mid_grade": 4.89,
-            "premium": 5.39
-          },
-          "address": "500 Arcadian Ave, Waukesha"
+          "address": "831 E Sunset Dr, Waukesha"
         },
         {
           "name": "Kwik Trip",
@@ -2154,7 +2171,7 @@
             "premium": 5.39,
             "diesel": 6.49
           },
-          "address": "2106 S West Ave, Waukesha"
+          "address": "924 Fleetfoot Dr, Waukesha"
         }
       ]
     }
@@ -2169,81 +2186,81 @@
   ],
   "aaa": {
     "current": {
+      "regular": 4.4745,
+      "mid_grade": 5.0541,
+      "premium": 5.643,
+      "diesel": 6.41
+    },
+    "yesterday": {
       "regular": 4.5197,
       "mid_grade": 5.0764,
       "premium": 5.6605,
       "diesel": 6.4101
     },
-    "yesterday": {
-      "regular": 4.5331,
-      "mid_grade": 5.0734,
-      "premium": 5.6788,
-      "diesel": 6.3574
-    },
     "week_ago": {
-      "regular": 4.1994,
-      "mid_grade": 4.7765,
-      "premium": 5.3525,
-      "diesel": 6.1857
+      "regular": 4.1769,
+      "mid_grade": 4.7658,
+      "premium": 5.348,
+      "diesel": 6.1719
     },
     "month_ago": {
-      "regular": 4.3446,
-      "mid_grade": 4.929,
-      "premium": 5.5241,
-      "diesel": 6.5355
+      "regular": 4.3266,
+      "mid_grade": 4.906,
+      "premium": 5.4994,
+      "diesel": 6.5113
     },
     "year_ago": {
-      "regular": 2.812,
-      "mid_grade": 3.3425,
-      "premium": 3.8289,
-      "diesel": 3.5075
+      "regular": 2.8005,
+      "mid_grade": 3.3249,
+      "premium": 3.8127,
+      "diesel": 3.5455
     },
-    "as_of": "10/26/26"
+    "as_of": "10/27/26"
   },
   "neighbors": {
-    "as_of": "10/26/26",
+    "as_of": "10/27/26",
     "states": {
       "MN": {
         "name": "Minnesota",
         "current": {
-          "regular": 4.192,
-          "mid_grade": 4.66,
-          "premium": 5.198,
-          "diesel": 6.219
+          "regular": 4.182,
+          "mid_grade": 4.644,
+          "premium": 5.181,
+          "diesel": 6.218
         }
       },
       "IA": {
         "name": "Iowa",
         "current": {
-          "regular": 4.178,
-          "mid_grade": 4.526,
-          "premium": 5.097,
-          "diesel": 6.155
+          "regular": 4.162,
+          "mid_grade": 4.483,
+          "premium": 5.074,
+          "diesel": 6.149
         }
       },
       "IL": {
         "name": "Illinois",
         "current": {
-          "regular": 4.885,
-          "mid_grade": 5.478,
-          "premium": 6.028,
-          "diesel": 6.701
+          "regular": 4.855,
+          "mid_grade": 5.464,
+          "premium": 6.017,
+          "diesel": 6.695
         }
       },
       "MI": {
         "name": "Michigan",
         "current": {
-          "regular": 4.816,
-          "mid_grade": 5.4,
-          "premium": 5.999,
-          "diesel": 6.813
+          "regular": 4.769,
+          "mid_grade": 5.377,
+          "premium": 5.978,
+          "diesel": 6.798
         }
       }
     }
   },
   "summary": {
-    "as_of": "October 26, 2026",
-    "headline": "Wisconsin gas averages $4.41/gal",
-    "blurb": "Regular gas is averaging $4.41 a gallon across Wisconsin as of October 26, 2026, according to GasBuddy. AAA figures put the statewide average 32¢ higher than a week ago, 18¢ higher than a month ago, and $1.71 higher than a year ago. Drivers are finding the lowest metro average in Eau Claire ($4.08) and the highest in Mosinee ($4.69)."
+    "as_of": "October 27, 2026",
+    "headline": "Wisconsin gas averages $4.39/gal",
+    "blurb": "Regular gas is averaging $4.39 a gallon across Wisconsin as of October 27, 2026, according to GasBuddy. AAA figures put the statewide average 30¢ higher than a week ago, 15¢ higher than a month ago, and $1.67 higher than a year ago. Drivers are finding the lowest metro average in Eau Claire ($4.05) and the highest in Mosinee ($4.69)."
   }
 }
