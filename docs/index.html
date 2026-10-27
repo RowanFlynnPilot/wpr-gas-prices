@@ -196,6 +196,11 @@
   .wpr-st-chip { font-size:11px; padding:1px 8px; border-radius:10px; background:#fff; border:1px solid var(--rule-light); white-space:nowrap; }
   .wpr-st-chip b { font-weight:600; color:var(--ink-light); }
   .wpr-st-spark { margin-top:2px; }
+  .wpr-st-band.up { fill:rgba(179,54,42,0.08); } .wpr-st-band.down { fill:rgba(62,132,122,0.10); }
+  .wpr-st-band-lbl { font-family:'DM Sans',sans-serif; font-weight:700; }
+  .wpr-st-band-lbl.up-color { fill:var(--up); } .wpr-st-band-lbl.down-color { fill:var(--down); }
+  .wpr-st-spark:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+
   .wpr-ladder { padding:2px 16px 6px; }
   .wpr-ladder-row { display:grid; grid-template-columns:92px 1fr 62px; align-items:center; gap:10px; padding:4px 0; border-bottom:1px solid var(--rule-light); font-size:12px; }
   .wpr-ladder-row:last-child { border-bottom:0; }
@@ -732,6 +737,7 @@
     wireTrendChart();
     wireMetroMap();
     wireTimelapse();
+    wireStateSpark();
     widget.querySelectorAll('.wpr-fill-veh').forEach(b => b.addEventListener('click', () => {
       fillVehicle = b.dataset.vehicle; store.set('vehicle', fillVehicle); render();
       widget.querySelector(`.wpr-fill-veh[data-vehicle="${fillVehicle}"]`)?.focus({ preventScroll: true });
@@ -818,45 +824,131 @@
     return (getWIEntries(fuel) || []).map(e => ({ t: e.date.getTime(), price: e.price }));
   }
 
-  function buildStateSpark(series, W) {
+  // The Statewide tab's 30-day line, with enough on it to read: a price scale, a
+  // tick each week, the period the headline describes shaded and labelled, the
+  // high/low, and a crosshair readout (pointer, touch or arrow keys).
+  let sparkModel = null;
+  function buildStateSpark(series, W, story) {
     const lastT = series[series.length - 1].t;
     const pts = series.filter(p => p.t >= lastT - 30 * DAY_MS);
-    if (pts.length < 3) return '';
+    if (pts.length < 3) { sparkModel = null; return ''; }
     const narrow = W < 460;
-    const H = 104, T = 12, B = 20, Lp = 2, R = narrow ? 58 : 70, fs = 11.5;
+    const H = 116, T = 12, B = 22, Lp = 40, R = narrow ? 58 : 70, fs = 11.5;
     const t0 = pts[0].t;
-    const lo = Math.min(...pts.map(p => p.price)), hi = Math.max(...pts.map(p => p.price));
-    const padY = Math.max((hi - lo) * 0.18, 0.02);
-    const X = t => Lp + (t - t0) / ((lastT - t0) || 1) * (W - Lp - R);
-    const Y = v => T + (1 - (v - (lo - padY)) / ((hi - lo) + 2 * padY)) * (H - T - B);
-    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.price).toFixed(1)}`).join('');
     const first = pts[0], last = pts[pts.length - 1];
     const lowP = pts.reduce((a, p) => (p.price < a.price ? p : a), pts[0]);
     const highP = pts.reduce((a, p) => (p.price > a.price ? p : a), pts[0]);
-    let svg = `<path d="${line}L${X(lastT).toFixed(1)},${H - B}L${X(t0).toFixed(1)},${H - B}Z" class="wpr-tr-area"/>`
+    // A round-number scale with at least two gridlines.
+    const step = (highP.price - lowP.price) <= 0.25 ? 0.1 : (highP.price - lowP.price) <= 0.8 ? 0.25 : 0.5;
+    let lo = Math.floor(lowP.price / step) * step, hi = Math.ceil(highP.price / step) * step;
+    if (hi - lo < step * 2) hi = lo + step * 2;
+    const X = t => Lp + (t - t0) / ((lastT - t0) || 1) * (W - Lp - R);
+    const Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.price).toFixed(1)}`).join('');
+
+    let svg = '';
+    for (let v = lo; v <= hi + 1e-9; v += step) {
+      svg += `<line x1="${Lp}" x2="${W - R + 4}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" class="wpr-tr-grid"/>`
+        + `<text x="${Lp - 6}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="wpr-tr-ax" style="font-size:${fs - 0.5}px">${money2(v)}</text>`;
+    }
+    // The headline's period: the last week shaded and labelled, or for a month's
+    // move, a marker on the reading a month back.
+    const move = story && story.c7 != null && Math.abs(story.c7) >= 5 ? { from: story.wk, c: story.c7, word: 'this week' }
+      : story && story.c30 != null && Math.abs(story.c30) >= 5 ? { from: story.mo, c: story.c30, word: 'this month' } : null;
+    if (move && move.from && move.from.t >= t0) {
+      const bx = X(move.from.t), cls = move.c > 0 ? 'up' : 'down';
+      // A rise ends high, so its label sits at the foot of the band (and a fall's
+      // at the top), away from the line and the end/high labels.
+      const ly = move.c > 0 ? H - B - 6 : T + 11;
+      const label = `${move.c > 0 ? '+' : '−'}${L.centsText(Math.abs(move.c) / 100)} ${move.word}`;
+      if (move.word === 'this week') {
+        // On a phone the band is too narrow to label; the "Past week" chip above
+        // the chart already gives the figure.
+        svg += `<rect x="${bx.toFixed(1)}" y="${T}" width="${(X(lastT) - bx).toFixed(1)}" height="${H - T - B}" class="wpr-st-band ${cls}"/>`;
+        if (!narrow) svg += `<text x="${((bx + X(lastT)) / 2).toFixed(1)}" y="${ly}" text-anchor="middle" class="wpr-st-band-lbl ${cls}-color wpr-tr-halo" style="font-size:${fs - 0.5}px">${label}</text>`;
+      } else {
+        svg += `<line x1="${bx.toFixed(1)}" x2="${bx.toFixed(1)}" y1="${T}" y2="${H - B}" class="wpr-tr-cross"/>`
+          + `<text x="${(bx + 5).toFixed(1)}" y="${ly}" class="wpr-st-band-lbl ${cls}-color wpr-tr-halo" style="font-size:${fs - 0.5}px">${label}</text>`;
+      }
+    }
+    // A tick each week, counted back from today so the last one lands on today.
+    for (let t = lastT, k = 0; t >= t0 - 1; t -= 7 * DAY_MS, k++) {
+      const x = X(t);
+      svg += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${H - B}" y2="${H - B + 4}" class="wpr-tr-tick"/>`;
+      if (!narrow || k % 2 === 0) svg += `<text x="${x.toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? 'end' : 'middle'}" class="wpr-tr-ax" style="font-size:${fs - 0.5}px">${L.shortDate(t)}</text>`;
+    }
+    svg += `<path d="${line}L${X(lastT).toFixed(1)},${H - B}L${X(t0).toFixed(1)},${H - B}Z" class="wpr-tr-area"/>`
       + `<line x1="${Lp}" x2="${W - R + 4}" y1="${H - B}" y2="${H - B}" class="wpr-tr-tick"/>`
       + `<path d="${line}" class="wpr-tr-line wpr-draw" pathLength="1"/>`;
-    // Mark the 30-day high and low unless they are the endpoints (already labelled).
     const ex = X(last.t), ey = Y(last.price);
-    // Each label goes above (high) or beside (low) its point, on whichever side keeps
-    // it clear of the end label and inside the plot.
+    // High/low labels beside their points, clear of the end label and the axis.
     for (const [p, word] of [[highP, 'High'], [lowP, 'Low']]) {
       if (p === last || p === first) continue;
       const x = X(p.t), y = Y(p.price), text = `${word} ${money2(p.price)}`, w = textW(text, fs - 1, 400);
       const nearEnd = Math.abs(y - ey) < 18 && x + w / 2 > ex - 8;
       let tx = x, ty = word === 'High' ? y - 8 : y + 4, anchor = 'middle';
       if (word === 'Low' || nearEnd) { anchor = x + 8 + w < (nearEnd ? ex - 10 : W - R) ? 'start' : 'end'; tx = anchor === 'start' ? x + 8 : x - 8; ty = y + 4; }
-      if (ty - fs < 0) ty = y + 16;
+      if (ty - fs < T) ty = y + 16;
       svg += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" class="wpr-tr-lowdot"/>`
         + `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anchor}" class="wpr-tr-note wpr-tr-halo" style="font-size:${fs - 1}px">${text}</text>`;
     }
     svg += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="5" class="wpr-tr-enddot"/>`
       + `<text x="${(ex + 10).toFixed(1)}" y="${(ey + 1).toFixed(1)}" class="wpr-tr-endlbl" style="font-size:13px">${money2(last.price)}</text>`
-      + `<text x="${(ex + 10).toFixed(1)}" y="${(ey + 15).toFixed(1)}" class="wpr-tr-note" style="font-size:${fs - 1}px">today</text>`
-      + `<text x="${Lp}" y="${H - 6}" class="wpr-tr-ax" style="font-size:${fs - 0.5}px">${L.shortDate(first.t)}</text>`
-      + `<text x="${(W - R).toFixed(1)}" y="${H - 6}" text-anchor="end" class="wpr-tr-ax" style="font-size:${fs - 0.5}px">${L.shortDate(last.t)}</text>`;
-    const aria = `${fuelLabel(activeFuel)} statewide average over the last 30 days, from ${money2(first.price)} on ${L.shortDate(first.t)} to ${money2(last.price)} today; high ${money2(highP.price)}, low ${money2(lowP.price)}.`;
-    return `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg wpr-st-spark" role="img" aria-label="${esc(aria)}">${svg}</svg>`;
+      + `<text x="${(ex + 10).toFixed(1)}" y="${(ey + 15).toFixed(1)}" class="wpr-tr-note" style="font-size:${fs - 1}px">today</text>`;
+    // Crosshair layer (wired by wireStateSpark).
+    svg += `<g class="wpr-st-hover" style="display:none">
+        <line class="wpr-tr-cross" y1="${T}" y2="${H - B}"/>
+        <circle class="wpr-tr-hdot" r="4.5"/>
+        <g class="wpr-st-tip"><rect rx="5" class="wpr-tr-tipbox"/><text class="wpr-tr-tiptxt"></text></g>
+      </g>
+      <rect class="wpr-tr-hit wpr-st-hit" x="${Lp}" y="${T}" width="${(W - Lp - R).toFixed(1)}" height="${H - T - B}" fill="transparent"/>`;
+    sparkModel = { pts, X, Y, W, T, Lp, R };
+    const aria = `${fuelLabel(activeFuel)} statewide average over the last 30 days, from ${money2(first.price)} on ${L.shortDate(first.t)} to ${money2(last.price)} today; high ${money2(highP.price)}, low ${money2(lowP.price)}. Use the left and right arrow keys to read each day.`;
+    return `<svg viewBox="0 0 ${W} ${H}" class="wpr-tr-svg wpr-st-spark" role="img" tabindex="0" aria-label="${esc(aria)}">${svg}</svg>`;
+  }
+
+  // One day's reading at a time: date, price, and its change from the day before.
+  function wireStateSpark() {
+    const svg = activeTab === 'statewide' ? widget.querySelector('.wpr-st-spark') : null;
+    if (!svg || !sparkModel) return;
+    const m = sparkModel, g = svg.querySelector('.wpr-st-hover'), hit = svg.querySelector('.wpr-st-hit');
+    const cross = g.querySelector('.wpr-tr-cross'), dot = g.querySelector('.wpr-tr-hdot');
+    const tip = g.querySelector('.wpr-st-tip'), box = g.querySelector('.wpr-tr-tipbox'), txt = g.querySelector('.wpr-tr-tiptxt');
+    const NS = 'http://www.w3.org/2000/svg';
+    let idx = m.pts.length - 1;
+    const line = (text, y, cls) => { const t = document.createElementNS(NS, 'tspan'); t.setAttribute('x', 8); t.setAttribute('y', y); if (cls) t.setAttribute('class', cls); t.textContent = text; return t; };
+    function show(i) {
+      idx = Math.max(0, Math.min(m.pts.length - 1, i));
+      const p = m.pts[idx], prev = m.pts[idx - 1], x = m.X(p.t), y = m.Y(p.price);
+      g.style.display = '';
+      cross.setAttribute('x1', x); cross.setAttribute('x2', x);
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+      txt.replaceChildren();
+      const d = new Date(p.t);
+      txt.appendChild(line(`${MON[d.getUTCMonth()]} ${d.getUTCDate()}  ${money2(p.price)}`, 16, 'wpr-tr-tip-h'));
+      const c = prev ? Math.round((p.price - prev.price) * 100) : null;
+      txt.appendChild(line(c == null ? 'first day shown' : c === 0 ? 'no change from the day before' : `${c > 0 ? '+' : '−'}${Math.abs(c)}¢ from the day before`, 32, 'wpr-tr-tip-s'));
+      const bw = 176, bh = 40;
+      box.setAttribute('width', bw); box.setAttribute('height', bh);
+      const tx = x + 10 + bw > m.W - 4 ? x - 10 - bw : x + 10;
+      tip.setAttribute('transform', `translate(${Math.max(m.Lp, tx)},${m.T})`);
+    }
+    const hide = () => { g.style.display = 'none'; };
+    const at = evt => {
+      const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
+      const sx = pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+      let best = 0, bd = Infinity;
+      m.pts.forEach((p, i) => { const dd = Math.abs(m.X(p.t) - sx); if (dd < bd) { bd = dd; best = i; } });
+      return best;
+    };
+    hit.addEventListener('pointermove', e => show(at(e)));
+    hit.addEventListener('pointerdown', e => show(at(e)));
+    hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
+    svg.addEventListener('keydown', e => {
+      const to = { ArrowLeft: idx - 1, ArrowRight: idx + 1, Home: 0, End: m.pts.length - 1 }[e.key];
+      if (to !== undefined) { e.preventDefault(); show(to); } else if (e.key === 'Escape') hide();
+    });
+    svg.addEventListener('blur', hide);
   }
 
   // AAA's statewide table as change-since bars around zero (AAA vs AAA, so the
@@ -916,7 +1008,7 @@
         <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · statewide average · WPR daily tracking</div>
         <h3 class="wpr-tr-title">${esc(story.headline)}</h3>
         <p class="wpr-tr-dek">${dekText ? esc(dekText) + ' ' : ''}${chips ? `<span class="wpr-st-chips">${chips}</span>` : ''}</p>
-        ${buildStateSpark(series, colW)}
+        ${buildStateSpark(series, colW, story)}
       </div>` : '';
 
     // ── Today's spread: cheapest / average (or a chosen city) / priciest station ──

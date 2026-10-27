@@ -370,9 +370,13 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   footnoted dot — and the newsroom blurb in a closed-by-default `<details>`. Today's
   price appears only in the header and the chart's end label; the middle card shows
   the station price spread until a city is picked (inline "Compare" picker on the
-  range bar). WTI crude moved to the Price Trends hint line. Default height
-  (re-measured 2026-10-26: 991/944/879/938/932px at frame widths
-  288/343/468/600/720) fits the published `clamp(960px, calc(1640px - 131vw),
+  range bar). WTI crude moved to the Price Trends hint line. The 30-day chart
+  (`buildStateSpark()` + `wireStateSpark()`) has a round-number price scale, a
+  tick each week counted back from today, the headline's period shaded (the last
+  week) or marked (a month back) and labelled — unlabelled on phones, where the
+  "Past week" chip carries the figure — and a crosshair reading each day's price
+  and change from the day before. Default height (re-measured 2026-10-26 after
+  the chart grew to 116px: 944/950px at frame widths 720/600, 956px at 343) fits the published `clamp(960px, calc(1640px - 131vw),
   1300px)`; keep it under 960px at 600px+ or the embed code has to change.
 - **Statewide trend = AAA.** `parse_aaa()`/`scrape_aaa()` populate `data["aaa"]`; the
   Statewide "over time" bars and the blurb's trend both read it. The hero "vs
