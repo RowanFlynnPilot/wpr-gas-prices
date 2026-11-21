@@ -88,8 +88,16 @@ test('gas_prices_history.json: dated keys, statewide series, enough depth for th
   const sorted = L.sortedHistoryKeys(history);
   assert.equal(sorted.length, keys.length, 'no history key was dropped as unparseable');
   assert.ok(isPrice(history[sorted.at(-1)].statewide?.regular), 'latest day has statewide.regular');
+  // The hero compares only same-method readings, so the first day of a new
+  // sampling method (PRICE_METHOD) legitimately has nothing to compare against.
+  const method = e => (typeof e?.method === 'number' ? e.method : 1);
+  const todayT = L.historyKeyTime(data.price_date);
+  const today = method(history[data.price_date] || history[sorted.at(-1)]);
+  const comparable = sorted.some(k => L.historyKeyTime(k) < todayT && method(history[k]) === today
+    && isPrice(history[k].statewide?.regular));
   const prev = L.previousReading(history, data.price_date, 'statewide', 'regular');
-  assert.ok(prev && isPrice(prev.price), 'hero "vs yesterday" has something to compare against');
+  if (comparable) assert.ok(prev && isPrice(prev.price), 'hero "vs yesterday" has something to compare against');
+  else assert.equal(prev, null, 'no comparison across sampling methods');
   const daysBack = (L.historyKeyTime(sorted.at(-1)) - L.historyKeyTime(sorted[0])) / 864e5;
   assert.ok(daysBack <= 400, 'history cap of 400 days is respected');
 });
