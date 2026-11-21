@@ -912,12 +912,20 @@ def test_fetch_eia_heating_skips_without_key_and_writes_partial(tmp_path, monkey
         return _R({"response": {"data": [{"period": "2026-03-30", "value": "2.066"}]}})
 
     monkeypatch.setattr(s.requests, "get", fake_get)
+    monkeypatch.setattr(s.time, "sleep", lambda n: None)     # EIA retry waits
     assert s.fetch_eia_heating(str(tmp_path)) is True
     out = json.loads((tmp_path / "eia_heating.json").read_text(encoding="utf-8"))
     assert out["propane"] == [{"date": "2026-03-30", "price": 2.066}]
     assert out["heating_oil"] == [{"date": "2026-03-30", "price": 2.066}]
-    assert "natural_gas" not in out                        # failed series is absent, not fatal
+    assert "natural_gas" not in out                        # no previous file: absent, not fatal
     assert "fetched_at" in out
+
+    # With a previous file, a series that fails this run keeps its last values.
+    prev_gas = [{"date": "2026-08", "price": 18.56}]
+    (tmp_path / "eia_heating.json").write_text(json.dumps({**out, "natural_gas": prev_gas}), encoding="utf-8")
+    assert s.fetch_eia_heating(str(tmp_path)) is True
+    out = json.loads((tmp_path / "eia_heating.json").read_text(encoding="utf-8"))
+    assert out["natural_gas"] == prev_gas
 
 
 # ---------------------------------------------------------------------------
@@ -1176,3 +1184,64 @@ def test_quarantine_stands_down_when_the_method_changes():
     prev = {"method": 1, "metros": {"Merrill": _city(4.50)}}
     assert s.quarantine_implausible(data, prev) == []
     assert "Merrill" in data["metros"]
+
+
+# ---------------------------------------------------------------------------
+# EIA: retries, and a failed series keeps its previous values. One timed-out
+# series used to roll back the whole run's data (five runs, Oct 28 - Nov 19).
+# ---------------------------------------------------------------------------
+
+class _EiaResp:
+    def __init__(self, payload=None, fail=None):
+        self._p, self._fail = payload or {}, fail
+    def raise_for_status(self):
+        if self._fail:
+            raise self._fail
+    def json(self):
+        return self._p
+
+
+def test_eia_get_retries_then_succeeds(monkeypatch):
+    calls, slept = [], []
+    def fake_get(url, params=None, timeout=None):
+        calls.append(timeout)
+        if len(calls) < 3:
+            raise s.requests.exceptions.ReadTimeout("read timed out")
+        return _EiaResp({"response": {"data": []}})
+    monkeypatch.setattr(s.requests, "get", fake_get)
+    monkeypatch.setattr(s.time, "sleep", lambda n: slept.append(n))
+    assert s.eia_get("https://api.eia.gov/x") == {"response": {"data": []}}
+    assert len(calls) == 3 and slept == list(s.EIA_RETRY_WAITS)
+    assert calls[0] == s.EIA_TIMEOUT
+
+
+def test_eia_get_gives_up_after_the_last_attempt(monkeypatch):
+    monkeypatch.setattr(s.requests, "get", lambda *a, **k: _EiaResp(fail=RuntimeError("HTTP 503")))
+    monkeypatch.setattr(s.time, "sleep", lambda n: None)
+    with pytest.raises(RuntimeError):
+        s.eia_get("https://api.eia.gov/x")
+
+
+def test_carry_forward_series_fills_only_what_is_missing():
+    result = {"regular": [1], "premium": [2]}
+    prev = {"regular": [0], "mid_grade": [9], "diesel": [8]}
+    assert s.carry_forward_series(result, prev, ["regular", "mid_grade", "premium", "diesel"]) == ["mid_grade", "diesel"]
+    assert result == {"regular": [1], "premium": [2], "mid_grade": [9], "diesel": [8]}
+    assert s.carry_forward_series({}, None, ["regular"]) == []
+
+
+def test_weekly_file_keeps_a_series_that_timed_out(tmp_path, monkeypatch):
+    """The 2026-11-19 failure: 'regular' timed out and the file was written without it."""
+    monkeypatch.setenv("EIA_API_KEY", "x")
+    monkeypatch.setattr(s.time, "sleep", lambda n: None)
+    prev_regular = [{"date": "2025-11-17", "price": 2.9}]
+    (tmp_path / "eia_weekly.json").write_text(json.dumps({"regular": prev_regular}), encoding="utf-8")
+    def fake_get(url, params=None, timeout=None):
+        if "EPMR" in url:
+            raise s.requests.exceptions.ReadTimeout("read timed out")
+        return _EiaResp({"response": {"data": [{"period": "2026-11-17", "value": "3.5"}]}})
+    monkeypatch.setattr(s.requests, "get", fake_get)
+    assert s.fetch_eia_data(str(tmp_path)) is True
+    out = json.loads((tmp_path / "eia_weekly.json").read_text(encoding="utf-8"))
+    assert out["regular"] == prev_regular
+    assert out["diesel"] == [{"date": "2026-11-17", "price": 3.5}]

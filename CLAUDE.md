@@ -237,6 +237,14 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   named stations per city (by regular) with their address + all fuel prices, stored
   under `metros[city].stations`. The Metro tab makes each city row expandable to show
   them. Excluded from `gas_prices_history.json` (only `current_avg` is recorded).
+- **EIA calls retry, and a failed series keeps its previous values.** Every EIA
+  request goes through `eia_get()` (45s timeout, retries after 5s and 15s), and
+  each EIA writer runs `carry_forward_series()` against its previous file, so one
+  series that still fails is last run's series rather than a gap. Before this, a
+  single 30s timeout dropped a series, the data contract failed, and the whole run
+  — fresh GasBuddy prices for all 22 cities included — was rolled back (five runs,
+  2026-10-28 to 11-19, issues #64–#68). `source_problems()` still alerts when
+  carried EIA data goes stale for days.
 - **National + crude context.** `fetch_eia_context()` writes `docs/eia_context.json`
   (national regular avg via `duoarea=NUS`; WTI crude via the `RWTC` series). Best-effort
   and **independent per series** — if EIA renames a code, the other still lands. The

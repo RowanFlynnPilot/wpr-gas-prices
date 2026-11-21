@@ -662,6 +662,50 @@ def scrape_gasbuddy() -> dict:
 # EIA trend data
 # ---------------------------------------------------------------------------
 
+# EIA's API is slow at times: a single 30s read timeout on one series used to drop
+# that series from the file, the data contract then failed, and the whole run's
+# data -- fresh GasBuddy prices for every city included -- was rolled back (five
+# runs between 2026-10-28 and 11-19). So every EIA call retries, and a series that
+# still fails keeps its previous values; the freshness checks in source_problems()
+# alert if that goes on for days.
+EIA_TIMEOUT = 45
+EIA_RETRY_WAITS = (5, 15)     # seconds before the 2nd and 3rd attempts
+
+
+def eia_get(url: str, params: dict | None = None) -> dict:
+    """GET an EIA API URL as JSON, retrying timeouts and server errors.
+
+    Raises the last error after len(EIA_RETRY_WAITS) + 1 attempts.
+    """
+    for attempt in range(len(EIA_RETRY_WAITS) + 1):
+        try:
+            resp = requests.get(url, params=params, timeout=EIA_TIMEOUT)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            if attempt == len(EIA_RETRY_WAITS):
+                raise
+            log.warning("  EIA request failed (%s) — retrying in %ds", type(e).__name__,
+                        EIA_RETRY_WAITS[attempt])
+            time.sleep(EIA_RETRY_WAITS[attempt])
+    raise AssertionError("unreachable")
+
+
+def carry_forward_series(result: dict, previous: dict | None, keys) -> list[str]:
+    """Fill keys missing from `result` with their values from the previous file.
+
+    Returns the keys carried forward. Pure. A series the API failed to return this
+    run is last run's series, not a gap: the widget keeps drawing it and the data
+    contract keeps passing, while source_problems() still flags real staleness.
+    """
+    carried = []
+    for k in keys:
+        if k not in result and isinstance(previous, dict) and k in previous:
+            result[k] = previous[k]
+            carried.append(k)
+    return carried
+
+
 def fetch_eia_data(out_dir: str) -> bool:
     """Fetch EIA weekly trend data. Returns True if eia_weekly.json was written."""
     eia_path = os.path.join(out_dir, "eia_weekly.json")
@@ -682,10 +726,8 @@ def fetch_eia_data(out_dir: str) -> bool:
                 f"&facets[duoarea][]=R20&facets[product][]={code}"
                 f"&sort[0][column]=period&sort[0][direction]=asc&length=5000"
             )
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
             entries = []
-            for row in resp.json().get("response", {}).get("data", []):
+            for row in eia_get(url).get("response", {}).get("data", []):
                 val = row.get("value")
                 if val is not None:
                     try:
@@ -698,6 +740,9 @@ def fetch_eia_data(out_dir: str) -> bool:
         except Exception:
             log.exception("  EIA fetch failed for %s", fuel)
 
+    carried = carry_forward_series(result, load_json_file(eia_path), products)
+    if carried:
+        log.warning("  EIA weekly: kept previous values for %s", ", ".join(carried))
     if result:
         write_json(eia_path, result)
         log.info("Wrote EIA data to %s", eia_path)
@@ -754,9 +799,8 @@ def fetch_eia_heating(out_dir: str) -> bool:
         for facet, value in spec["facets"].items():
             params[f"facets[{facet}][]"] = value
         try:
-            resp = requests.get(f"https://api.eia.gov/v2/{spec['path']}/data/", params=params, timeout=30)
-            resp.raise_for_status()
-            series = parse_eia_rows(resp.json().get("response", {}).get("data", []))
+            body = eia_get(f"https://api.eia.gov/v2/{spec['path']}/data/", params)
+            series = parse_eia_rows(body.get("response", {}).get("data", []))
             if series:
                 result[name] = series
                 log.info("  %s: %d points, latest %s = %s", name, len(series),
@@ -766,6 +810,10 @@ def fetch_eia_heating(out_dir: str) -> bool:
         except Exception:
             log.exception("  EIA heating fetch failed for %s", name)
 
+    heating_path = os.path.join(out_dir, "eia_heating.json")
+    carried = carry_forward_series(result, load_json_file(heating_path), HEATING_SERIES)
+    if carried:
+        log.warning("  EIA heating: kept previous values for %s", ", ".join(carried))
     if not result:
         return False
     result["fetched_at"] = datetime.now(timezone.utc).isoformat()
@@ -808,7 +856,7 @@ def fetch_eia_context(out_dir: str) -> None:
                f"?api_key={api_key}&frequency=weekly&data[0]=value"
                "&facets[duoarea][]=NUS&facets[product][]=EPMR"
                "&sort[0][column]=period&sort[0][direction]=desc&length=1")
-        rows = requests.get(url, timeout=30).json().get("response", {}).get("data", [])
+        rows = eia_get(url).get("response", {}).get("data", [])
         latest = latest_eia_value(rows)
         if latest:
             context["national_regular"] = round(latest[1], 3)
@@ -822,7 +870,7 @@ def fetch_eia_context(out_dir: str) -> None:
                f"?api_key={api_key}&frequency=weekly&data[0]=value"
                "&facets[series][]=RWTC"
                "&sort[0][column]=period&sort[0][direction]=desc&length=1")
-        rows = requests.get(url, timeout=30).json().get("response", {}).get("data", [])
+        rows = eia_get(url).get("response", {}).get("data", [])
         latest = latest_eia_value(rows)
         if latest:
             context["wti"] = round(latest[1], 2)
@@ -830,8 +878,13 @@ def fetch_eia_context(out_dir: str) -> None:
     except Exception:
         log.exception("EIA WTI fetch failed")
 
+    ctx_path = os.path.join(out_dir, "eia_context.json")
+    carried = carry_forward_series(context, load_json_file(ctx_path),
+                                   ["national_regular", "national_as_of", "wti", "wti_as_of"])
+    if carried:
+        log.warning("  EIA context: kept previous values for %s", ", ".join(carried))
     if context:
-        write_json(os.path.join(out_dir, "eia_context.json"), context)
+        write_json(ctx_path, context)
         log.info("Wrote EIA context: %s", context)
 
 
