@@ -412,7 +412,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=11"></script>
+<script src="./widget-logic.js?v=12"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -807,11 +807,16 @@
         : `<circle cx="${x.toFixed(1)}" cy="${cy}" r="5" class="${pt.other ? 'wpr-border-us' : 'wpr-border-dot'}"><title>${esc(pt.name)} ${money2(pt.price)}</title></circle>`;
       svg += `<text x="${x.toFixed(1)}" y="${ty}" text-anchor="${anchor}" class="${pt.me ? 'wpr-tr-endlbl' : 'wpr-tr-note'} wpr-tr-halo" style="font-size:${fs}px">${esc(pt.code)} <tspan style="font-weight:${pt.me ? 700 : 500}">${money2(pt.price)}</tspan></text>`;
     }
-    const cheaper = pts.filter(p => !p.me && !p.other && p.price < wi - 0.005).map(p => p.code);
+    const statePts = pts.filter(p => !p.other);
+    const cheaper = statePts.filter(p => !p.me && p.price < wi - 0.005).map(p => p.code);
+    // Say it plainly when Wisconsin is at either end of its neighbors.
+    const rank = !cheaper.length ? ' · Wisconsin is the cheapest'
+      : statePts.every(p => p.me || p.price < wi - 0.005) ? ' · Wisconsin is the priciest'
+      : ` · ${cheaper.join(' and ')} cheaper`;
     const aria = `${fuelLabel(activeFuel)} averages from AAA: ` + pts.filter(p => !p.other).map(p => `${p.name} ${money2(p.price)}`).join(', ') + '.';
     return `
       <div class="wpr-border">
-        <div class="wpr-map-rank-h">Wisconsin and its neighbors · AAA averages${cheaper.length ? ` · ${cheaper.join(' and ')} cheaper` : ''}</div>
+        <div class="wpr-map-rank-h">Wisconsin and its neighbors · AAA averages${rank}</div>
         <svg viewBox="0 0 ${W} ${H}" class="wpr-strip-svg" role="img" aria-label="${esc(aria)}">${svg}</svg>
         ${typeof us === 'number' ? '<div class="wpr-border-note">Hollow dot: U.S. average from the EIA weekly survey, a different method from AAA\'s.</div>' : ''}
       </div>`;

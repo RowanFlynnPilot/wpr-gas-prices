@@ -240,7 +240,9 @@
     const pct = i => (i.sum.yearAgo ? Math.abs(i.sum.latest.price / i.sum.yearAgo.price - 1) : -1);
     const lead = ok.slice().sort((a, b) => pct(b) - pct(a))[0];
     const month = new Date(isoTime(lead.sum.latest.date)).getUTCMonth() + 1;
-    const phase = !lead.sum.inSeason ? '' : month >= 10 ? ' heading into winter' : month <= 2 ? ' this winter' : ' as winter winds down';
+    // October-November: heading into winter; December-February: this winter; March: winding down.
+    const phase = !lead.sum.inSeason ? '' : month === 10 || month === 11 ? ' heading into winter'
+      : month === 12 || month <= 2 ? ' this winter' : ' as winter winds down';
     const move = i => {
       const d = i.sum.latest.price - i.sum.yearAgo.price;
       return Math.abs(d) < 0.005 ? 'about where it was a year ago' : `${centsText(d)} ${d > 0 ? 'higher' : 'lower'} than a year ago`;

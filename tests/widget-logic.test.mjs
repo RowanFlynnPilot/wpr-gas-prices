@@ -343,6 +343,9 @@ test('heatingStory: the bigger year-over-year move (in percent) leads, timed to 
   assert.equal(s.headline, 'Heating oil is $2.71 higher than a year ago heading into winter');
   assert.equal(s.dek, 'Propane is 21¢ higher than a year ago. Statewide dealer averages, week of Oct 19.');
   assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2027-01-11', 2.0, 2.1) }]).headline, 'Propane is 10¢ lower than a year ago this winter');
+  // December is midwinter, not 'heading into winter' (month >= 10 used to say so).
+  assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2026-12-07', 2.0, 2.1) }]).headline, 'Propane is 10¢ lower than a year ago this winter');
+  assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2027-03-15', 2.0, 2.1) }]).headline, 'Propane is 10¢ lower than a year ago as winter winds down');
   assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2026-03-30', 2.0, 1.8, false) }]).headline,
     'Propane ended last winter 20¢ higher than the winter before');
   assert.equal(L.heatingStory([{ label: 'Propane', sum: sum('2026-10-05', 1.82, null) }]).headline, 'Propane is $1.82 a gallon heading into winter');
