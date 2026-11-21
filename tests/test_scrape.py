@@ -430,9 +430,9 @@ def _synth_history(end_key, days, price, overrides=None):
     hist = {}
     for i in range(days):
         d = end - timedelta(days=i)
-        hist[d.strftime("%m/%d/%y")] = {"statewide": {"regular": price}}
+        hist[d.strftime("%m/%d/%y")] = {"statewide": {"regular": price}, "method": s.PRICE_METHOD}
     for k, v in (overrides or {}).items():
-        hist[k] = {"statewide": {"regular": v}}
+        hist[k] = {"statewide": {"regular": v}, "method": s.PRICE_METHOD}
     return hist
 
 
@@ -458,7 +458,7 @@ def test_extreme_note_quiet_when_milestone_is_recent_or_history_thin():
 
 def test_build_summary_includes_extreme_clause():
     data = {
-        "price_date": "06/04/26",
+        "price_date": "06/04/26", "method": s.PRICE_METHOD,
         "statewide": {"current_avg": {"regular": 4.00}},
         "metros": {"Wausau": _city(4.0), "Madison": _city(3.9)},
     }
@@ -761,6 +761,7 @@ class _Session:
 
     def post(self, *a, **kw):
         self.calls += 1
+        self.last_json = kw.get("json")
         return self._responses.pop(0) if self._responses else _Resp(200, body={})
 
 
@@ -1127,3 +1128,51 @@ def test_log_formatter_redacts_api_keys_in_messages_and_tracebacks():
     out = fmt.format(rec)
     assert "SECRET456" not in out and "Traceback" in out     # traceback kept, key gone
 
+
+
+# ---------------------------------------------------------------------------
+# In-town sampling (PRICE_METHOD 2): searches carry the city center, and nothing
+# compares readings taken by different methods.
+# ---------------------------------------------------------------------------
+
+def test_city_search_carries_the_city_center(monkeypatch):
+    """Without lat/lng GasBuddy returned the cheapest stations 30+ miles out."""
+    sess = _Session([_Resp(200, body=_ONE_STATION)])
+    s.scrape_city_graphql(sess, "Wausau", "Wausau, WI", {})
+    v = sess.last_json["variables"]
+    assert (v["lat"], v["lng"]) == s.CITY_CENTERS["Wausau"]
+    assert v["search"] == "Wausau, WI"
+
+
+def test_every_city_has_a_center_matching_the_map():
+    import re
+    from pathlib import Path
+    js = (Path(__file__).parent.parent / "docs" / "widget-logic.js").read_text(encoding="utf-8")
+    block = js[js.index("const CITY_COORDS = {"):]
+    block = block[: block.index("};")]
+    coords = {name: (float(a), float(b)) for name, a, b in
+              re.findall(r"'([^']+)': \[([-\d.]+), ([-\d.]+)\]", block)}
+    assert set(s.CITY_CENTERS) == set(s.CITIES)
+    assert coords == s.CITY_CENTERS
+
+
+def test_history_days_record_their_method(tmp_path):
+    data = {"price_date": "11/21/26", "method": 2,
+            "statewide": {"current_avg": {"regular": 3.4}}, "metros": {"Wausau": _city(3.5)}}
+    assert s.update_history(data, str(tmp_path))
+    hist = json.loads((tmp_path / "gas_prices_history.json").read_text())
+    assert hist["11/21/26"]["method"] == 2
+
+
+def test_extreme_note_ignores_days_sampled_another_way():
+    hist = _synth_history("06/03/26", 90, 3.50, overrides={"04/20/26": 4.05})
+    hist["04/20/26"]["method"] = 1                      # the only higher day: old method
+    assert s.history_extreme_note(hist, 4.00, "06/04/26", 2) == "the highest in WPR's 3 months of tracking"
+    assert s.history_extreme_note(hist, 4.00, "06/04/26", 1) == ""   # too few method-1 days
+
+
+def test_quarantine_stands_down_when_the_method_changes():
+    data = {"method": 2, "metros": {"Merrill": _city(5.60)}}
+    prev = {"method": 1, "metros": {"Merrill": _city(4.50)}}
+    assert s.quarantine_implausible(data, prev) == []
+    assert "Merrill" in data["metros"]

@@ -267,6 +267,7 @@
   .wpr-tr-sw-surge { border-top-width:5px; border-top-color:#b3362a; } .wpr-tr-sw-surge.down { border-top-color:var(--accent); }
   .wpr-tr-tile-of { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--ink-light); }
   .wpr-tr-hint { font-size:11px; color:var(--ink-faint); text-align:right; margin-top:2px; }
+  .wpr-method-line { stroke:#8a8a8a; stroke-width:1; stroke-dasharray:1 3; }
   .wpr-tr-hit { cursor:crosshair; }
 
   /* Fill-up calculator */
@@ -411,7 +412,7 @@
   </div>
 </noscript>
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=10"></script>
+<script src="./widget-logic.js?v=11"></script>
 <script src="./wi-outline.js?v=1"></script>
 <script>
 (function() {
@@ -580,8 +581,10 @@
   function metroSparkline(name, fuel) {
     if (!historyData) return '';
     const keys = historyKeysSorted();
+    const m = keys.length ? L.methodOf(historyData[keys[keys.length - 1]]) : 1;
     const vals = [];
     for (const k of keys) {
+      if (L.methodOf(historyData[k]) !== m) continue;
       const v = historyData[k]?.[name]?.[fuel];
       if (typeof v === 'number') vals.push(v);
     }
@@ -820,6 +823,29 @@
   // today's spread across stations, then AAA's longer comparisons as bars around
   // zero: the old version drew each price as a bar from zero, which mostly
   // showed that prices are positive.
+  // Comparisons use only readings taken the current way (L.methodSince); charts
+  // still draw the full line and mark where the method changed.
+  const methodT = () => L.methodSince(historyData);
+  const sameMethod = pts => { const t = methodT(); return t == null ? pts : pts.filter(p => p.t >= t); };
+  // For two weeks after a change of method, trend claims would rest on a handful
+  // of readings: the tabs state the level and say why instead.
+  function methodIsNew() {
+    const t = methodT(), keys = historyKeysSorted();
+    return t != null && keys.length > 0 && historyKeyTime(keys[keys.length - 1]) - t < 14 * DAY_MS;
+  }
+  function methodNote() {
+    const t = methodT();
+    return t == null ? '' : `Since ${L.shortDate(t)}, WPR averages the 20 stations nearest each city's center, `
+      + 'so earlier readings aren\'t comparable. Trend comparisons return as new readings build up.';
+  }
+  function methodMark(X, t0, t1, T, H, B, fs) {
+    const t = methodT();
+    if (t == null || t <= t0 || t > t1) return '';
+    const x = X(t).toFixed(1);
+    return `<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" class="wpr-method-line"/>`
+      + `<text x="${(+x + 4).toFixed(1)}" y="${H - B - 5}" class="wpr-tr-note wpr-tr-halo" style="font-size:${fs - 1.5}px">in-town prices from here</text>`;
+  }
+
   function statewideSeries(fuel) {
     return (getWIEntries(fuel) || []).map(e => ({ t: e.date.getTime(), price: e.price }));
   }
@@ -838,6 +864,10 @@
     const first = pts[0], last = pts[pts.length - 1];
     const lowP = pts.reduce((a, p) => (p.price < a.price ? p : a), pts[0]);
     const highP = pts.reduce((a, p) => (p.price > a.price ? p : a), pts[0]);
+    // High/low labels only describe readings taken the current way.
+    const cur = sameMethod(pts);
+    const lowLbl = cur.length >= 3 ? cur.reduce((a, p) => (p.price < a.price ? p : a), cur[0]) : null;
+    const highLbl = cur.length >= 3 ? cur.reduce((a, p) => (p.price > a.price ? p : a), cur[0]) : null;
     // A round-number scale with at least two gridlines.
     const step = (highP.price - lowP.price) <= 0.25 ? 0.1 : (highP.price - lowP.price) <= 0.8 ? 0.25 : 0.5;
     let lo = Math.floor(lowP.price / step) * step, hi = Math.ceil(highP.price / step) * step;
@@ -882,8 +912,9 @@
       + `<path d="${line}" class="wpr-tr-line wpr-draw" pathLength="1"/>`;
     const ex = X(last.t), ey = Y(last.price);
     // High/low labels beside their points, clear of the end label and the axis.
-    for (const [p, word] of [[highP, 'High'], [lowP, 'Low']]) {
-      if (p === last || p === first) continue;
+    svg += methodMark(X, t0, lastT, T, H, B, fs);
+    for (const [p, word] of [[highLbl, 'High'], [lowLbl, 'Low']]) {
+      if (!p || p === last || p === first) continue;
       const x = X(p.t), y = Y(p.price), text = `${word} ${money2(p.price)}`, w = textW(text, fs - 1, 400);
       const nearEnd = Math.abs(y - ey) < 18 && x + w / 2 > ex - 8;
       let tx = x, ty = word === 'High' ? y - 8 : y + 4, anchor = 'middle';
@@ -992,7 +1023,7 @@
     ).join('');
 
     const series = statewideSeries(activeFuel);
-    const story = L.statewideStory(series, activeFuel);
+    const story = L.statewideStory(sameMethod(series), activeFuel);
     const colW = frameW() - 2 * padX();
     const chips = story ? [
       story.c7 != null ? ['Past week', story.c7] : null,
@@ -1007,7 +1038,7 @@
       <div class="wpr-tr wpr-st-story">
         <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · statewide average · WPR daily tracking</div>
         <h3 class="wpr-tr-title">${esc(story.headline)}</h3>
-        <p class="wpr-tr-dek">${dekText ? esc(dekText) + ' ' : ''}${chips ? `<span class="wpr-st-chips">${chips}</span>` : ''}</p>
+        <p class="wpr-tr-dek">${methodIsNew() ? esc(methodNote()) + ' ' : dekText ? esc(dekText) + ' ' : ''}${chips ? `<span class="wpr-st-chips">${chips}</span>` : ''}</p>
         ${buildStateSpark(series, colW, story)}
       </div>` : '';
 
@@ -1203,9 +1234,10 @@
   function buildTrendChart(W) {
     const narrow = W < 560;
     const { days, start, end, wi, mw, mwDraw } = trendSeries();
-    const story = L.trendStory(wi.length >= 2 ? wi : null, mw, days, activeFuel);
+    const wiNow = sameMethod(wi);
+    const story = L.trendStory(wiNow.length >= 2 ? wiNow : null, mw, days, activeFuel);
     if (!story) { chartModel = null; return '<div class="wpr-trends-empty">Not enough historical data available.</div>'; }
-    const lead = story.leadIsWI ? wi : mwDraw;
+    const lead = story.leadIsWI ? wi : mwDraw;   // the line itself is drawn in full
     const bench = story.leadIsWI ? mwDraw : [];
 
     const H = narrow ? 272 : 300;
@@ -1254,11 +1286,12 @@
     svg += `<path d="${lp}L${X(lead[lead.length - 1].t).toFixed(1)},${H - B}L${X(lead[0].t).toFixed(1)},${H - B}Z" class="wpr-tr-area"/>`;
     if (bench.length >= 2) svg += `<path d="${path(bench)}" class="wpr-tr-bench"/>`;
     svg += `<path d="${lp}" class="wpr-tr-line wpr-draw" pathLength="1"/>`;
+    if (story.leadIsWI) svg += methodMark(X, start, end, T, H, B, fs);
     // The window's sharpest seven-day move, when it is big enough to be news.
-    const sharp = story.leadIsWI ? L.sharpestWeek(wi) : null;
+    const sharp = story.leadIsWI && !methodIsNew() ? L.sharpestWeek(wiNow) : null;
     let sharpSince = null;
     if (sharp && Math.abs(sharp.change) >= 0.10) {
-      const fullWI = (getWIEntries(activeFuel) || []).map(e => ({ t: e.date.getTime(), price: e.price }));
+      const fullWI = sameMethod((getWIEntries(activeFuel) || []).map(e => ({ t: e.date.getTime(), price: e.price })));
       sharpSince = L.lastMoveAsBig(fullWI, sharp);
       const seg = wi.filter(p => p.t >= sharp.from.t && p.t <= sharp.to.t);
       const top = Math.min(...seg.map(p => Y(p.price))), bottom = Math.max(...seg.map(p => Y(p.price)));
@@ -1273,12 +1306,13 @@
         + `<text x="${cx.toFixed(1)}" y="${(ly + 14).toFixed(1)}" text-anchor="middle" class="wpr-tr-note wpr-tr-halo" style="font-size:${fs - 1}px">${since}</text>`;
     } else if (sharp) { sharp.small = true; }
 
-    // Low point
+    // Low point (not while a new method has only a handful of readings)
+    const fresh = story.leadIsWI && methodIsNew();
     const lx = X(story.low.t), ly = Y(story.low.price);
     const lowText = `Low ${money2(story.low.price)} · ${L.shortDate(story.low.t)}`;
     // Whichever side of the point has room: never over the y-axis labels or into the gutter.
     const lowLeft = lx + 9 + textW(lowText, fs, 400) > W - R && lx - 9 - textW(lowText, fs, 400) >= Lp;
-    svg += `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" class="wpr-tr-lowdot"/>`
+    if (!fresh) svg += `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" class="wpr-tr-lowdot"/>`
       + `<text x="${(lowLeft ? lx - 9 : lx + 9).toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="${lowLeft ? 'end' : 'start'}" class="wpr-tr-note" style="font-size:${fs}px">${lowText}</text>`;
 
     // End labels, nudged apart when the two lines finish close together.
@@ -1356,8 +1390,9 @@
     const built = buildTrendChart(frameW() - 2 * padX());
     if (typeof built === 'string') return controls + built;
     const { story, hasGap, notes, sharp, svg } = built;
+    const fresh = story.leadIsWI && methodIsNew();
     const { wi: winWI, mw: winMW } = trendSeries();
-    const share = story.leadIsWI ? L.gapShare(winWI, winMW) : null;
+    const share = story.leadIsWI ? L.gapShare(sameMethod(winWI), winMW) : null;
     const dek = [story.dek, story.leadIsWI ? L.gapContext(share, story.gap) : ''].filter(Boolean).join(' ');
     const noteKey = notes.length ? `<ol class="wpr-tr-notes">${notes.map(n =>
       `<li><b>${L.shortDate(n.t)}</b> ${esc(n.text)}</li>`).join('')}</ol>` : '';
@@ -1397,9 +1432,9 @@
     return `${controls}
       <div class="wpr-tr">
         <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · ${rangeLabel}</div>
-        <h3 class="wpr-tr-title">${esc(story.headline)}</h3>
-        <p class="wpr-tr-dek">${esc(dek)}</p>
-        <div class="wpr-tr-tiles">${tileHtml}</div>
+        <h3 class="wpr-tr-title">${esc(fresh ? `Wisconsin ${fuelLabel(activeFuel).toLowerCase().replace('regular', 'regular gas')} averages ${money2(story.last.price)} a gallon` : story.headline)}</h3>
+        <p class="wpr-tr-dek">${esc(fresh ? methodNote() : dek)}</p>
+        ${fresh ? '' : `<div class="wpr-tr-tiles">${tileHtml}</div>`}
         ${legend}
         ${svg}
         <div class="wpr-tr-hint">${contextData?.wti != null ? `Crude oil (WTI): $${contextData.wti.toFixed(2)} a barrel${contextData.wti_as_of ? `, ${L.shortDate(L.isoTime(contextData.wti_as_of))}` : ''} · ` : ''}Hover or tap the chart to read any day.</div>
@@ -1581,7 +1616,7 @@
       <div class="wpr-map">
         <div class="wpr-tr-kicker">${fuelLabel(activeFuel)} · state average ${money2(avg)}</div>
         <h3 class="wpr-tr-title">Where ${FUEL_WORD[activeFuel] || 'gas'} costs more, and less, than the state average</h3>
-        <p class="wpr-tr-dek">${spreadPhrase(L.centsText(dear.price - cheap.price))} spread across the state: cheapest in <b>${esc(cheap.name)}</b> (${money2(cheap.price)}), priciest in <b>${esc(dear.name)}</b> (${money2(dear.price)}).</p>
+        <p class="wpr-tr-dek">${spreadPhrase(L.centsText(dear.price - cheap.price))} spread across the state: cheapest in <b>${esc(cheap.name)}</b> (${money2(cheap.price)}), priciest in <b>${esc(dear.name)}</b> (${money2(dear.price)}). City averages use the 20 stations nearest each city's center.</p>
         <div class="wpr-map-grid">
           <div>
             <svg viewBox="0 0 ${VW} ${VH}" class="wpr-map-svg" role="group" aria-label="Map of Wisconsin metro ${fuelLabel(activeFuel).toLowerCase()} prices compared with the state average">${svg}</svg>

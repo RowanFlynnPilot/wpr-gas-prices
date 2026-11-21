@@ -259,7 +259,7 @@
 </noscript>
 
 <!-- Shared, unit-tested logic. Bump ?v= whenever its API changes (see the file's header). -->
-<script src="./widget-logic.js?v=10"></script>
+<script src="./widget-logic.js?v=11"></script>
 <script>
 (function() {
   'use strict';
@@ -344,9 +344,11 @@
   // Statewide daily readings for one fuel from our history, [{ t, price }].
   function statewideSeries(fuel) {
     if (!historyData) return [];
+    // Only readings taken the current way (see L.methodSince).
+    const since = L.methodSince(historyData);
     return L.sortedHistoryKeys(historyData)
       .map(k => ({ t: L.historyKeyTime(k), price: historyData[k]?.statewide?.[fuel] }))
-      .filter(p => typeof p.price === 'number');
+      .filter(p => typeof p.price === 'number' && (since == null || p.t >= since));
   }
   // A 30-day line beside the price, colored by the month's direction.
   function sparkline(series) {

@@ -290,6 +290,16 @@ the cron expressions in `.github/workflows/update-gas-prices.yml`
    WordPress updates sometimes drop Custom HTML blocks.
 3. **Force an update?** → **Actions** → **Update Gas Prices** → **Run workflow**.
 
+### How city prices are measured
+
+Each city's average is the 20 gas stations nearest its city center, as listed on
+GasBuddy. Until Nov. 21, 2026, it was the 20 cheapest stations in a much wider area,
+which pulled in towns 30 or more miles away and made city prices look lower than
+drivers in town actually paid. City and statewide averages rose when the method
+changed. The widget never compares readings across that change: for two weeks after
+it, the charts mark the switch and the headlines state today's price instead of a
+trend.
+
 ### Adding a newsroom note to the trend chart
 
 The Price Trends chart can show numbered markers that explain a spike or drop,

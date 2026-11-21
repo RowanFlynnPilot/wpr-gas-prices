@@ -52,6 +52,32 @@ CITIES = {
     "Waukesha":    "Waukesha, WI",
 }
 
+# City centers (lat, lng). Passed with each search so GasBuddy returns the 20
+# stations NEAREST the center. Without them a city search returned the 20
+# cheapest stations in a wide area: on 2026-11-21 none of the eight "cheapest in
+# Wausau" stations was in Wausau (Abbotsford, Colby, Spencer, Marshfield...), and
+# 74 of 172 listed stations statewide sat outside the city they were filed under.
+# Must match CITY_COORDS in docs/widget-logic.js (test_city_centers_match_the_map).
+CITY_CENTERS = {
+    "Wausau": (44.959, -89.630), "Stevens Point": (44.524, -89.574),
+    "Wisconsin Rapids": (44.384, -89.817), "Marshfield": (44.669, -90.172),
+    "Rhinelander": (45.637, -89.412), "Merrill": (45.180, -89.683),
+    "Mosinee": (44.793, -89.703), "Antigo": (45.140, -89.152),
+    "Eau Claire": (44.811, -91.498), "Green Bay": (44.519, -88.020),
+    "Appleton": (44.262, -88.415), "Madison": (43.073, -89.401),
+    "Milwaukee": (43.039, -87.906), "La Crosse": (43.801, -91.240),
+    "Fond du Lac": (43.775, -88.439), "Janesville": (42.683, -89.019),
+    "Kenosha": (42.585, -87.821), "Oshkosh": (44.025, -88.543),
+    "Racine": (42.726, -87.783), "Sheboygan": (43.751, -87.714),
+    "Superior": (46.721, -92.104), "Waukesha": (43.012, -88.232),
+}
+
+# How metro prices are sampled. Recorded on gas_prices.json and on every history
+# day, so comparisons never span a change of method (a jump that never happened
+# at the pump). 1 = the 20 cheapest stations in GasBuddy's wide search area
+# (until 2026-11-21); 2 = the 20 stations nearest the city center.
+PRICE_METHOD = 2
+
 # GasBuddy fuelProduct values → our internal keys
 FUEL_MAP = {
     "regular_gas":  "regular",
@@ -359,10 +385,11 @@ def scrape_city_graphql(session, city_name: str, search_term: str, headers: dict
     Waits out a short HTTP 429 (the server's Retry-After when present);
     raises RateLimited when the wait is longer than RATE_LIMIT_MAX_WAIT.
     """
+    lat, lng = CITY_CENTERS[city_name]   # no center, no search: fail loudly, not regionally
     payload = {
         "operationName": "LocationBySearchTerm",
         "query": LOCATION_QUERY,
-        "variables": {"maxAge": 0, "search": search_term},
+        "variables": {"maxAge": 0, "search": search_term, "lat": lat, "lng": lng},
     }
     for attempt in range(3):
         try:
@@ -618,6 +645,7 @@ def scrape_gasbuddy() -> dict:
         "statewide":   statewide,
         "metros":      metros,
         "priority_metros": PRIORITY_METROS,
+        "method":      PRICE_METHOD,
         # Transient run health — popped before gas_prices.json is written, then
         # finalized into docs/scrape_status.json by main().
         "run_health": {
@@ -881,6 +909,7 @@ def update_history(data: dict, out_dir: str) -> bool:
             entry[name] = c
 
     if entry:
+        entry["method"] = data.get("method", 1)
         history[today_key] = entry
 
     # Trim oldest-first by date, not by string — a string sort would drop the wrong days.
@@ -906,14 +935,16 @@ def _format_long_date(price_date: str) -> str:
     return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
 
 
-def history_extreme_note(history: dict, current: float, price_date: str) -> str:
+def history_extreme_note(history: dict, current: float, price_date: str,
+                         method: int = PRICE_METHOD) -> str:
     """A 'the highest since June 4' milestone for the statewide regular average.
 
     Compares today's figure against our own daily history (same GasBuddy source
     as the headline number). Speaks only when the milestone reaches back at
     least 30 days — "highest since Tuesday" is noise — and stays quiet with
-    under 60 days of history. Pure/testable. Returns "" when there is nothing
-    worth saying.
+    under 60 days of history. Only days sampled the same way (`method`) count,
+    so a change of method can't read as a record. Pure/testable. Returns "" when
+    there is nothing worth saying.
     """
     today = history_key_date(price_date)
     if not isinstance(current, (int, float)) or today is None:
@@ -922,7 +953,7 @@ def history_extreme_note(history: dict, current: float, price_date: str) -> str:
     for key, entry in (history or {}).items():
         d = history_key_date(key)
         v = (entry.get("statewide") or {}).get("regular") if isinstance(entry, dict) else None
-        if d is None or d >= today or not isinstance(v, (int, float)):
+        if d is None or d >= today or not isinstance(v, (int, float)) or entry.get("method", 1) != method:
             continue
         readings.append((d, v))
     if len(readings) < 60:
@@ -992,7 +1023,7 @@ def build_summary(data: dict, history: dict | None = None) -> dict:
                         f"(${reg[low_city]:.2f}) and the highest in {high_city} (${reg[high_city]:.2f}).")
 
     as_of = _format_long_date(data.get("price_date", ""))
-    extreme = history_extreme_note(history or {}, cur, data.get("price_date", ""))
+    extreme = history_extreme_note(history or {}, cur, data.get("price_date", ""), data.get("method", 1))
     extreme_clause = f" — {extreme}" if extreme else ""
     blurb = (f"Regular gas is averaging ${cur:.2f} a gallon across Wisconsin as of "
              f"{as_of}, according to GasBuddy{extreme_clause}.{trend}{metro_clause}")
@@ -1031,6 +1062,10 @@ def quarantine_implausible(data: dict, previous_data: dict) -> list[str]:
     figure forward instead. Returns one sentence per suspect (they become
     source problems, so the run alerts). No previous figure → no judgement. Pure.
     """
+    # A change of sampling method moves every city at once; that is not a wrong-city
+    # scrape, and the previous figures are no reference for the new ones.
+    if (previous_data or {}).get("method", 1) != data.get("method", 1):
+        return []
     prev_metros = (previous_data or {}).get("metros", {})
     suspects: list[str] = []
     for city, m in list(data.get("metros", {}).items()):

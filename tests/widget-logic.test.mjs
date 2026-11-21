@@ -280,7 +280,7 @@ test('statewideStory: record since tracking began, and no fake comparisons from 
   const s = L.statewideStory(short, 'regular');
   assert.equal(s.c7, null);
   assert.equal(s.extreme, null);
-  assert.equal(s.headline, 'Wisconsin regular gas is holding steady');
+  assert.equal(s.headline, 'Wisconsin regular gas averages $4.20 a gallon');   // nothing to compare with: state the level
 });
 
 test('mapFrames: bins against that day\'s average, carries a missing city a week, then drops it', () => {
@@ -376,4 +376,21 @@ test('sharpestWeek + lastMoveAsBig: biggest 7-day move, and when one that big la
   assert.equal(L.lastMoveAsBig(s, w), null);                        // nothing as big before it
   assert.ok(L.lastMoveAsBig(s, { from: s[59], to: s[59], change: 0.15 }) != null); // the early 20¢ week counts
   assert.equal(L.sharpestWeek(daily([4, 4.1])), null);
+});
+
+test('sampling method: no comparison spans a change of method', () => {
+  // Nov 19-20 sampled the old (wide-area) way, Nov 21-22 the new (in-town) way.
+  const h = {
+    '11/19/26': { statewide: { regular: 3.30 }, Wausau: { regular: 3.50 } },
+    '11/20/26': { statewide: { regular: 3.31 }, Wausau: { regular: 3.51 } },
+    '11/21/26': { statewide: { regular: 3.45 }, Wausau: { regular: 3.66 }, method: 2 },
+    '11/22/26': { statewide: { regular: 3.44 }, Wausau: { regular: 3.65 }, method: 2 },
+  };
+  assert.equal(L.methodSince(h), Date.UTC(2026, 10, 21));
+  // Nov 22 compares with Nov 21 (same method); Nov 21 has no same-method day before it.
+  assert.equal(L.previousReading(h, '11/22/26', 'statewide', 'regular').key, '11/21/26');
+  assert.equal(L.previousReading(h, '11/21/26', 'statewide', 'regular'), null);
+  // Old-method history keeps comparing among itself; one method means no break.
+  assert.equal(L.previousReading(h, '11/20/26', 'statewide', 'regular').key, '11/19/26');
+  assert.equal(L.methodSince({ '11/19/26': {}, '11/20/26': {} }), null);
 });

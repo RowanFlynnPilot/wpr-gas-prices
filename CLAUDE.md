@@ -218,6 +218,20 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
   then **stops the whole run** — the limit is per-IP, so the remaining cities would
   only feed the window. Cities already scraped are kept, the rest are carried
   forward, and `run_health["rate_limited"]` says why.
+- **City prices are in-town (PRICE_METHOD 2, from 2026-11-21).** Each search passes
+  the city center from `CITY_CENTERS` (must match `CITY_COORDS` in widget-logic.js —
+  a pytest checks), so GasBuddy returns the 20 stations **nearest** the center.
+  Without lat/lng it returned the 20 *cheapest* in a 30+ mile area: none of the
+  eight "cheapest in Wausau" stations was in Wausau, and 74 of 172 listed stations
+  sat outside their city. `gas_prices.json["method"]` and every history day's
+  `"method"` record how prices were sampled (missing = 1). **Nothing compares
+  readings across methods**: `L.previousReading()`, `L.fillUp()`, the metro-row
+  sparklines, `history_extreme_note()` and `quarantine_implausible()` are
+  method-aware, and the statewide/trend stories use `sameMethod()` series (from
+  `L.methodSince()`), while charts draw the full line with an "in-town prices from
+  here" marker. For 14 days after a change (`methodIsNew()`) the Statewide and
+  Trends tabs state the level and explain the change instead of trend claims.
+  Bump `PRICE_METHOD` if sampling ever changes again.
 - **Cheapest stations.** `extract_cheapest_stations()` keeps the 8 lowest-priced
   named stations per city (by regular) with their address + all fuel prices, stored
   under `metros[city].stations`. The Metro tab makes each city row expandable to show

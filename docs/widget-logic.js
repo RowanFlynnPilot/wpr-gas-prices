@@ -34,10 +34,31 @@
 
   // Most recent reading before today for one series ('statewide' or a metro name),
   // with the key it came from. Runs can miss days, so callers label the real gap.
+  // How a history day's metro prices were sampled (scrape_gas_prices.PRICE_METHOD):
+  // 1 = the 20 cheapest stations in GasBuddy's wide search area (until 2026-11-21),
+  // 2 = the 20 stations nearest the city center. Readings from different methods
+  // are never compared: the switch moved every average at once, at no pump.
+  const methodOf = entry => (entry && typeof entry.method === 'number' ? entry.method : 1);
+  function currentMethod(history, todayKey) {
+    const keys = sortedHistoryKeys(history);
+    return methodOf(history?.[todayKey] || history?.[keys[keys.length - 1]]);
+  }
+  // When the latest method began (ms), or null if history holds only one method.
+  function methodSince(history) {
+    const keys = sortedHistoryKeys(history);
+    if (!keys.length) return null;
+    const m = methodOf(history[keys[keys.length - 1]]);
+    for (let i = keys.length - 2; i >= 0; i--) {
+      if (methodOf(history[keys[i]]) !== m) return historyKeyTime(keys[i + 1]);
+    }
+    return null;
+  }
+
   function previousReading(history, todayKey, series, fuel) {
     const keys = sortedHistoryKeys(history);
+    const m = currentMethod(history, todayKey), todayT = historyKeyTime(todayKey);
     for (let i = keys.length - 1; i >= 0; i--) {
-      if (keys[i] === todayKey) continue;
+      if (keys[i] === todayKey || historyKeyTime(keys[i]) > todayT || methodOf(history[keys[i]]) !== m) continue;
       const v = history[keys[i]]?.[series]?.[fuel];
       if (typeof v === 'number') return { price: v, key: keys[i] };
     }
@@ -451,7 +472,9 @@
     let week = null;
     const keys = sortedHistoryKeys(history);
     if (keys.length) {
-      const series = keys.map(k => ({ t: historyKeyTime(k), price: history[k]?.[city]?.[fuel] }))
+      const m = methodOf(history[keys[keys.length - 1]]);
+      const series = keys.filter(k => methodOf(history[k]) === m)
+        .map(k => ({ t: historyKeyTime(k), price: history[k]?.[city]?.[fuel] }))
         .filter(p => typeof p.price === 'number');
       const lastT = historyKeyTime(keys[keys.length - 1]);
       const p = readingAtOrBefore(series, lastT - 7 * MS_DAY);
@@ -504,7 +527,7 @@
     return lastT - t > 300 * MS_DAY ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}` : shortDate(t);
   }
   function statewideStory(series, fuel) {
-    if (!Array.isArray(series) || series.length < 2) return null;
+    if (!Array.isArray(series) || series.length < 1) return null;
     const last = series[series.length - 1];
     // A comparison only counts when the reading really is about that far back.
     const back = (days, minDays) => {
@@ -533,6 +556,9 @@
     const move = (c, period) => `${subject} is ${c > 0 ? 'up' : 'down'} ${centsText(c / 100)} ${period}`;
     const headline = c7 != null && Math.abs(c7) >= 5 ? move(c7, 'in a week')
       : c30 != null && Math.abs(c30) >= 5 ? move(c30, 'over the past month')
+      // No reading far enough back to compare with (new history, or a change of
+      // sampling method): state the level rather than claim it's steady.
+      : c7 == null && c30 == null ? `${subject} averages $${last.price.toFixed(2)} a gallon`
       : `${subject} is holding steady`;
 
     let dek = `$${last.price.toFixed(2)} a gallon today`;
@@ -547,7 +573,7 @@
   }
 
   self.WprGasLogic = {
-    FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel,
+    FUELS, esc, historyKeyTime, sortedHistoryKeys, previousReading, comparisonLabel, methodOf, methodSince,
     delta, freshness, extremeStations, sortMetroNames, mapsUrl,
     isoTime, seasonOf, seasonLabel, heatingSummary, seasonPoints, fillCost,
     shortDate, centsText, valueAt, readingAtOrBefore, trendStory, statewideStory, mapFrames, VEHICLES, fillUp, NOTE_MAX, validNote, notesInWindow, HEATING_TANKS, sameWeekLastSeason, heatingStory, gapShare, gapContext, sharpestWeek, lastMoveAsBig,

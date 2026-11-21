@@ -56,7 +56,7 @@
 </head>
 <body>
 <div class="social-card" id="card"><div class="sc-unavail">Loading…</div></div>
-<script src="./widget-logic.js?v=10"></script>
+<script src="./widget-logic.js?v=11"></script>
 <script>
 (function () {
   'use strict';
@@ -115,6 +115,9 @@
       var v = hist[k] && hist[k].statewide && hist[k].statewide.regular;
       if (typeof v === 'number') series.push({ t: L.historyKeyTime(k), price: v });
     });
+    // Only readings taken the current way (see L.methodSince).
+    var since = L.methodSince(hist || {});
+    if (since != null) series = series.filter(function (p) { return p.t >= since; });
     var story = L.statewideStory(series, 'regular');
     var headline = story ? story.headline : 'Wisconsin regular gas';
     // The big number above already says the price; the dek adds the record line.
