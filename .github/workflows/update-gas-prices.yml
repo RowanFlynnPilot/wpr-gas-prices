@@ -127,7 +127,8 @@ jobs:
             curl -sf http://127.0.0.1:4180/digest.html > /dev/null && break
             sleep 1
           done
-          node scripts/render-digest.mjs http://127.0.0.1:4180/digest.html docs/digest.png
+          node scripts/render-digest.mjs http://127.0.0.1:4180/digest.html docs/digest.png .digest-card 520 2 docs/digest.txt
+          node scripts/render-digest.mjs "http://127.0.0.1:4180/digest.html?layout=short" docs/digest-short.png .digest-card 520 2
           node scripts/render-digest.mjs http://127.0.0.1:4180/social.html docs/social.png .social-card 1080 1
 
       - name: Commit and push updated data
@@ -141,6 +142,8 @@ jobs:
           git add docs/eia_context.json || true
           git add docs/eia_heating.json || true
           git add docs/digest.png || true
+          git add docs/digest-short.png || true
+          git add docs/digest.txt || true
           git add docs/social.png || true
           if git diff --staged --quiet; then
             echo "No price changes detected, skipping commit."

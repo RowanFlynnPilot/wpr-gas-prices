@@ -93,6 +93,10 @@
   .dg-foot { background:var(--paper-warm); border-top:1px solid var(--rule); padding:10px 20px; font-size:10px; color:var(--ink-faint); line-height:1.5; text-align:center; }
   .dg-foot strong { color:var(--ink-mid); font-weight:600; }
 
+  /* Short layout */
+  .dg-short .dg-hero { align-items:center; }
+  .dg-short-spark { padding:12px 16px 8px 0; }
+  .dg-short .dg-local { margin-top:4px; }
   .dg-unavail { padding:60px 20px; text-align:center; color:var(--ink-light); font-size:14px; }
 
   /* Shown only when station prices are older than the AAA refresh (GasBuddy blocked) */
@@ -132,35 +136,54 @@
     return months[(+m[1]) - 1] + ' ' + (+m[2]) + ', 20' + m[3];
   }
 
-  // 30-day statewide-regular sparkline from our own history file. History keys
-  // are m/d/yy and may be unpadded, so sort by parsed date, never as strings.
-  function sparkline(hist) {
-    if (!hist) return '';
-    var days = Object.keys(hist).map(function (k) {
-      var m = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(k);
-      return m ? [Date.UTC(2000 + (+m[3]), (+m[1]) - 1, +m[2]), k] : null;
-    }).filter(Boolean).sort(function (a, b) { return a[0] - b[0]; });
-    var pts = [];
-    days.forEach(function (e) {
-      var v = hist[e[1]] && hist[e[1]].statewide && hist[e[1]].statewide.regular;
-      if (typeof v === 'number') pts.push(v);
+  // 30-day statewide-regular line from our own history, readings taken the
+  // current way only (L.methodSince: a change of sampling method is not a price
+  // move). A price scale, the first and last dates, and the headline's week shaded
+  // make it readable in an email, where nothing can be hovered.
+  function sparkline(hist, story, w) {
+    var L = self.WprGasLogic;
+    if (!hist || !L) return '';
+    var since = L.methodSince(hist), pts = [];
+    L.sortedHistoryKeys(hist).forEach(function (k) {
+      var v = hist[k] && hist[k].statewide && hist[k].statewide.regular, t = L.historyKeyTime(k);
+      if (typeof v === 'number' && (since == null || t >= since)) pts.push({ t: t, price: v });
     });
-    pts = pts.slice(-30);
     if (pts.length < 5) return '';
-    var w = 250, h = 34, pad = 2;
-    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
-    var range = (max - min) || 1;
-    var step = (w - pad * 2) / (pts.length - 1);
-    var coords = pts.map(function (p, i) {
-      return (pad + i * step).toFixed(1) + ',' + (pad + (h - pad * 2) * (1 - (p - min) / range)).toFixed(1);
-    }).join(' ');
-    var trend = pts[pts.length - 1] - pts[0];
-    var color = trend > 0.005 ? 'var(--up)' : trend < -0.005 ? 'var(--down)' : 'var(--accent)';
-    var sign = trend > 0.005 ? '+' : trend < -0.005 ? '−' : '±';
-    var cents = Math.round(Math.abs(trend) * 100);
-    return '<div class="dg-spark"><svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">'
-      + '<polyline points="' + coords + '" fill="none" stroke="' + color + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>'
-      + '<div class="dg-spark-cap">past 30 days · <span style="color:' + color + ';font-weight:700">' + sign + cents + '¢</span></div></div>';
+    var lastT = pts[pts.length - 1].t;
+    pts = pts.filter(function (p) { return p.t >= lastT - 30 * 864e5; });
+    if (pts.length < 5) return '';
+    w = w || 270;
+    var h = 74, Lp = 36, R = 8, T = 6, B = 18, t0 = pts[0].t;
+    var prices = pts.map(function (p) { return p.price; });
+    var lo0 = Math.min.apply(null, prices), hi0 = Math.max.apply(null, prices);
+    var step = (hi0 - lo0) <= 0.25 ? 0.1 : (hi0 - lo0) <= 0.8 ? 0.25 : 0.5;
+    var lo = Math.floor(lo0 / step) * step, hi = Math.ceil(hi0 / step) * step;
+    if (hi - lo < step) hi = lo + step;
+    function X(t) { return Lp + (t - t0) / ((lastT - t0) || 1) * (w - Lp - R); }
+    function Y(v) { return T + (1 - (v - lo) / (hi - lo)) * (h - T - B); }
+    var trend = pts[pts.length - 1].price - pts[0].price;
+    var up = trend > 0.005, dn = trend < -0.005;
+    var color = up ? '#c0392b' : dn ? '#27864a' : '#3e847a';
+    var svg = '';
+    [lo, hi].forEach(function (v) {
+      svg += '<line x1="' + Lp + '" x2="' + (w - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#e3e8e7" stroke-width="1"/>'
+        + '<text x="' + (Lp - 5) + '" y="' + (Y(v) + 3.5).toFixed(1) + '" text-anchor="end" font-size="10" fill="#6a6a6a">$' + v.toFixed(2) + '</text>';
+    });
+    if (story && story.c7 != null && Math.abs(story.c7) >= 5 && story.wk && story.wk.t >= t0) {
+      var bx = X(story.wk.t);
+      svg += '<rect x="' + bx.toFixed(1) + '" y="' + T + '" width="' + (X(lastT) - bx).toFixed(1) + '" height="' + (h - T - B)
+        + '" fill="' + (story.c7 > 0 ? 'rgba(192,57,43,0.09)' : 'rgba(39,134,74,0.10)') + '"/>';
+    }
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.t).toFixed(1) + ',' + Y(p.price).toFixed(1); }).join('');
+    svg += '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+      + '<circle cx="' + X(lastT).toFixed(1) + '" cy="' + Y(pts[pts.length - 1].price).toFixed(1) + '" r="3" fill="' + color + '"/>';
+    var short = function (t) { var x = new Date(t); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x.getUTCMonth()] + ' ' + x.getUTCDate(); };
+    svg += '<text x="' + Lp + '" y="' + (h - 4) + '" font-size="10" fill="#6a6a6a">' + short(t0) + '</text>'
+      + '<text x="' + (w - R) + '" y="' + (h - 4) + '" text-anchor="end" font-size="10" fill="#6a6a6a">' + short(lastT) + '</text>';
+    var sign = up ? '+' : dn ? '−' : '±';
+    var band = story && story.c7 != null && Math.abs(story.c7) >= 5 ? ' · shaded: the past week' : '';
+    return '<div class="dg-spark"><svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" font-family="DM Sans, sans-serif">' + svg + '</svg>'
+      + '<div class="dg-spark-cap">past 30 days · <span style="color:' + color + ';font-weight:700">' + sign + money(trend) + '</span>' + band + '</div></div>';
   }
 
   function trendRow(label, cur, prev) {
@@ -274,7 +297,9 @@
       var since = L.methodSince(hist);
       if (since != null) series = series.filter(function (p) { return p.t >= since; });
       var story = L.statewideStory(series, 'regular');
-      if (story) {
+      // Nothing to compare with yet (new history or a change of sampling method):
+      // the big price below says it all, so no headline restating it.
+      if (story && (story.c7 != null || story.c30 != null)) {
         var cls = story.c7 != null && Math.abs(story.c7) >= 5 ? (story.c7 > 0 ? 'up' : 'down') : '';
         var dek = story.extreme ? story.dek.replace(/^\$[\d.]+ a gallon today, /, '').replace(/^./, function (c) { return c.toUpperCase(); }) : '';
         headHtml = '<div class="dg-headline ' + cls + '">' + story.headline
@@ -294,6 +319,36 @@
         + 'The statewide trend is current as of ' + longDate(aaa.as_of) + '.</div>'
       : '';
 
+    // Plain-text version of the card for readers who see no images (and for the
+    // newsletter's alt text): the renderer saves it next to the PNG.
+    var altParts = [];
+    if (story) altParts.push(story.headline + '.');
+    if (reg != null) altParts.push('Statewide average for regular: $' + reg.toFixed(2) + ' a gallon, ' + longDate(data.price_date) + ' (GasBuddy).');
+    if (cheapest.length && highest) altParts.push('Cheapest metro: ' + cheapest[0][0] + ' ($' + cheapest[0][1].toFixed(2) + '); priciest: ' + highest[0] + ' ($' + highest[1].toFixed(2) + ').');
+    if (st) altParts.push('Cheapest in Wausau: ' + st.name + ', $' + st.prices.regular.toFixed(2) + (st.address ? ' (' + st.address + ')' : '') + '.');
+    document.body.setAttribute('data-alt', altParts.join(' '));
+
+    if (/layout=short/.test(location.search)) {
+      var card = document.getElementById('card');
+      card.classList.add('dg-short');
+      card.innerHTML =
+        '<div class="dg-head"><img class="dg-logo" src="' + LOGO + '" alt="">'
+        + '<div><div class="dg-kicker">Wausau Pilot &amp; Review · Fuel Watch</div>'
+        + '<div class="dg-title">Wisconsin Gas Prices</div>'
+        + '<div class="dg-date">' + longDate(data.price_date) + '</div></div></div>'
+        + headHtml
+        + '<div class="dg-hero"><div class="dg-hero-main">'
+        + '<div class="dg-hero-label">Statewide average · Regular</div>'
+        + '<div class="dg-hero-value">' + (reg != null ? heroPrice(reg) : '—') + '</div>'
+        + '<div class="dg-hero-sub">per gallon · live via GasBuddy</div></div>'
+        + '<div class="dg-short-spark">' + sparkline(hist, story, 220) + '</div></div>'
+        + staleHtml
+        + localHtml
+        + '<div class="dg-foot">Every city, trends and home heating: <strong>wausaupilotandreview.com</strong></div>';
+      done();
+      return;
+    }
+
     document.getElementById('card').innerHTML =
       '<div class="dg-head"><img class="dg-logo" src="' + LOGO + '" alt="">'
       + '<div><div class="dg-kicker">Wausau Pilot &amp; Review · Fuel Watch</div>'
@@ -306,7 +361,7 @@
       + '<div class="dg-hero-label">Statewide average · Regular</div>'
       + '<div class="dg-hero-value">' + (reg != null ? heroPrice(reg) : '—') + '</div>'
       + '<div class="dg-hero-sub">per gallon · live via GasBuddy</div>'
-      + sparkline(hist) + '</div>'
+      + sparkline(hist, story) + '</div>'
       + '<div class="dg-trend">' + trendHtml + '</div></div>'
 
       + staleHtml

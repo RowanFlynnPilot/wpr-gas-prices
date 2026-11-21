@@ -51,6 +51,7 @@
 
   .sc-foot { display:flex; justify-content:space-between; align-items:center; gap:20px; white-space:nowrap; padding:24px 60px 30px; font-size:21px; color:var(--ink-light); }
   .sc-foot b { color:var(--accent-dark); font-weight:700; }
+  .sc-note { margin-top:40px; font-size:30px; line-height:1.4; color:var(--ink-mid); border-left:6px solid var(--accent-light); padding:8px 0 8px 24px; }
   .sc-unavail { margin:auto; font-size:40px; color:var(--ink-light); text-align:center; padding:60px; }
 </style>
 </head>
@@ -119,7 +120,8 @@
     var since = L.methodSince(hist || {});
     if (since != null) series = series.filter(function (p) { return p.t >= since; });
     var story = L.statewideStory(series, 'regular');
-    var headline = story ? story.headline : 'Wisconsin regular gas';
+    // With nothing to compare yet, don't restate the price shown right above.
+    var headline = story && (story.c7 != null || story.c30 != null) ? story.headline : 'Wisconsin regular gas today';
     // The big number above already says the price; the dek adds the record line.
     var dek = story && story.extreme ? story.dek.replace(/^\$[\d.]+ a gallon today, /, '').replace(/^./, function (c) { return c.toUpperCase(); }) : '';
     var cls = story && story.c7 != null ? (story.c7 > 0 ? 'up' : story.c7 < 0 ? 'down' : '') : '';
@@ -141,7 +143,10 @@
       + '<div class="sc-hero"><div class="sc-price"><span class="sc-cur">$</span>' + avg.toFixed(2) + '</div><div class="sc-per">a gallon</div></div>'
       + '<div class="sc-headline ' + cls + '">' + esc(headline) + '</div>'
       + (dek ? '<div class="sc-dek">' + esc(dek) + '</div>' : '')
-      + (series.length ? spark(series) : '')
+      // Too few readings since a change of method for a line: say why it's missing.
+      + ((series.length ? spark(series) : '') || (since != null
+        ? '<div class="sc-note">WPR now averages the 20 gas stations nearest each city’s center. The 30-day line returns as new readings build up.</div>'
+        : ''))
       + '<div class="sc-tiles">'
       + tile('Wausau', me, meRel, true)
       + tile('Cheapest metro', ranked[0])

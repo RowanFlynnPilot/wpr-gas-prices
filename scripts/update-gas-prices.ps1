@@ -310,9 +310,14 @@ if (-not $SkipDigest) {
         if (-not $ready) {
             Write-Host "[warn] Local preview server never came up; skipping digest." -ForegroundColor Yellow
         } else {
-            node .\scripts\render-digest.mjs 'http://127.0.0.1:4180/digest.html' 'docs/digest.png'
+            node .\scripts\render-digest.mjs 'http://127.0.0.1:4180/digest.html' 'docs/digest.png' '.digest-card' 520 2 'docs/digest.txt'
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "[warn] Digest render failed; publishing JSON anyway." -ForegroundColor Yellow
+            }
+            # The short newsletter card (headline, price, 30-day line, Wausau's cheapest).
+            node .\scripts\render-digest.mjs 'http://127.0.0.1:4180/digest.html?layout=short' 'docs/digest-short.png' '.digest-card' 520 2
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "[warn] Short digest render failed; publishing JSON anyway." -ForegroundColor Yellow
             }
             # The square social card (Facebook / Instagram), from the same data.
             node .\scripts\render-digest.mjs 'http://127.0.0.1:4180/social.html' 'docs/social.png' '.social-card' 1080 1
@@ -335,6 +340,8 @@ $Tracked = @(
     'docs/eia_context.json',
     'docs/eia_heating.json',
     'docs/digest.png',
+    'docs/digest-short.png',
+    'docs/digest.txt',
     'docs/social.png'
 )
 foreach ($f in $Tracked) {

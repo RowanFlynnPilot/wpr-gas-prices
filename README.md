@@ -248,6 +248,21 @@ The image is regenerated on every scheduled run (via a headless Chromium screens
 `docs/digest.html`), so it always shows the latest prices. Design lives in
 `docs/digest.html`; the renderer is `scripts/render-digest.mjs`.
 
+**A shorter version for the top of a newsletter.** The same runs also save a card about
+a third as tall: the headline, the statewide price, the 30-day line and Wausau's
+cheapest station, with a pointer to the full tracker.
+
+`https://rowanflynnpilot.github.io/wpr-gas-prices/digest-short.png`
+
+**A text version of the card.** Each run also saves the card's key facts as one
+paragraph, for readers whose email blocks images:
+
+`https://rowanflynnpilot.github.io/wpr-gas-prices/digest.txt`
+
+Paste it under the image, or into the image's alt text, when building the
+newsletter. It reads like: *"Wisconsin regular gas is down 23¢ in a week. Statewide
+average for regular: $3.32 a gallon, November 21, 2026 (GasBuddy). Cheapest metro: …"*
+
 ### 8. Social media card
 
 The same runs also bake a **1080×1080 square** for Facebook and Instagram posts:

@@ -7,17 +7,21 @@
 // in headless Chromium and writes the PNG. It produces IMAGES — it does NOT cache
 // or feed the widget's data.
 //
-//   node scripts/render-digest.mjs <url> <outPath> [cardSelector] [viewportWidth] [scale]
+//   node scripts/render-digest.mjs <url> <outPath> [cardSelector] [viewportWidth] [scale] [altTextPath]
 //
 // Defaults are the digest's: .digest-card, 520px wide, 2× (a crisp ~960px PNG for
 // retina email clients). The social card is `.social-card 1080 1` — 1080×1080 at 1×.
+// With altTextPath, the card's plain-text version (body[data-alt]) is saved there:
+// the newsletter's alt text, and the whole story for readers who see no images.
 import { chromium } from 'playwright'
+import { writeFileSync } from 'node:fs'
 
 const url = process.argv[2] || 'http://127.0.0.1:4180/digest.html'
 const out = process.argv[3] || 'docs/digest.png'
 const selector = process.argv[4] || '.digest-card'
 const width = Number(process.argv[5] || 520)
 const scale = Number(process.argv[6] || 2)
+const altOut = process.argv[7] || ''
 
 const browser = await chromium.launch()
 try {
@@ -45,6 +49,12 @@ try {
 
   await page.locator(selector).screenshot({ path: out })
   console.log(`Wrote ${out}`)
+  if (altOut) {
+    const alt = await page.getAttribute('body', 'data-alt')
+    if (!alt) throw new Error('card set no data-alt text')
+    writeFileSync(altOut, alt + '\n')
+    console.log(`Wrote ${altOut}`)
+  }
 } finally {
   await browser.close()
 }

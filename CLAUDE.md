@@ -141,6 +141,7 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
 | `scripts/update-gas-prices.ps1` | **Standby** local runner (Task Scheduler); scrapes only when CI's data is stale | Yes |
 | `package.json` / `package-lock.json` | Node deps for the digest renderer (Playwright only) | Rarely |
 | `docs/digest.png` | Baked newsletter image (twice-daily) at a stable Pages URL | **Never by hand** — CI owns it |
+| `docs/digest-short.png` / `docs/digest.txt` | Short newsletter card / the card's facts as text (alt text, image-blocked email) | **Never by hand** — the runners own them |
 | `docs/social.png` | Baked 1080×1080 social card (twice-daily) at a stable Pages URL | **Never by hand** — the runners own it |
 | `docs/annotations.json` | Newsroom notes for the trend chart | **The newsroom**, by hand — format checked by `tests/annotations.test.mjs` |
 | `docs/wpr-logo.jpg` | WPR logo asset used by the digest card | Rarely |
@@ -580,6 +581,15 @@ Python scraper  ──▶  GitHub Actions cron  ──▶  static JSON in /docs
     and widget say the same thing; omitted if `widget-logic.js` didn't load. The card
     uses lining tabular figures (Playfair's default old-style numerals mixed two
     styles of number on one card).
+  - **Short card + text version.** `digest.html?layout=short` renders a card about a
+    third as tall (headline, price, 30-day line, Wausau's cheapest) to
+    `docs/digest-short.png`, and the full render also saves `body[data-alt]` — the
+    card's facts as one paragraph — to `docs/digest.txt` (renderer's 6th argument)
+    for image-blocked email readers and alt text. Both runners commit both. The 30-day
+    line uses same-method readings over 30 *days* (it used to take 30 readings and
+    printed changes past 99¢ as "−100¢"), with a price scale, dates and the
+    headline's week shaded. With no same-method comparison yet the digest drops the
+    headline and the social card says "Wisconsin regular gas today" plus a note.
   - **The social card rides along.** The same render step (`id: render`, so a failure
     alerts via `DIGEST_OUTCOME`) also renders `docs/social.html` → `docs/social.png`
     (`render-digest.mjs <url> <out> .social-card 1080 1`), and both runners commit it.
